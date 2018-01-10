@@ -1,0 +1,7 @@
+build/*
+build_config/*
+packages/*
+
+*.qbs.user
+*.autosave
+qgit_*
