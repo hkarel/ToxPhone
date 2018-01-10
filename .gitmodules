@@ -1,0 +1,9 @@
+[submodule "qbs"]
+	path = qbs
+	url = https://github.com/hkarel/QbsExt.git
+[submodule "src/yaml"]
+	path = src/yaml
+	url = https://github.com/hkarel/yaml-cpp.git
+[submodule "src/shared/shared"]
+	path = src/shared/shared
+	url = https://github.com/hkarel/SharedTools.git
