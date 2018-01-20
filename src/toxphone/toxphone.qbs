@@ -84,8 +84,8 @@ Product {
     cpp.includePaths: [
         "./",
         "../",
-        "../3rdparty",
-        "../common",
+        //"../3rdparty",
+        //"../common",
     ]
     cpp.systemIncludePaths: QbsUtl.concatPaths(
         //Qt.core.cpp.includePaths,

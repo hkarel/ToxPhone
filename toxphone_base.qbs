@@ -69,6 +69,5 @@ Project {
         "-Wno-unused-parameter",
         "-Wno-variadic-macros",
         //"-Wconversion",
-        //"-fopenmp",
     ]
 }

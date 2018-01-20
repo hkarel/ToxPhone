@@ -7,3 +7,9 @@
 [submodule "src/shared/shared"]
 	path = src/shared/shared
 	url = https://github.com/hkarel/SharedTools.git
+[submodule "src/3rdparty/filter_audio"]
+	path = src/3rdparty/filter_audio
+	url = https://github.com/irungentoo/filter_audio.git
+[submodule "src/3rdparty/toxcore"]
+	path = src/3rdparty/toxcore
+	url = https://github.com/TokTok/c-toxcore.git
