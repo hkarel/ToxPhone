@@ -5,6 +5,7 @@
 #include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/version/version_number.h"
 #include "shared/qt/config/config.h"
+#include "widgets/connection_window.h"
 #include "widgets/main_window.h"
 
 #include <QtCore>
@@ -22,6 +23,8 @@ void stopProgram()
 } // namespace
 
 using namespace std;
+using namespace communication;
+using namespace communication::transport;
 
 int main(int argc, char *argv[])
 {
@@ -97,30 +100,51 @@ int main(int argc, char *argv[])
         QApplication appl {argc, argv};
         appl.setApplicationName("ToxPhoneConfig " + productVersion().toString());
 
-        MainWindow w;
-        if (!w.init())
-        {
-            QMessageBox::critical(0, qApp->applicationName(),
-                "During the initialization of the program, errors occurred. "
-                "The execution of the program will be stopped. For information "
-                "about the error, see the log file " + logFile);
+        tcp::Socket::Ptr socket {new tcp::Socket};
 
+        QString errMessage = QObject::tr(
+            "During the initialization of the program, errors occurred. "
+            "The execution of the program will be stopped. For information "
+            "about the error, see the log file %1");
+        errMessage = errMessage.arg(logFile);
+
+        ConnectionWindow cw;
+        if (!cw.init(socket))
+        {
+            QMessageBox::critical(0, qApp->applicationName(), errMessage);
             stopProgram();
             return 1;
         }
-        w.loadGeometry();
-        w.loadSettings();
-        w.show();
+        cw.loadGeometry();
+        cw.show();
+
+        MainWindow mw;
+        if (!mw.init(socket))
+        {
+            QMessageBox::critical(0, qApp->applicationName(), errMessage);
+            stopProgram();
+            return 1;
+        }
+        mw.loadGeometry();
+        mw.loadSettings();
+        //mw.show();
 
         alog::logger().removeSaverStdOut();
         alog::logger().removeSaverStdErr();
 
-        QMetaObject::invokeMethod(&w, "requestPhonesList", Qt::QueuedConnection);
+        QApplication::setQuitOnLastWindowClosed(false);
+        QMetaObject::invokeMethod(&cw, "requestPhonesList", Qt::QueuedConnection);
+
         ret = appl.exec();
 
-        w.saveGeometry();
-        w.saveSettings();
-        w.deinit();
+        mw.saveGeometry();
+        mw.saveSettings();
+        mw.deinit();
+
+        cw.saveGeometry();
+        cw.deinit();
+
+        socket->disconnect();
 
         config::state().save();
     }

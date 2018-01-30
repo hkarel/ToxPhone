@@ -1,65 +1,51 @@
 #include "main_window.h"
 #include "ui_main_window.h"
-#include "widgets/connection.h"
+#include "widgets/friend.h"
+#include "widgets/friend_request.h"
 
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/config/config.h"
 #include "kernel/communication/commands.h"
-#include "kernel/network/interfaces.h"
 
+#include <QCloseEvent>
 #include <QMessageBox>
-#include <QNetworkAddressEntry>
-#include <QNetworkInterface>
 #include <unistd.h>
-
-#define PHONES_LIST_TIMEUPDATE 5
-
-using namespace std;
-using namespace communication;
-using namespace communication::transport;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->labelConnectStatus->clear();
     setWindowTitle(qApp->applicationName());
 
-    chk_connect_q(&_socket, SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
-    chk_connect_q(&_socket, SIGNAL(connected(communication::SocketDescriptor)),
-                  this, SLOT(socketConnected(communication::SocketDescriptor)))
-    chk_connect_q(&_socket, SIGNAL(disconnected(communication::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+    for (int i = 0; i < ui->tabWidget->count(); ++i)
+        if (ui->tabWidget->tabText(i).startsWith("Requests"))
+        {
+            _tabRrequestsIndex = i;
+            break;
+        }
 
-    chk_connect_q(&udp::socket(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
-
-    chk_connect_q(&_requestPhonesTimer, SIGNAL(timeout()),
-                  this, SLOT(requestPhonesList()))
-    _requestPhonesTimer.start(PHONES_LIST_TIMEUPDATE * 2 * 1000);
-
-    chk_connect_q(&_updatePhonesTimer, SIGNAL(timeout()),
-                  this, SLOT(updatePhonesList()))
-    _updatePhonesTimer.start(PHONES_LIST_TIMEUPDATE * 1000);
-
-    ui->btnConnect->setEnabled(false);
-
-    _labelConnectStatus = new QLabel(tr("Disconnected"), this);
-    ui->statusBar->addWidget(_labelConnectStatus);
+    //_labelConnectStatus = new QLabel(tr("Disconnected"), this);
+    //ui->statusBar->addWidget(_labelConnectStatus);
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &MainWindow::command_##COMMAND, this);
 
-    FUNC_REGISTRATION(ToxPhoneInfo)
-    FUNC_REGISTRATION(ApplShutdown)
+    FUNC_REGISTRATION(ToxProfile)
+    FUNC_REGISTRATION(RequestFriendship)
+    FUNC_REGISTRATION(FriendRequest)
+    FUNC_REGISTRATION(FriendRequests)
+    FUNC_REGISTRATION(FriendItem)
+    FUNC_REGISTRATION(FriendList)
+    FUNC_REGISTRATION(DhtConnectStatus)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
+
 }
 
 MainWindow::~MainWindow()
@@ -67,29 +53,22 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-bool MainWindow::init()
+bool MainWindow::init(const tcp::Socket::Ptr& socket)
 {
-    int port = 3609;
-    if (!config::state().getValue("connection.port", port))
-        config::state().setValue("connection.port", port);
+    _socket = socket;
 
-    if (!udp::socket().init({QHostAddress::Any, port - 1}))
-        return false;
-
-    udp::socket().start();
-    udp::socket().waitBinding(3);
-    if (!udp::socket().isBound())
-        return false;
-
+    chk_connect_q(_socket.get(), SIGNAL(message(communication::Message::Ptr)),
+                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(_socket.get(), SIGNAL(connected(communication::SocketDescriptor)),
+                  this, SLOT(socketConnected(communication::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
+                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
 
     return true;
 }
 
 void MainWindow::deinit()
 {
-    udp::socket().stop();
-    _socket.disconnect();
-
 }
 
 void MainWindow::saveGeometry()
@@ -130,208 +109,281 @@ void MainWindow::message(const communication::Message::Ptr& message)
 
 void MainWindow::socketConnected(communication::SocketDescriptor)
 {
-    ui->btnConnect->setText(tr("Disconnect"));
-    QString msg = tr("Connected to %1:%2");
-    _labelConnectStatus->setText(msg.arg(_socket.peerPoint().address().toString())
-                                    .arg(_socket.peerPoint().port()));
-
-    connectionWidgetIterator([this](ConnectionWidget* cw) {
-        bool res = (cw->hostPoint() == this->_socket.peerPoint());
-        if (res)
-            cw->setConnectStatus(true);
-        return res;
-    });
+    QString msg = tr("Connected to %1 : %2");
+    ui->labelConnectStatus->setText(msg.arg(_socket->peerPoint().address().toString())
+                                       .arg(_socket->peerPoint().port()));
+    show();
 }
 
 void MainWindow::socketDisconnected(communication::SocketDescriptor)
 {
-    ui->btnConnect->setText(tr("Connect"));
-    ui->btnConnect->setChecked(false);
-    _labelConnectStatus->setText(tr("Disconnected"));
-
-    connectionWidgetIterator([this](ConnectionWidget* cw) {
-        bool res = (cw->hostPoint() == this->_socket.peerPoint());
-        if (res)
-            cw->setConnectStatus(false);
-        return res;
-    });
+    hide();
+    //_labelConnectStatus->setText(tr("Disconnected"));
+    ui->labelConnectStatus->clear();
 }
 
-void MainWindow::on_btnConnect_clicked(bool checked)
+void MainWindow::command_ToxProfile(const Message::Ptr& message)
 {
-    if (!checked)
+    if (message->type() == Message::Type::Command)
     {
-        _socket.disconnect();
-        return;
+        data::ToxProfile toxProfile;
+        readFromMessage(message, toxProfile);
+
+        ui->lineSelfToxName->setText(toxProfile.name);
+        ui->lineSelfToxStatus->setText(toxProfile.status);
+        ui->lineSelfToxId->setText(toxProfile.toxId);
     }
 
-    QString msg;
-    if (!ui->phonesWidget->count())
+    // Если Answer - значит мы отправляли команду на сервер с новыми значениями
+    // имени и статуса пользователя, и получили ответ о выполнении этой операции.
+    // См. функцию on_btnSaveProfile_clicked()
+    else if (message->type() == Message::Type::Answer)
     {
-        msg = tr("Connection list is empty");
-        QMessageBox::critical(this, qApp->applicationName(), msg);
-        ui->btnConnect->setChecked(false);
-        return;
-    }
-    if (!ui->phonesWidget->currentItem())
-    {
-        msg = tr("No connection selected");
-        QMessageBox::critical(this, qApp->applicationName(), msg);
-        ui->btnConnect->setChecked(false);
-        return;
-    }
-
-    QListWidgetItem* lwi = ui->phonesWidget->currentItem();
-    ConnectionWidget* cw =
-        qobject_cast<ConnectionWidget*>(ui->phonesWidget->itemWidget(lwi));
-
-    if (!_socket.init(cw->hostPoint()))
-    {
-        msg = tr("Failed initialize a communication system.\n"
-                 "See details in the log file.");
-        QMessageBox::critical(this, qApp->applicationName(), msg);
-        ui->btnConnect->setChecked(false);
-        return;
-    }
-
-    setCursor(Qt::WaitCursor);
-    msg = tr("Connection to %1:%2");
-    _labelConnectStatus->setText(msg.arg(_socket.peerPoint().address().toString())
-                                    .arg(_socket.peerPoint().port()));
-    for (int i = 0; i < 3; ++i)
-    {
-        usleep(100*1000);
-        qApp->processEvents();
-    }
-
-    _socket.connect();
-
-    int sleepCount = 0;
-    while (sleepCount++ < 12)
-    {
-        usleep(500*1000);
-        qApp->processEvents();
-        if (_socket.isConnected())
-            break;
-    }
-    if (!_socket.isConnected())
-    {
-        _socket.stop();
-
-        msg = tr("Failed connect to host %1:%2");
-        msg = msg.arg(_socket.peerPoint().address().toString())
-                 .arg(_socket.peerPoint().port());
-        QMessageBox::critical(this, qApp->applicationName(), msg);
-
-        _labelConnectStatus->setText(tr("Disconnected"));
-        ui->btnConnect->setChecked(false);
-    }
-    setCursor(Qt::ArrowCursor);
-}
-
-void MainWindow::requestPhonesList()
-{
-    int port = 3609;
-    config::state().getValue("connection.port", port);
-
-    Message::Ptr message = createMessage(command::ToxPhoneInfo);
-    network::Interface::List netInterfaces = network::getInterfaces();
-    for (network::Interface* intf : netInterfaces)
-        message->destinationPoints().insert({intf->broadcast, port});
-
-    udp::socket().send(message);
-}
-
-void MainWindow::updatePhonesList()
-{
-    for (int i = 0; i < ui->phonesWidget->count(); ++i)
-    {
-        QListWidgetItem* lwi = ui->phonesWidget->item(i);
-        ConnectionWidget* cw =
-            qobject_cast<ConnectionWidget*>(ui->phonesWidget->itemWidget(lwi));
-        if (cw->lifeTimeExpired())
+        if (message->execStatus() == Message::ExecStatus::Success)
         {
-            --i;
-            ui->phonesWidget->removeItemWidget(lwi);
-            delete lwi;
+            QString msg = tr("Profile was successfully saved");
+            QMessageBox::information(this, qApp->applicationName(), msg);
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
         }
     }
-    ui->btnConnect->setEnabled(ui->phonesWidget->count());
 }
 
-void MainWindow::command_ToxPhoneInfo(const Message::Ptr& message)
+void MainWindow::command_RequestFriendship(const Message::Ptr& message)
 {
-    data::ToxPhoneInfo toxPhoneInfo;
-    readFromMessage(message, toxPhoneInfo);
-
-    bool found =
-    connectionWidgetIterator([&](ConnectionWidget* cw) {
-        bool res = (cw->applId() == toxPhoneInfo.applId);
-        if (res)
+    // См. функцию on_btnRequestFriendship_clicked()
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
         {
-            cw->resetLifeTimer();
-            if (cw->isPointToPoint() && !toxPhoneInfo.isPointToPoint)
+            ui->lineRequestToxId->clear();
+            ui->txtRequestMessage->clear();
+
+            QString msg = tr("Friendship request has been sent successfully");
+            QMessageBox::information(this, qApp->applicationName(), msg);
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
+    }
+}
+
+void MainWindow::command_FriendRequest(const Message::Ptr& message)
+{
+    // См. функцию on_btnFriendAccept_clicked()
+    // См. функцию on_btnFriendRejectp_clicked()
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            data::FriendRequest friendRequest;
+            readFromMessage(message, friendRequest);
+
+            if (friendRequest.accept == 1)
             {
-                cw->setHostPoint(message->sourcePoint());
-                cw->setPointToPoint(false);
+                QString msg = tr("Friend was successfully added to friend list");
+                QMessageBox::information(this, qApp->applicationName(), msg);
             }
         }
-        return res;
-    });
-
-    if (!found)
-    {
-        ConnectionWidget* cw = new ConnectionWidget();
-        cw->setInfo(toxPhoneInfo.info);
-        cw->setPointToPoint(toxPhoneInfo.isPointToPoint);
-        cw->setApplId(toxPhoneInfo.applId);
-        cw->setHostPoint(message->sourcePoint());
-        cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 2 + 5);
-        cw->resetLifeTimer();
-
-        QListWidgetItem* lwi = new QListWidgetItem();
-        lwi->setSizeHint(cw->sizeHint());
-        ui->phonesWidget->addItem(lwi);
-        ui->phonesWidget->setItemWidget(lwi, cw);
-    }
-
-    if (ui->phonesWidget->count())
-    {
-        ui->btnConnect->setEnabled(true);
-        if (!ui->phonesWidget->currentItem())
-            ui->phonesWidget->setCurrentRow(0);
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
     }
 }
 
-void MainWindow::command_ApplShutdown(const Message::Ptr& message)
+void MainWindow::command_FriendRequests(const Message::Ptr& message)
 {
-    data::ApplShutdown applShutdown;
-    readFromMessage(message, applShutdown);
+    data::FriendRequests friendRequests;
+    readFromMessage(message, friendRequests);
 
-    for (int i = 0; i < ui->phonesWidget->count(); ++i)
+    while (friendRequests.list.count() > ui->listFriendRequests->count())
     {
-        QListWidgetItem* lwi = ui->phonesWidget->item(i);
-        ConnectionWidget* cw =
-            qobject_cast<ConnectionWidget*>(ui->phonesWidget->itemWidget(lwi));
-        if (cw->applId() == applShutdown.applId)
+        FriendRequestWidget* frw = new FriendRequestWidget();
+        QListWidgetItem* lwi = new QListWidgetItem();
+        lwi->setSizeHint(frw->sizeHint());
+        ui->listFriendRequests->addItem(lwi);
+        ui->listFriendRequests->setItemWidget(lwi, frw);
+    }
+    while (friendRequests.list.count() < ui->listFriendRequests->count())
+    {
+        QListWidgetItem* lwi = ui->listFriendRequests->item(0);
+        ui->listFriendRequests->removeItemWidget(lwi);
+        delete lwi;
+    }
+    for (int i = 0; i < friendRequests.list.count(); ++i)
+    {
+        const data::FriendRequest& fr = friendRequests.list[i];
+        QListWidgetItem* lwi = ui->listFriendRequests->item(i);
+        FriendRequestWidget* frw =
+            qobject_cast<FriendRequestWidget*>(ui->listFriendRequests->itemWidget(lwi));
+        frw->setPublicKey(fr.publicKey);
+        frw->setMessage(fr.message);
+    }
+    QString tabRrequestsText = tr("Requests (%1)");
+    ui->tabWidget->setTabText(_tabRrequestsIndex, tabRrequestsText.arg(friendRequests.list.count()));
+}
+
+void MainWindow::command_FriendItem(const Message::Ptr& message)
+{
+    data::FriendItem friendItem;
+    readFromMessage(message, friendItem);
+
+    for (int i = 0; i < ui->listFriends->count(); ++i)
+    {
+        QListWidgetItem* lwi = ui->listFriends->item(i);
+        FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+        if (fw->publicKey() == friendItem.publicKey)
         {
-            ui->phonesWidget->removeItemWidget(lwi);
-            delete lwi;
+            switch (friendItem.changeFlaf)
+            {
+                case data::FriendItem::ChangeFlaf::Name:
+                    fw->setName(friendItem.name);
+                    break;
+                case data::FriendItem::ChangeFlaf::StatusMessage:
+                    fw->setStatusMessage(friendItem.statusMessage);
+                    break;
+                case data::FriendItem::ChangeFlaf::IsConnecnted:
+                    fw->setConnectStatus(friendItem.isConnecnted);
+                    break;
+                default:
+                    break;
+            }
+            fw->update();
             break;
         }
     }
-    ui->btnConnect->setEnabled(ui->phonesWidget->count());
+
 }
 
-bool MainWindow::connectionWidgetIterator(function<bool (ConnectionWidget*)> func)
+void MainWindow::command_FriendList(const Message::Ptr& message)
 {
-    for (int i = 0; i < ui->phonesWidget->count(); ++i)
+    data::FriendList friendList;
+    readFromMessage(message, friendList);
+
+    while (friendList.list.count() > ui->listFriends->count())
     {
-        QListWidgetItem* lwi = ui->phonesWidget->item(i);
-        ConnectionWidget* cw =
-            qobject_cast<ConnectionWidget*>(ui->phonesWidget->itemWidget(lwi));
-        if (func(cw))
-            return true;
+        FriendWidget* fw = new FriendWidget();
+        QListWidgetItem* lwi = new QListWidgetItem();
+
+        lwi->setSizeHint(fw->sizeHint());
+        ui->listFriends->addItem(lwi);
+        ui->listFriends->setItemWidget(lwi, fw);
     }
-    return false;
+    while (friendList.list.count() < ui->listFriends->count())
+    {
+        QListWidgetItem* lwi = ui->listFriends->item(0);
+        ui->listFriends->removeItemWidget(lwi);
+        delete lwi;
+    }
+    for (int i = 0; i < friendList.list.count(); ++i)
+    {
+        const data::FriendItem& fi = friendList.list[i];
+        QListWidgetItem* lwi = ui->listFriends->item(i);
+        FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+        fw->setName(fi.name);
+        fw->setStatusMessage(fi.statusMessage);
+        fw->setPublicKey(fi.publicKey);
+        fw->setConnectStatus(fi.isConnecnted);
+    }
+}
+
+void MainWindow::command_DhtConnectStatus(const Message::Ptr& message)
+{
+    data::DhtConnectStatus dhtConnectStatus;
+    readFromMessage(message, dhtConnectStatus);
+
+    if (dhtConnectStatus.active)
+        ui->labelDhtConnecntStatus->setText(tr("Active"));
+    else
+        ui->labelDhtConnecntStatus->setText(tr("Inactive"));
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    qApp->exit();
+    event->accept();
+}
+
+void MainWindow::on_btnDisconnect_clicked(bool)
+{
+    _socket->disconnect();
+
+}
+
+void MainWindow::on_btnSaveProfile_clicked(bool)
+{
+    data::ToxProfile toxProfile;
+    toxProfile.name = ui->lineSelfToxName->text();
+    toxProfile.status = ui->lineSelfToxStatus->text();
+
+    Message::Ptr message = createMessage(toxProfile);
+    _socket->send(message);
+}
+
+void MainWindow::on_btnRequestFriendship_clicked(bool)
+{
+    data::RequestFriendship reqFriendship;
+    reqFriendship.toxId = ui->lineRequestToxId->text().trimmed().toLatin1();
+    reqFriendship.message = ui->txtRequestMessage->toPlainText();
+
+    Message::Ptr message = createMessage(reqFriendship);
+    _socket->send(message);
+
+}
+
+void MainWindow::friendRequestAccept(bool accept)
+{
+    if (!ui->listFriendRequests->count())
+        return;
+
+    if (!ui->listFriendRequests->currentItem())
+        return;
+
+    QListWidgetItem* lwi = ui->listFriendRequests->currentItem();
+    FriendRequestWidget* frw =
+        qobject_cast<FriendRequestWidget*>(ui->listFriendRequests->itemWidget(lwi));
+
+    data::FriendRequest friendRequest;
+    friendRequest.publicKey = frw->publicKey();
+    friendRequest.accept = (accept) ? 1 : 0;
+
+    Message::Ptr message = createMessage(friendRequest);
+    _socket->send(message);
+}
+
+void MainWindow::on_btnFriendAccept_clicked(bool)
+{
+    friendRequestAccept(true);
+}
+
+void MainWindow::on_btnFriendReject_clicked(bool)
+{
+    friendRequestAccept(false);
+}
+
+void MainWindow::on_btnRemoveFriend_clicked(bool)
+{
+    if (!ui->listFriends->count())
+        return;
+
+    if (!ui->listFriends->currentItem())
+        return;
+
+    QListWidgetItem* lwi = ui->listFriends->currentItem();
+    FriendWidget* fw =
+        qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+
+    data::RemoveFriend removeFriend;
+    removeFriend.name = fw->name();
+    removeFriend.publicKey = fw->publicKey();
+
+    Message::Ptr message = createMessage(removeFriend);
+    _socket->send(message);
 }

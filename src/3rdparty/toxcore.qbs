@@ -26,7 +26,10 @@ Project {
         targetName: "toxnetwork"
 
         files: [
-            project.toxPrefix + "toxcore/logger.c",
+            /* В субпроекте ToxPhone выполнена подмена реализации логгера */
+            //project.toxPrefix + "toxcore/logger.c",
+            //project.toxPrefix + "../toxcore_logger.cpp",
+
             project.toxPrefix + "toxcore/logger.h",
             project.toxPrefix + "toxcore/network.c",
             project.toxPrefix + "toxcore/network.h",
@@ -207,13 +210,14 @@ Project {
 
     // :: Bootstrap daemon
     ToxBase {
-        id: DHT_bootstrap
+        id: dht_bootstrap
         type: "application"
+        consoleApplication: true
         destinationDirectory: "./bin"
-        condition: false
+        condition: true
 
         name: "DHT_Bootstrap"
-        targetName: "DHT_bootstrap"
+        targetName: "dht-bootstrap"
 
         Depends { name: "ToxCrypto" }
         Depends { name: "ToxNetwork" }
@@ -236,6 +240,9 @@ Project {
             project.toxPrefix + "other/DHT_bootstrap.c",
             project.toxPrefix + "other/bootstrap_node_packets.c",
             project.toxPrefix + "other/bootstrap_node_packets.h",
+
+            // Реализация оригинального логгера
+            project.toxPrefix + "toxcore/logger.c",
         ]
 
 //        property var test: {
@@ -248,21 +255,21 @@ Project {
     ToxBase {
         id: tox_bootstrap
         type: "application"
+        consoleApplication: true
         destinationDirectory: "./bin"
-
-        condition: false
-        //condition: !qbs.targetOS.contains("windows")
+        condition: true
 
         name: "ToxBootstrap"
         targetName: "tox-bootstrap"
 
         Depends { name: "ToxCrypto" }
-        //Depends { name: "ToxNetwork" }
-        //Depends { name: "ToxNetCrypto" }
-        //Depends { name: "ToxDHT" }
+        Depends { name: "ToxNetwork" }
+        Depends { name: "ToxNetCrypto" }
+        Depends { name: "ToxDHT" }
 
         cpp.dynamicLibraries: [
             "pthread",
+            "config",
         ]
 
         cpp.staticLibraries: QbsUtl.concatPaths(
@@ -285,6 +292,9 @@ Project {
             project.toxPrefix + "other/bootstrap_daemon/src/tox-bootstrapd.c",
             project.toxPrefix + "other/bootstrap_node_packets.c",
             project.toxPrefix + "other/bootstrap_node_packets.h",
+
+            // Реализация оригинального логгера
+            project.toxPrefix + "toxcore/logger.c",
         ]
     }
 

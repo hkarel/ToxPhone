@@ -1,7 +1,7 @@
 #include "toxphone_appl.h"
+#include "tox_net.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/compression/qlzma.h"
 #include "shared/qt/config/config.h"
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/base.h"
@@ -9,19 +9,12 @@
 #include "shared/qt/communication/transport/udp.h"
 #include "kernel/communication/commands.h"
 
-#include <QNetworkAddressEntry>
-#include <QNetworkInterface>
-
 #define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-
-using namespace std;
-using namespace communication;
-using namespace communication::transport;
 
 volatile bool ToxPhoneApplication::_stop = false;
 QUuidEx ToxPhoneApplication::_applId = QUuidEx::createUuid();
@@ -67,32 +60,34 @@ void ToxPhoneApplication::stop2(int exitCode)
 
 void ToxPhoneApplication::message(const Message::Ptr& message)
 {
+    if (message->processed())
+        return;
+
     if (_funcInvoker.containsCommand(message->command()))
+    {
+        message->markAsProcessed();
         _funcInvoker.call(message);
+    }
 }
 
 void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
 {
-//    data::StatusVideoSave statusVideoSave;
-//    statusVideoSave.active = videoSaver().isRunning();
-//    Message::Ptr m = createMessage(statusVideoSave);
-//    m->destinationSocketDescriptors().insert(socketDescriptor);
-//    listenerSend(m);
+    Message::Ptr message = createMessage(command::IncomingConfigConnection);
+    message->setTag(quint64(socketDescriptor));
+    toxNet().message(message);
 }
 
-void ToxPhoneApplication::socketDisconnected(SocketDescriptor socketDescriptor)
+void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor*/)
 {
-//    if (_videoSaverSocketDescriptor == socketDescriptor)
-//        _videoSaverSocketDescriptor = 0;
 }
 
 void ToxPhoneApplication::sendInfo()
 {
     int port = 3609;
-    config::base().getValue("connection.port", port);
+    config::base().getValue("config_connection.port", port);
 
     QString info;
-    config::base().getValue("connection.info", info);
+    config::base().getValue("config_connection.info", info);
 
     network::Interface::List nl = network::getInterfaces();
     _netInterfaces.swap(nl);
@@ -121,7 +116,7 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     }
 
     QString info;
-    config::base().getValue("connection.info", info);
+    config::base().getValue("config_connection.info", info);
 
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;
@@ -137,100 +132,6 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     writeToMessage(toxPhoneInfo, answer);
     udp::socket().send(answer);
 }
-
-//void QCoreApplicationM::command_GetWebcamParams(const Message::Ptr& message)
-//{
-//    // Запрос на получение параметров web-камеры
-//    if (message->type() == Message::Type::Command)
-//    {
-//        Message::Ptr answer = message->cloneForAnswer();
-//        if (videoCapture().source() == VideoSource::Undefined
-//            || videoCapture().source() != VideoSource::Camera)
-//        {
-//            data::MessageError error;
-//            error.description =
-//                (videoCapture().source() == VideoSource::Undefined)
-//                ? "Undefined current video device"
-//                : "Current device is not a web-camera";
-//            writeToMessage(error, answer);
-//            listenerSend(answer);
-//        }
-//        else
-//        {
-//            answer->setPriority(Message::Priority::High);
-//            listenerSend(answer);
-
-//            if (WebcamParams::Ptr params = videoCapture().webcamParams())
-//            {
-//                data::WebcamParams webcamParams;
-//                webcamParams.params = params;
-//                Message::Ptr m = createMessage(webcamParams);
-//                m->setPriority(Message::Priority::High);
-//                m->destinationSocketDescriptors().insert(message->socketDescriptor());
-//                listenerSend(m);
-//            }
-//        }
-//    }
-//}
-
-//void QCoreApplicationM::command_ShowPolylineIntersect(const Message::Ptr& message)
-//{
-//    data::ShowPolylineIntersect showPolylineIntersect;
-//    communication::readFromMessage(message, showPolylineIntersect);
-//    if (showPolylineIntersect.isValid)
-//    {
-//        detectParams().setShowPolylineIntersect(showPolylineIntersect.value);
-
-//        Message::Ptr answer = message->cloneForAnswer();
-//        if (!detectParams().save())
-//        {
-//            data::MessageError error;
-//            error.description = "An error occurred when saving a parameters";
-//            writeToMessage(error, answer);
-//        }
-//        listenerSend(answer);
-
-//        if (answer->execStatus() == Message::ExecStatus::Success)
-//        {
-//            data::ShowPolylineIntersectEvent showPolylineIntersectEvent;
-//            showPolylineIntersectEvent.value = detectParams().showPolylineIntersect();
-//            Message::Ptr event = createMessage(showPolylineIntersectEvent);
-//            listenerSend(event, message->socketDescriptor());
-//        }
-//    }
-//}
-
-//void QCoreApplicationM::command_TokenKey(const Message::Ptr& message)
-//{
-//    if (message->type() == Message::Type::Command)
-//    {
-//        data::TokenKey tokenKey;
-//        communication::readFromMessage(message, tokenKey);
-//        if (tokenKey.isValid)
-//        {
-//            config::state().remove("statistics");
-//            if (!tokenKey.value.trimmed().isEmpty())
-//                config::state().setValue("statistics.token", tokenKey.value.trimmed());
-
-//            Message::Ptr answer = message->cloneForAnswer();
-//            if (!config::state().save())
-//            {
-//                data::MessageError error;
-//                error.description = "An error occurred when saving a token key";
-//                writeToMessage(error, answer);
-//            }
-//            listenerSend(answer);
-
-//            if (answer->execStatus() == Message::ExecStatus::Success)
-//            {
-//                Message::Ptr event = createMessage(tokenKey, Message::Type::Event);
-//                listenerSend(event, message->socketDescriptor());
-//            }
-//        }
-//    }
-//}
-
-
 
 #undef log_error_m
 #undef log_warn_m

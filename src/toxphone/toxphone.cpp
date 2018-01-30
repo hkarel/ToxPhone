@@ -1,4 +1,5 @@
 #include "toxphone_appl.h"
+#include "tox_net.h"
 #include "shared/defmac.h"
 #include "shared/utils.h"
 #include "shared/logger/logger.h"
@@ -29,11 +30,14 @@
 #include <xmmintrin.h>
 #endif
 
+#include <sodium.h>
 #include <unistd.h>
 
 using namespace std;
 using namespace communication;
 using namespace communication::transport;
+
+bool enable_toxcore_log = false;
 
 /**
   Используется для уведомления основного потока о завершении работы программы.
@@ -73,7 +77,8 @@ void stopProgram()
             THREAD_FUNC.terminate(); \
         }
 
-    STOP_THREAD(udp::socket(), "TransportUDP",  15)
+    STOP_THREAD(udp::socket(), "TransportUDP", 15)
+    STOP_THREAD(toxNet(),      "ToxNet",       15)
     tcp::listener().close();
 
     log_info << "ToxPhone service is stopped";
@@ -199,6 +204,9 @@ int main(int argc, char *argv[])
                 return 1;
             }
 
+        // Флаг логирование tox-ядра
+        config::base().getValue("logger.enable_toxcore_log", enable_toxcore_log);
+
         // Создаем дефолтный сэйвер для логгера
         {
             std::string logLevelStr = "info";
@@ -258,6 +266,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
+        if (sodium_init() < 0)
+        {
+            log_error  << "Can't init libsodium";
+            stopProgram();
+            return 1;
+        }
+
         // Пул потоков нужно активировать после кода демонизации
         trd::threadPool().start();
 
@@ -279,7 +294,7 @@ int main(int argc, char *argv[])
         // Инициализация communication::listener::tcp
         QHostAddress hostAddress = QHostAddress::Any;
         QString hostAddressStr;
-        if (config::base().getValue("connection.address", hostAddressStr))
+        if (config::base().getValue("config_connection.address", hostAddressStr))
         {
             if (hostAddressStr.toLower().trimmed() == "localhost")
                 hostAddress = QHostAddress::LocalHost;
@@ -290,7 +305,7 @@ int main(int argc, char *argv[])
         }
 
         int port = 3609;
-        config::base().getValue("connection.port", port);
+        config::base().getValue("config_connection.port", port);
         if (!tcp::listener().init({hostAddress, port}))
         {
             stopProgram();
@@ -305,6 +320,23 @@ int main(int argc, char *argv[])
         udp::socket().start();
         udp::socket().waitBinding(3);
         if (!udp::socket().isBound())
+        {
+            stopProgram();
+            return 1;
+        }
+
+        if (!toxNet().init())
+        {
+            stopProgram();
+            return 1;
+        }
+        toxNet().start();
+        while (toxNet().runInit() == -1)
+        {
+            static chrono::milliseconds sleepThread {20};
+            this_thread::sleep_for(sleepThread);
+        }
+        if (toxNet().runInit() == 0)
         {
             stopProgram();
             return 1;

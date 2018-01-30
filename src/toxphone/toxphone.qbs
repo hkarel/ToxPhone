@@ -16,6 +16,8 @@ Product {
     Depends { name: "Yaml" }
     Depends { name: "SharedLib" }
     Depends { name: "Kernel" }
+    Depends { name: "ToxNetwork" }
+    Depends { name: "ToxCore" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
     lib.sodium.useSystem: false
@@ -54,26 +56,7 @@ Product {
         return def;
     }
 
-    cpp.cxxFlags: {
-        var cxx = project.cxxFlags;
-//        var isArm = qbs.architecture.startsWith("arm");
-//        if (isArm === true) {
-//            cxx.push("-mtune=cortex-a15.cortex-a7");
-//            cxx.push("-mfloat-abi=hard");
-//            cxx.push("-mfpu=neon");
-//        }
-//        if (!isArm && (project.useSimd === true)) {
-//            cxx.push("-msse");
-//            cxx.push("-msse2");
-//            cxx.push("-msse3");
-//            cxx.push("-msse4");
-//        }
-        return cxx;
-    }
-    //cpp.machineType: "core2"
-    //cpp.cLanguageVersion: "c11"
-    //cpp.cxxLanguageVersion: "c++11"
-
+    cpp.cxxFlags: project.cxxFlags
     cpp.driverFlags: [
         "--param", "inline-unit-growth=150",
         "--param", "max-inline-insns-single=1000",
@@ -84,8 +67,6 @@ Product {
     cpp.includePaths: [
         "./",
         "../",
-        //"../3rdparty",
-        //"../common",
     ]
     cpp.systemIncludePaths: QbsUtl.concatPaths(
         //Qt.core.cpp.includePaths,
@@ -94,10 +75,6 @@ Product {
 
     cpp.rpaths: QbsUtl.concatPaths(
         productProbe.compilerLibraryPath,
-        //lib.opencv.libraryPath,
-        //lib.pylon.libraryPath,
-        //lib.openblas.libraryPath,
-        //lib.caffe.libraryPath,
         "$ORIGIN/../lib"
     )
 
@@ -117,7 +94,7 @@ Product {
         return libs;
     }
 
-    //cpp.staticLibraries: lib.caffe.staticLibrariesPaths(product)
+    cpp.staticLibraries: lib.sodium.staticLibrariesPaths(product)
 
 //    Group {
 //        name: "resources"
@@ -125,6 +102,9 @@ Product {
 //    }
 
     files: [
+        "tox_logger.cpp",
+        "tox_net.cpp",
+        "tox_net.h",
         "toxphone_appl.cpp",
         "toxphone_appl.h",
         "toxphone.cpp",

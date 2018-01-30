@@ -8,6 +8,10 @@
 #include <QtCore>
 #include <QCoreApplication>
 
+using namespace std;
+using namespace communication;
+using namespace communication::transport;
+
 class ToxPhoneApplication : public QCoreApplication
 {
 public:
@@ -26,21 +30,20 @@ private slots:
     void socketConnected(communication::SocketDescriptor);
     void socketDisconnected(communication::SocketDescriptor);
 
-
 private:
     Q_OBJECT
     void timerEvent(QTimerEvent* event) override;
     void updateNetInterfaces();
 
     //--- Обработчики команд ---
-    void command_ToxPhoneInfo(const communication::Message::Ptr&);
+    void command_ToxPhoneInfo(const Message::Ptr&);
 
 private:
     int _exitCode = {0};
     int _stopTimerId = {-1};
     static volatile bool _stop;
 
-    communication::FunctionInvoker _funcInvoker;
+    FunctionInvoker _funcInvoker;
 
     network::Interface::List _netInterfaces;
     steady_timer _netInterfacesTimer;

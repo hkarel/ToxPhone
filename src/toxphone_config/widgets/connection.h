@@ -28,9 +28,6 @@ public:
     const QUuidEx& applId() const {return _applId;}
     void setApplId(const QUuidEx& val) {_applId = val;}
 
-    bool connectStatus() const {return _connectStatus;}
-    void setConnectStatus(bool val);
-
     int lifeTimeInterval() const {return _lifeTimeInterval;}
     void setLifeTimeInterval(int val) {_lifeTimeInterval = val;}
 
@@ -43,7 +40,6 @@ private:
     communication::HostPoint _hostPoint;
     bool _isPointToPoint;
     QUuidEx _applId;
-    bool _connectStatus = {false};
     int _lifeTimeInterval = {0};
     steady_timer _lifeTimer;
 };

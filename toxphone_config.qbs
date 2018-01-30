@@ -5,8 +5,9 @@ ToxPhoneBase {
     name: "ToxPhone Config"
 
     references: [
-        "src/shared/shared.qbs",
         "src/yaml/yaml.qbs",
+        "src/shared/shared.qbs",
+        "src/kernel/kernel.qbs",
         "src/toxphone_config/toxphone_config.qbs",
     ]
 }

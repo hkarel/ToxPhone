@@ -3,13 +3,13 @@
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/tcp.h"
-#include "shared/qt/thread/qthreadex.h"
 
 #include <QLabel>
 #include <QMainWindow>
-#include <functional>
 
-class ConnectionWidget;
+using namespace std;
+using namespace communication;
+using namespace communication::transport;
 
 namespace Ui {
 class MainWindow;
@@ -23,7 +23,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    bool init();
+
+    bool init(const tcp::Socket::Ptr&);
     void deinit();
 
     void saveGeometry();
@@ -32,31 +33,39 @@ public:
     void saveSettings();
     void loadSettings();
 
-public slots:
-    void requestPhonesList();
-    void updatePhonesList();
-
 private slots:
     void message(const communication::Message::Ptr&);
     void socketConnected(communication::SocketDescriptor);
     void socketDisconnected(communication::SocketDescriptor);
 
-    void on_btnConnect_clicked(bool checked);
+    void on_btnDisconnect_clicked(bool);
+    void on_btnSaveProfile_clicked(bool);
+    void on_btnRequestFriendship_clicked(bool);
+    void on_btnFriendAccept_clicked(bool);
+    void on_btnFriendReject_clicked(bool);
+    void on_btnRemoveFriend_clicked(bool);
 
 private:
-    //--- Обработчики команд ---
-    void command_ToxPhoneInfo(const communication::Message::Ptr&);
-    void command_ApplShutdown(const communication::Message::Ptr&);
+    void closeEvent(QCloseEvent*) override;
 
-    bool connectionWidgetIterator(std::function<bool (ConnectionWidget*)>);
+    //--- Обработчики команд ---
+    void command_ToxProfile(const Message::Ptr&);
+    void command_RequestFriendship(const Message::Ptr&);
+    void command_FriendRequest(const Message::Ptr&);
+    void command_FriendRequests(const Message::Ptr&);
+    void command_FriendItem(const Message::Ptr&);
+    void command_FriendList(const Message::Ptr&);
+    void command_DhtConnectStatus(const Message::Ptr&);
+
+    void friendRequestAccept(bool accept);
+
 
 private:
     Ui::MainWindow *ui;
-    QLabel* _labelConnectStatus;
+    //QLabel* _labelConnectStatus;
 
-    communication::FunctionInvoker _funcInvoker;
-    communication::transport::tcp::Socket _socket;
+    FunctionInvoker _funcInvoker;
+    tcp::Socket::Ptr _socket;
 
-    QTimer _requestPhonesTimer;
-    QTimer _updatePhonesTimer;
+    int _tabRrequestsIndex = {0};
 };

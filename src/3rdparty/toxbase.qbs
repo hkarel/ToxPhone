@@ -24,6 +24,8 @@ Product {
     cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: [
         "USE_IPV6=1",
+        "TCP_SERVER_USE_EPOLL",
+        "MIN_LOGGER_LEVEL=0",
     ]
 
     property var warnFlags: [
@@ -86,6 +88,7 @@ Product {
 
     cpp.cFlags: [
         "-std=c99",
+        "-Wno-unused-function",
         //"-pedantic", // Warn on non-ISO C.
     ].concat(warnFlags)
 

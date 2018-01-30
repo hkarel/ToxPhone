@@ -6,7 +6,6 @@ ConnectionWidget::ConnectionWidget(QWidget *parent) :
     ui(new Ui::ConnectionWidget)
 {
     ui->setupUi(this);
-    ui->labelConnectStatus->clear();
 }
 
 ConnectionWidget::~ConnectionWidget()
@@ -24,15 +23,6 @@ void ConnectionWidget::setHostPoint(const communication::HostPoint& val)
     _hostPoint = val;
     QString s = "%1 : %2";
     ui->labelHostPoint->setText(s.arg(_hostPoint.address().toString()).arg(_hostPoint.port()));
-}
-
-void ConnectionWidget::setConnectStatus(bool val)
-{
-    _connectStatus = val;
-    if (_connectStatus)
-        ui->labelConnectStatus->setText("C");
-    else
-        ui->labelConnectStatus->clear();
 }
 
 bool ConnectionWidget::lifeTimeExpired() const
