@@ -98,7 +98,8 @@ int main(int argc, char *argv[])
         }
 
         QApplication appl {argc, argv};
-        appl.setApplicationName("ToxPhoneConfig " + productVersion().toString());
+        QApplication::setApplicationName("ToxPhoneConfig " + productVersion().toString());
+        QApplication::setQuitOnLastWindowClosed(false);
 
         tcp::Socket::Ptr socket {new tcp::Socket};
 
@@ -132,7 +133,6 @@ int main(int argc, char *argv[])
         alog::logger().removeSaverStdOut();
         alog::logger().removeSaverStdErr();
 
-        QApplication::setQuitOnLastWindowClosed(false);
         QMetaObject::invokeMethod(&cw, "requestPhonesList", Qt::QueuedConnection);
 
         ret = appl.exec();

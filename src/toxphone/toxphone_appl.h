@@ -1,12 +1,13 @@
 #pragma once
 
+#include "kernel/network/interfaces.h"
 #include "shared/steady_timer.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
-#include "kernel/network/interfaces.h"
 
 #include <QtCore>
 #include <QCoreApplication>
+#include <atomic>
 
 using namespace std;
 using namespace communication;
@@ -22,8 +23,12 @@ public:
     static const QUuidEx& applId() {return _applId;}
 
 public slots:
-    void stop2(int exitCode);
-    void sendInfo();
+    static void stop(int exitCode);
+    void sendToxPhoneInfo();
+
+    // Используется для подготовки данных об индикации уровня сигнала
+    // микрофона в конфигураторе
+    void audioSourceLevel(quint32 averageLevel, quint32 time);
 
 private slots:
     void message(const communication::Message::Ptr&);
@@ -39,9 +44,9 @@ private:
     void command_ToxPhoneInfo(const Message::Ptr&);
 
 private:
-    int _exitCode = {0};
     int _stopTimerId = {-1};
     static volatile bool _stop;
+    static std::atomic_int _exitCode;
 
     FunctionInvoker _funcInvoker;
 

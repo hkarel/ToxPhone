@@ -8,11 +8,13 @@
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
-#include "kernel/communication/commands.h"
 
 #include <QCloseEvent>
 #include <QMessageBox>
+#include <limits>
 #include <unistd.h>
+
+Q_DECLARE_METATYPE(communication::data::AudioDev)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -32,6 +34,10 @@ MainWindow::MainWindow(QWidget *parent) :
     //_labelConnectStatus = new QLabel(tr("Disconnected"), this);
     //ui->statusBar->addWidget(_labelConnectStatus);
 
+    ui->pbarAudioSource->setMinimum(0);
+    ui->pbarAudioSource->setMaximum(std::numeric_limits<quint16>::max());
+    ui->pbarAudioSource->setValue(0);
+
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &MainWindow::command_##COMMAND, this);
 
@@ -42,6 +48,11 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(FriendItem)
     FUNC_REGISTRATION(FriendList)
     FUNC_REGISTRATION(DhtConnectStatus)
+    FUNC_REGISTRATION(AudioDev)
+    FUNC_REGISTRATION(AudioDevList)
+    FUNC_REGISTRATION(AudioSourceLevel)
+    FUNC_REGISTRATION(ToxCallAction)
+    FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -235,31 +246,30 @@ void MainWindow::command_FriendItem(const Message::Ptr& message)
     data::FriendItem friendItem;
     readFromMessage(message, friendItem);
 
+    bool found = false;
     for (int i = 0; i < ui->listFriends->count(); ++i)
     {
         QListWidgetItem* lwi = ui->listFriends->item(i);
         FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
-        if (fw->publicKey() == friendItem.publicKey)
+        if (fw->properties().publicKey == friendItem.publicKey)
         {
-            switch (friendItem.changeFlaf)
-            {
-                case data::FriendItem::ChangeFlaf::Name:
-                    fw->setName(friendItem.name);
-                    break;
-                case data::FriendItem::ChangeFlaf::StatusMessage:
-                    fw->setStatusMessage(friendItem.statusMessage);
-                    break;
-                case data::FriendItem::ChangeFlaf::IsConnecnted:
-                    fw->setConnectStatus(friendItem.isConnecnted);
-                    break;
-                default:
-                    break;
-            }
-            fw->update();
+            found = true;
+            fw->setProperties(friendItem);
             break;
         }
     }
+    if (!found)
+    {
+        FriendWidget* fw = new FriendWidget();
+        QListWidgetItem* lwi = new QListWidgetItem();
+        lwi->setSizeHint(fw->sizeHint());
+        ui->listFriends->addItem(lwi);
+        ui->listFriends->setItemWidget(lwi, fw);
 
+        // Значения присваиваем после создания элемента в списке,
+        // иначе будет неверная геометрия
+        fw->setProperties(friendItem);
+    }
 }
 
 void MainWindow::command_FriendList(const Message::Ptr& message)
@@ -271,7 +281,6 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
     {
         FriendWidget* fw = new FriendWidget();
         QListWidgetItem* lwi = new QListWidgetItem();
-
         lwi->setSizeHint(fw->sizeHint());
         ui->listFriends->addItem(lwi);
         ui->listFriends->setItemWidget(lwi, fw);
@@ -287,10 +296,7 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
         const data::FriendItem& fi = friendList.list[i];
         QListWidgetItem* lwi = ui->listFriends->item(i);
         FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
-        fw->setName(fi.name);
-        fw->setStatusMessage(fi.statusMessage);
-        fw->setPublicKey(fi.publicKey);
-        fw->setConnectStatus(fi.isConnecnted);
+        fw->setProperties(fi);
     }
 }
 
@@ -305,16 +311,146 @@ void MainWindow::command_DhtConnectStatus(const Message::Ptr& message)
         ui->labelDhtConnecntStatus->setText(tr("Inactive"));
 }
 
+void MainWindow::command_AudioDev(const Message::Ptr& message)
+{
+    data::AudioDev audioDev;
+    readFromMessage(message, audioDev);
+
+    QComboBox* cbox;
+    QSlider* slider;
+    if (audioDev.type == data::AudioDevType::Sink)
+    {
+        cbox = ui->cboxAudioSink;
+        slider = ui->sliderAudioSink;
+    }
+    else
+    {
+        cbox = ui->cboxAudioSource;
+        slider = ui->sliderAudioSource;
+    }
+
+    for (int i = 0; i < cbox->count(); ++i)
+    {
+        QVariant v = cbox->itemData(i);
+        data::AudioDev ad = v.value<data::AudioDev>();
+        if (audioDev.name == ad.name)
+        {
+            v.setValue(audioDev);
+            cbox->setItemData(i, v);
+            if (audioDev.changeFlag == data::AudioDev::ChangeFlag::Volume)
+            {
+                if (slider->value() != int(audioDev.currentVolume))
+                    slider->setValue(audioDev.currentVolume);
+            }
+            break;
+        }
+    }
+}
+
+void MainWindow::command_AudioDevList(const Message::Ptr& message)
+{
+    data::AudioDevList audioDevList;
+    readFromMessage(message, audioDevList);
+
+    QComboBox* cbox;
+    if (audioDevList.type == data::AudioDevType::Sink)
+        cbox = ui->cboxAudioSink;
+    else
+        cbox = ui->cboxAudioSource;
+
+    cbox->blockSignals(true);
+    cbox->clear();
+    for (int i = 0; i < audioDevList.list.count(); ++i)
+    {
+        const data::AudioDev& audioDev = audioDevList.list[i];
+        QVariant v;
+        v.setValue(audioDev);
+        cbox->addItem(audioDev.description, v);
+    }
+    cbox->blockSignals(false);
+
+    if (cbox->count())
+    {
+        cbox->setCurrentIndex(0);
+        QMetaObject::invokeMethod(cbox, "currentIndexChanged", Qt::AutoConnection, Q_ARG(int, 0));
+    }
+
+}
+
+void MainWindow::command_AudioSourceLevel(const Message::Ptr& message)
+{
+    data::AudioSourceLevel audioSourceLevel;
+    readFromMessage(message, audioSourceLevel);
+
+    ui->pbarAudioSource->setValue(audioSourceLevel.average);
+}
+
+void MainWindow::command_ToxCallAction(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() != Message::ExecStatus::Success)
+    {
+        QString msg = errorDescription(message);
+        QMessageBox::critical(this, qApp->applicationName(), msg);
+        return;
+    }
+}
+
+void MainWindow::command_ToxCallState(const Message::Ptr& message)
+{
+    const char* CALL    = QT_TRANSLATE_NOOP("MainWindow", "Call");
+    const char* ENDCALL = QT_TRANSLATE_NOOP("MainWindow", "End call");
+    const char* ACCEPT  = QT_TRANSLATE_NOOP("MainWindow", "Accept");
+    const char* REJECT  = QT_TRANSLATE_NOOP("MainWindow", "Reject");
+
+    readFromMessage(message, _callState);
+
+    if (_callState.direction == data::ToxCallState::Direction::Incoming)
+    {
+        if (_callState.state == data::ToxCallState::State::WaitingAnswer)
+        {
+            ui->btnCall->setText(tr(ACCEPT));
+            ui->btnCall->setEnabled(true);
+
+            ui->btnEndCall->setText(tr(REJECT));
+            ui->btnEndCall->setEnabled(true);
+        }
+        else
+        {
+            ui->btnCall->setText(tr(CALL));
+            ui->btnCall->setEnabled(false);
+
+            ui->btnEndCall->setText(tr(ENDCALL));
+            ui->btnEndCall->setEnabled(true);
+        }
+    }
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing)
+    {
+        ui->btnCall->setText(tr(CALL));
+        ui->btnCall->setEnabled(false);
+
+        ui->btnEndCall->setText(tr(ENDCALL));
+        ui->btnEndCall->setEnabled(true);
+    }
+    else // data::ToxCall::Direction::Undefined
+    {
+        ui->btnCall->setText(tr(CALL));
+        ui->btnCall->setEnabled(true);
+
+        ui->btnEndCall->setText(tr(ENDCALL));
+        ui->btnEndCall->setEnabled(false);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    qApp->exit();
     event->accept();
+    qApp->exit();
 }
 
 void MainWindow::on_btnDisconnect_clicked(bool)
 {
     _socket->disconnect();
-
 }
 
 void MainWindow::on_btnSaveProfile_clicked(bool)
@@ -335,7 +471,6 @@ void MainWindow::on_btnRequestFriendship_clicked(bool)
 
     Message::Ptr message = createMessage(reqFriendship);
     _socket->send(message);
-
 }
 
 void MainWindow::friendRequestAccept(bool accept)
@@ -381,9 +516,140 @@ void MainWindow::on_btnRemoveFriend_clicked(bool)
         qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
 
     data::RemoveFriend removeFriend;
-    removeFriend.name = fw->name();
-    removeFriend.publicKey = fw->publicKey();
+    removeFriend.name = fw->properties().name;
+    removeFriend.publicKey = fw->properties().publicKey;
 
     Message::Ptr message = createMessage(removeFriend);
     _socket->send(message);
+}
+
+void MainWindow::on_btnAudioTest_clicked(bool)
+{
+    Message::Ptr message = createMessage(command::AudioSinkTest);
+    message->setTag(1);
+    _socket->send(message);
+}
+
+void MainWindow::on_btnCall_clicked(bool)
+{
+    data::ToxCallAction toxCallAction;
+
+    // Новый вызов
+    if (_callState.direction == data::ToxCallState::Direction::Undefined)
+    {
+        if (!ui->listFriends->count())
+            return;
+
+        if (!ui->listFriends->currentItem())
+            return;
+
+        QListWidgetItem* lwi = ui->listFriends->currentItem();
+        FriendWidget* fw =
+            qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+
+        toxCallAction.action = data::ToxCallAction::Action::Call;
+        toxCallAction.friendNumber = fw->properties().number;
+    }
+
+    // Принять входящий вызов
+    else if (_callState.direction == data::ToxCallState::Direction::Incoming
+             && _callState.state == data::ToxCallState::State::WaitingAnswer)
+    {
+        toxCallAction.action = data::ToxCallAction::Action::Accept;
+        toxCallAction.friendNumber = _callState.friendNumber;
+    }
+
+    Message::Ptr message = createMessage(toxCallAction);
+    _socket->send(message);
+}
+
+void MainWindow::on_btnEndCall_clicked(bool)
+{
+    if (_callState.direction == data::ToxCallState::Direction::Undefined)
+        return;
+
+    data::ToxCallAction toxCallAction;
+
+    // Завершить исходящий вызов
+    if (_callState.direction == data::ToxCallState::Direction::Outgoing)
+    {
+        toxCallAction.action = data::ToxCallAction::Action::End;
+        toxCallAction.friendNumber = _callState.friendNumber;
+    }
+
+    // Завершить входящий вызов
+    else if (_callState.direction == data::ToxCallState::Direction::Incoming
+             && _callState.state == data::ToxCallState::State::InProgress)
+    {
+        toxCallAction.action = data::ToxCallAction::Action::End;
+        toxCallAction.friendNumber = _callState.friendNumber;
+    }
+
+    // Отклонить входящий вызов
+    else if (_callState.direction == data::ToxCallState::Direction::Incoming
+             && _callState.state == data::ToxCallState::State::WaitingAnswer)
+    {
+        toxCallAction.action = data::ToxCallAction::Action::Reject;
+        toxCallAction.friendNumber = _callState.friendNumber;
+    }
+
+    Message::Ptr message = createMessage(toxCallAction);
+    _socket->send(message);
+
+}
+
+void MainWindow::on_cboxAudioSink_currentIndexChanged(int index)
+{
+    QVariant v = ui->cboxAudioSink->itemData(index);
+    data::AudioDev ad = v.value<data::AudioDev>();
+    setSliderLevel(ui->sliderAudioSink, 0, ad.currentVolume, ad.volumeSteps);
+}
+
+void MainWindow::on_cboxAudioSource_currentIndexChanged(int index)
+{
+    QVariant v = ui->cboxAudioSource->itemData(index);
+    data::AudioDev ad = v.value<data::AudioDev>();
+    setSliderLevel(ui->sliderAudioSource, 0, ad.currentVolume, ad.volumeSteps);
+}
+
+//void MainWindow::on_cboxAudioSink_activated(int index)
+//{
+
+//}
+
+//void MainWindow::on_cboxAudioSource_activated(int index)
+//{
+
+//}
+
+
+void MainWindow::on_sliderAudioSink_sliderReleased()
+{
+    int index = ui->cboxAudioSink->currentIndex();
+    QVariant v = ui->cboxAudioSink->itemData(index);
+    data::AudioDev audioDev = v.value<data::AudioDev>();
+    audioDev.currentVolume = ui->sliderAudioSink->value();
+    audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
+
+    Message::Ptr message = createMessage(audioDev);
+    _socket->send(message);
+}
+
+void MainWindow::on_sliderAudioSource_sliderReleased()
+{
+    int index = ui->cboxAudioSource->currentIndex();
+    QVariant v = ui->cboxAudioSource->itemData(index);
+    data::AudioDev audioDev = v.value<data::AudioDev>();
+    audioDev.currentVolume = ui->sliderAudioSource->value();
+    audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
+
+    Message::Ptr message = createMessage(audioDev);
+    _socket->send(message);
+}
+
+void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
+{
+    slider->setMinimum(base);
+    slider->setMaximum(max);
+    slider->setValue(current);
 }

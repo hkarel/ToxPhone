@@ -19,6 +19,13 @@ REGISTRY_COMMAND(FriendItem,               "af4115ca-7563-4386-b137-cd6bb46ad5de
 REGISTRY_COMMAND(FriendList,               "922f4190-da98-4a0e-a30e-daac62180e62")
 REGISTRY_COMMAND(RemoveFriend,             "e6935f6b-3064-4bdb-91e8-37f6b83fc4b6")
 REGISTRY_COMMAND(DhtConnectStatus,         "b17a2b17-fbae-4be6-a28e-1693aff51eb8")
+REGISTRY_COMMAND(AudioDev,                 "1560a37b-529c-4233-8596-5f4e5076a359")
+REGISTRY_COMMAND(AudioDevList,             "c29548e8-ed5f-439a-b509-a490178539a4")
+REGISTRY_COMMAND(AudioSinkTest,            "eadfcffd-c78e-4320-bd6b-8e3fcd300edb")
+REGISTRY_COMMAND(AudioSourceLevel,         "5accc4e1-e489-42aa-b016-2532e3cbd471")
+REGISTRY_COMMAND(ToxCallAction,            "d29c17b2-ff6d-4ea9-bc5c-dcfb0ee55162")
+REGISTRY_COMMAND(ToxCallState,             "283895bf-500d-465d-9b29-8284d3e17a99")
+REGISTRY_COMMAND(ToxMessage,               "839f2186-cb3f-4f15-9edc-caf69bdb3e49")
 
 #undef REGISTRY_COMMAND
 } // namespace command
@@ -128,8 +135,9 @@ void FriendRequests::fromRaw(const bserial::RawVector& vect)
 bserial::RawVector FriendItem::toRaw() const
 {
     B_SERIALIZE_V1(stream)
+    stream << changeFlag;
     stream << publicKey;
-    stream << changeFlaf;
+    stream << number;
     stream << name;
     stream << statusMessage;
     stream << isConnecnted;
@@ -139,8 +147,9 @@ bserial::RawVector FriendItem::toRaw() const
 void FriendItem::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
+    stream >> changeFlag;
     stream >> publicKey;
-    stream >> changeFlaf;
+    stream >> number;
     stream >> name;
     stream >> statusMessage;
     stream >> isConnecnted;
@@ -188,6 +197,122 @@ void DhtConnectStatus::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
     stream >> active;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector AudioDev::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << changeFlag;
+    stream << cardIndex;
+    stream << type;
+    stream << index;
+    stream << name;
+    stream << description;
+    stream << channels;
+    stream << baseVolume;
+    stream << currentVolume;
+    stream << volumeSteps;
+    stream << isCurrent;
+    B_SERIALIZE_RETURN
+}
+
+void AudioDev::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> changeFlag;
+    stream >> cardIndex;
+    stream >> type;
+    stream >> index;
+    stream >> name;
+    stream >> description;
+    stream >> channels;
+    stream >> baseVolume;
+    stream >> currentVolume;
+    stream >> volumeSteps;
+    stream >> isCurrent;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector AudioDevList::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << type;
+    stream << list;
+    B_SERIALIZE_RETURN
+}
+
+void AudioDevList::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> type;
+    stream >> list;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector AudioSourceLevel::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << average;
+    stream << time;
+    B_SERIALIZE_RETURN
+}
+
+void AudioSourceLevel::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> average;
+    stream >> time;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector ToxCallAction::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << action;
+    stream << friendNumber;
+    B_SERIALIZE_RETURN
+}
+
+void ToxCallAction::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> action;
+    stream >> friendNumber;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector ToxCallState::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << direction;
+    stream << state;
+    stream << friendNumber;
+    B_SERIALIZE_RETURN
+}
+
+void ToxCallState::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> direction;
+    stream >> state;
+    stream >> friendNumber;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector ToxMessage::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << friendNumber;
+    stream << text;
+    B_SERIALIZE_RETURN
+}
+
+void ToxMessage::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> friendNumber;
+    stream >> text;
     B_DESERIALIZE_END
 }
 

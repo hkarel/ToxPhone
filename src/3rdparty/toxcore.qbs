@@ -5,6 +5,12 @@ import "toxbase.qbs" as ToxBase
 Project {
     name: "ToxCore"
 
+    readonly property string toxPrefix: "toxcore/"
+    PropertyOptions {
+        name: "toxPrefix"
+        description: "Базовая директория расположения tox-библиотеки"
+    }
+
     // LAYER 1: Crypto core
     ToxBase {
         id: toxcrypto
@@ -12,10 +18,10 @@ Project {
         targetName: "toxcrypto"
 
         files: [
-            project.toxPrefix + "toxcore/ccompat.h",
-            project.toxPrefix + "toxcore/crypto_core.c",
-            project.toxPrefix + "toxcore/crypto_core.h",
-            project.toxPrefix + "toxcore/crypto_core_mem.c",
+            toxPrefix + "toxcore/ccompat.h",
+            toxPrefix + "toxcore/crypto_core.c",
+            toxPrefix + "toxcore/crypto_core.h",
+            toxPrefix + "toxcore/crypto_core_mem.c",
         ]
     }
 
@@ -27,14 +33,14 @@ Project {
 
         files: [
             /* В субпроекте ToxPhone выполнена подмена реализации логгера */
-            //project.toxPrefix + "toxcore/logger.c",
-            //project.toxPrefix + "../toxcore_logger.cpp",
+            //toxPrefix + "toxcore/logger.c",
+            //toxPrefix + "../toxcore_logger.cpp",
 
-            project.toxPrefix + "toxcore/logger.h",
-            project.toxPrefix + "toxcore/network.c",
-            project.toxPrefix + "toxcore/network.h",
-            project.toxPrefix + "toxcore/util.c",
-            project.toxPrefix + "toxcore/util.h",
+            toxPrefix + "toxcore/logger.h",
+            toxPrefix + "toxcore/network.c",
+            toxPrefix + "toxcore/network.h",
+            toxPrefix + "toxcore/util.c",
+            toxPrefix + "toxcore/util.h",
         ]
     }
 
@@ -45,14 +51,14 @@ Project {
         targetName: "toxdht"
 
         files: [
-            project.toxPrefix + "toxcore/DHT.c",
-            project.toxPrefix + "toxcore/DHT.h",
-            project.toxPrefix + "toxcore/LAN_discovery.c",
-            project.toxPrefix + "toxcore/LAN_discovery.h",
-            project.toxPrefix + "toxcore/ping.c",
-            project.toxPrefix + "toxcore/ping.h",
-            project.toxPrefix + "toxcore/ping_array.c",
-            project.toxPrefix + "toxcore/ping_array.h",
+            toxPrefix + "toxcore/DHT.c",
+            toxPrefix + "toxcore/DHT.h",
+            toxPrefix + "toxcore/LAN_discovery.c",
+            toxPrefix + "toxcore/LAN_discovery.h",
+            toxPrefix + "toxcore/ping.c",
+            toxPrefix + "toxcore/ping.h",
+            toxPrefix + "toxcore/ping_array.c",
+            toxPrefix + "toxcore/ping_array.h",
         ]
     }
 
@@ -65,22 +71,22 @@ Project {
         Depends { name: "ToxCrypto" }
 
         files: [
-            project.toxPrefix + "toxcore/TCP_client.c",
-            project.toxPrefix + "toxcore/TCP_client.h",
-            project.toxPrefix + "toxcore/TCP_connection.c",
-            project.toxPrefix + "toxcore/TCP_connection.h",
-            project.toxPrefix + "toxcore/TCP_server.c",
-            project.toxPrefix + "toxcore/TCP_server.h",
-            project.toxPrefix + "toxcore/list.c",
-            project.toxPrefix + "toxcore/list.h",
-            project.toxPrefix + "toxcore/net_crypto.c",
-            project.toxPrefix + "toxcore/net_crypto.h",
-            project.toxPrefix + "toxcore/onion.c",
-            project.toxPrefix + "toxcore/onion.h",
-            project.toxPrefix + "toxcore/onion_announce.c",
-            project.toxPrefix + "toxcore/onion_announce.h",
-            project.toxPrefix + "toxcore/onion_client.c",
-            project.toxPrefix + "toxcore/onion_client.h",
+            toxPrefix + "toxcore/TCP_client.c",
+            toxPrefix + "toxcore/TCP_client.h",
+            toxPrefix + "toxcore/TCP_connection.c",
+            toxPrefix + "toxcore/TCP_connection.h",
+            toxPrefix + "toxcore/TCP_server.c",
+            toxPrefix + "toxcore/TCP_server.h",
+            toxPrefix + "toxcore/list.c",
+            toxPrefix + "toxcore/list.h",
+            toxPrefix + "toxcore/net_crypto.c",
+            toxPrefix + "toxcore/net_crypto.h",
+            toxPrefix + "toxcore/onion.c",
+            toxPrefix + "toxcore/onion.h",
+            toxPrefix + "toxcore/onion_announce.c",
+            toxPrefix + "toxcore/onion_announce.h",
+            toxPrefix + "toxcore/onion_client.c",
+            toxPrefix + "toxcore/onion_client.h",
         ]
     }
 
@@ -90,10 +96,10 @@ Project {
         name: "ToxFriends"
         targetName: "toxfriends"
         files: [
-            project.toxPrefix + "toxcore/friend_connection.c",
-            project.toxPrefix + "toxcore/friend_connection.h",
-            project.toxPrefix + "toxcore/friend_requests.c",
-            project.toxPrefix + "toxcore/friend_requests.h",
+            toxPrefix + "toxcore/friend_connection.c",
+            toxPrefix + "toxcore/friend_connection.h",
+            toxPrefix + "toxcore/friend_requests.c",
+            toxPrefix + "toxcore/friend_requests.h",
         ]
     }
 
@@ -107,8 +113,8 @@ Project {
         Depends { name: "ToxFriends" }
 
         files: [
-            project.toxPrefix + "toxcore/Messenger.c",
-            project.toxPrefix + "toxcore/Messenger.h",
+            toxPrefix + "toxcore/Messenger.c",
+            toxPrefix + "toxcore/Messenger.h",
         ]
     }
 
@@ -118,8 +124,8 @@ Project {
         name: "ToxGroup"
         targetName: "toxgroup"
         files: [
-            project.toxPrefix + "toxcore/group.c",
-            project.toxPrefix + "toxcore/group.h",
+            toxPrefix + "toxcore/group.c",
+            toxPrefix + "toxcore/group.h",
         ]
     }
 
@@ -136,33 +142,33 @@ Project {
         Depends { name: "ToxGroup" }
 
         files: [
-            project.toxPrefix + "toxcore/tox_api.c",
-            project.toxPrefix + "toxcore/tox.c",
-            project.toxPrefix + "toxcore/tox.h",
+            toxPrefix + "toxcore/tox_api.c",
+            toxPrefix + "toxcore/tox.c",
+            toxPrefix + "toxcore/tox.h",
 
             // :: Audio/Video Library
-            project.toxPrefix + "toxav/audio.c",
-            project.toxPrefix + "toxav/audio.h",
-            project.toxPrefix + "toxav/bwcontroller.c",
-            project.toxPrefix + "toxav/bwcontroller.h",
-            project.toxPrefix + "toxav/groupav.c",
-            project.toxPrefix + "toxav/groupav.h",
-            project.toxPrefix + "toxav/msi.c",
-            project.toxPrefix + "toxav/msi.h",
-            project.toxPrefix + "toxav/ring_buffer.c",
-            project.toxPrefix + "toxav/ring_buffer.h",
-            project.toxPrefix + "toxav/rtp.c",
-            project.toxPrefix + "toxav/rtp.h",
-            project.toxPrefix + "toxav/toxav.c",
-            project.toxPrefix + "toxav/toxav.h",
-            project.toxPrefix + "toxav/toxav_old.c",
-            project.toxPrefix + "toxav/video.c",
-            project.toxPrefix + "toxav/video.h",
+            toxPrefix + "toxav/audio.c",
+            toxPrefix + "toxav/audio.h",
+            toxPrefix + "toxav/bwcontroller.c",
+            toxPrefix + "toxav/bwcontroller.h",
+            toxPrefix + "toxav/groupav.c",
+            toxPrefix + "toxav/groupav.h",
+            toxPrefix + "toxav/msi.c",
+            toxPrefix + "toxav/msi.h",
+            toxPrefix + "toxav/ring_buffer.c",
+            toxPrefix + "toxav/ring_buffer.h",
+            toxPrefix + "toxav/rtp.c",
+            toxPrefix + "toxav/rtp.h",
+            toxPrefix + "toxav/toxav.c",
+            toxPrefix + "toxav/toxav.h",
+            toxPrefix + "toxav/toxav_old.c",
+            toxPrefix + "toxav/video.c",
+            toxPrefix + "toxav/video.h",
 
             // :: ToxDNS and block encryption libraries
-            //project.toxPrefix + "toxdns/toxdns.c",
-            project.toxPrefix + "toxencryptsave/toxencryptsave.c",
-            project.toxPrefix + "toxencryptsave/toxencryptsave.h",
+            //toxPrefix + "toxdns/toxdns.c",
+            toxPrefix + "toxencryptsave/toxencryptsave.c",
+            toxPrefix + "toxencryptsave/toxencryptsave.h",
         ]
     }
 
@@ -176,23 +182,23 @@ Project {
 //        Depends { name: "ToxMessenger" }
 
 //        files: [
-//            project.toxPrefix + "toxav/audio.c",
-//            project.toxPrefix + "toxav/audio.h",
-//            project.toxPrefix + "toxav/bwcontroller.c",
-//            project.toxPrefix + "toxav/bwcontroller.h",
-//            project.toxPrefix + "toxav/groupav.c",
-//            project.toxPrefix + "toxav/groupav.h",
-//            project.toxPrefix + "toxav/msi.c",
-//            project.toxPrefix + "toxav/msi.h",
-//            project.toxPrefix + "toxav/ring_buffer.c",
-//            project.toxPrefix + "toxav/ring_buffer.h",
-//            project.toxPrefix + "toxav/rtp.c",
-//            project.toxPrefix + "toxav/rtp.h",
-//            project.toxPrefix + "toxav/toxav.c",
-//            project.toxPrefix + "toxav/toxav.h",
-//            project.toxPrefix + "toxav/toxav_old.c",
-//            project.toxPrefix + "toxav/video.c",
-//            project.toxPrefix + "toxav/video.h",
+//            toxPrefix + "toxav/audio.c",
+//            toxPrefix + "toxav/audio.h",
+//            toxPrefix + "toxav/bwcontroller.c",
+//            toxPrefix + "toxav/bwcontroller.h",
+//            toxPrefix + "toxav/groupav.c",
+//            toxPrefix + "toxav/groupav.h",
+//            toxPrefix + "toxav/msi.c",
+//            toxPrefix + "toxav/msi.h",
+//            toxPrefix + "toxav/ring_buffer.c",
+//            toxPrefix + "toxav/ring_buffer.h",
+//            toxPrefix + "toxav/rtp.c",
+//            toxPrefix + "toxav/rtp.h",
+//            toxPrefix + "toxav/toxav.c",
+//            toxPrefix + "toxav/toxav.h",
+//            toxPrefix + "toxav/toxav_old.c",
+//            toxPrefix + "toxav/video.c",
+//            toxPrefix + "toxav/video.h",
 //        ]
 //    }
 
@@ -202,9 +208,9 @@ Project {
 //        name: "ToxDNS"
 //        targetName: "toxdns"
 //        files: [
-//            project.toxPrefix + "toxdns/toxdns.c",
-//            project.toxPrefix + "toxencryptsave/toxencryptsave.c",
-//            project.toxPrefix + "toxencryptsave/toxencryptsave.h",
+//            toxPrefix + "toxdns/toxdns.c",
+//            toxPrefix + "toxencryptsave/toxencryptsave.c",
+//            toxPrefix + "toxencryptsave/toxencryptsave.h",
 //        ]
 //    }
 
@@ -237,12 +243,12 @@ Project {
         )
 
         files: [
-            project.toxPrefix + "other/DHT_bootstrap.c",
-            project.toxPrefix + "other/bootstrap_node_packets.c",
-            project.toxPrefix + "other/bootstrap_node_packets.h",
+            toxPrefix + "other/DHT_bootstrap.c",
+            toxPrefix + "other/bootstrap_node_packets.c",
+            toxPrefix + "other/bootstrap_node_packets.h",
 
             // Реализация оригинального логгера
-            project.toxPrefix + "toxcore/logger.c",
+            toxPrefix + "toxcore/logger.c",
         ]
 
 //        property var test: {
@@ -277,24 +283,24 @@ Project {
         )
 
         files: [
-            project.toxPrefix + "other/bootstrap_daemon/src/command_line_arguments.c",
-            project.toxPrefix + "other/bootstrap_daemon/src/command_line_arguments.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/config.c",
-            project.toxPrefix + "other/bootstrap_daemon/src/config.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/config_defaults.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/global.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/log.c",
-            project.toxPrefix + "other/bootstrap_daemon/src/log.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/log_backend_stdout.c",
-            project.toxPrefix + "other/bootstrap_daemon/src/log_backend_stdout.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/log_backend_syslog.c",
-            project.toxPrefix + "other/bootstrap_daemon/src/log_backend_syslog.h",
-            project.toxPrefix + "other/bootstrap_daemon/src/tox-bootstrapd.c",
-            project.toxPrefix + "other/bootstrap_node_packets.c",
-            project.toxPrefix + "other/bootstrap_node_packets.h",
+            toxPrefix + "other/bootstrap_daemon/src/command_line_arguments.c",
+            toxPrefix + "other/bootstrap_daemon/src/command_line_arguments.h",
+            toxPrefix + "other/bootstrap_daemon/src/config.c",
+            toxPrefix + "other/bootstrap_daemon/src/config.h",
+            toxPrefix + "other/bootstrap_daemon/src/config_defaults.h",
+            toxPrefix + "other/bootstrap_daemon/src/global.h",
+            toxPrefix + "other/bootstrap_daemon/src/log.c",
+            toxPrefix + "other/bootstrap_daemon/src/log.h",
+            toxPrefix + "other/bootstrap_daemon/src/log_backend_stdout.c",
+            toxPrefix + "other/bootstrap_daemon/src/log_backend_stdout.h",
+            toxPrefix + "other/bootstrap_daemon/src/log_backend_syslog.c",
+            toxPrefix + "other/bootstrap_daemon/src/log_backend_syslog.h",
+            toxPrefix + "other/bootstrap_daemon/src/tox-bootstrapd.c",
+            toxPrefix + "other/bootstrap_node_packets.c",
+            toxPrefix + "other/bootstrap_node_packets.h",
 
             // Реализация оригинального логгера
-            project.toxPrefix + "toxcore/logger.c",
+            toxPrefix + "toxcore/logger.c",
         ]
     }
 

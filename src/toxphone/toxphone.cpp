@@ -1,5 +1,10 @@
 #include "toxphone_appl.h"
-#include "tox_net.h"
+#include "tox/tox_net.h"
+#include "tox/tox_call.h"
+#include "audio/audio_dev.h"
+#include "common/voice_frame.h"
+#include "kernel/communication/commands.h"
+
 #include "shared/defmac.h"
 #include "shared/utils.h"
 #include "shared/logger/logger.h"
@@ -17,7 +22,6 @@
 #include "shared/qt/config/config.h"
 #include "shared/qt/version/version_number.h"
 #include "shared/thread/thread_pool.h"
-#include "kernel/communication/commands.h"
 
 #if defined(__MINGW32__)
 #include <windows.h>
@@ -78,6 +82,8 @@ void stopProgram()
         }
 
     STOP_THREAD(udp::socket(), "TransportUDP", 15)
+    STOP_THREAD(audioDev(),    "AudioDev",     15)
+    STOP_THREAD(toxCall(),     "ToxCall",      15)
     STOP_THREAD(toxNet(),      "ToxNet",       15)
     tcp::listener().close();
 
@@ -85,7 +91,6 @@ void stopProgram()
     alog::logger().stop();
 
     trd::threadPool().stop();
-
     #undef STOP_THREAD
 }
 
@@ -105,8 +110,17 @@ void helpInfo(/*const char * binary*/)
     alog::logger().flush();
 }
 
+void testRingBuffer();
+
 int main(int argc, char *argv[])
 {
+
+    //testRingBuffer();
+    //return 0;
+    //------------------------------
+
+
+
     // Устанавливаем в качестве разделителя целой и дробной части символ '.',
     // если этого не сделать - функции преобразования строк в числа (std::atof)
     // буду неправильно работать.
@@ -327,20 +341,35 @@ int main(int argc, char *argv[])
 
         if (!toxNet().init())
         {
+            toxNet().deinit();
             stopProgram();
             return 1;
         }
         toxNet().start();
-        while (toxNet().runInit() == -1)
-        {
-            static chrono::milliseconds sleepThread {20};
-            this_thread::sleep_for(sleepThread);
-        }
-        if (toxNet().runInit() == 0)
+
+        chk_connect_d(&toxCall(), SIGNAL(startPlaybackVoice(VoiceFrameInfo::Ptr)),
+                      &audioDev(), SLOT(startPlaybackVoice(VoiceFrameInfo::Ptr)))
+        chk_connect_d(&toxCall(), SIGNAL(stopPlaybackVoice()),
+                      &audioDev(), SLOT(stopPlayback()))
+
+        chk_connect_d(&toxCall(), SIGNAL(startRecordVoice()),
+                      &audioDev(), SLOT(startRecord()))
+        chk_connect_d(&toxCall(), SIGNAL(stopRecordVoice()),
+                      &audioDev(), SLOT(stopRecord()))
+
+        if (!toxCall().init(toxNet().tox()))
         {
             stopProgram();
             return 1;
         }
+        toxCall().start();
+
+        if (!audioDev().init())
+        {
+            stopProgram();
+            return 1;
+        }
+        audioDev().start();
 
         if (ToxPhoneApplication::isStopped())
         {
@@ -348,7 +377,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        QMetaObject::invokeMethod(&appl, "sendInfo", Qt::QueuedConnection);
+        QMetaObject::invokeMethod(&appl, "sendToxPhoneInfo", Qt::QueuedConnection);
         ret = appl.exec();
 
         communication::data::ApplShutdown applShutdown;

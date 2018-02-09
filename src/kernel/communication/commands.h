@@ -10,12 +10,12 @@
 
 #pragma once
 
-#include "shared/_list.h"
-#include "shared/clife_base.h"
-#include "shared/clife_ptr.h"
+//#include "shared/_list.h"
+//#include "shared/clife_base.h"
+//#include "shared/clife_ptr.h"
+#include "shared/container_ptr.h"
 #include "shared/qt/quuidex.h"
 #include "shared/qt/communication/commands_base.h"
-#include "shared/container_ptr.h"
 #include <sys/time.h>
 
 namespace communication {
@@ -79,6 +79,41 @@ extern const QUuidEx RemoveFriend;
   Статус подключения к DHT сети
 */
 extern const QUuidEx DhtConnectStatus;
+
+/**
+  Информация по аудио-устройству
+*/
+extern const QUuidEx AudioDev;
+
+/**
+  Список аудио-устройств
+*/
+extern const QUuidEx AudioDevList;
+
+/**
+  Тест вывода звука
+*/
+extern const QUuidEx AudioSinkTest;
+
+/**
+  Отображение уровня сигнала микрофона в конфигураторе
+*/
+extern const QUuidEx AudioSourceLevel;
+
+/**
+  Команда для управления tox-звоноком
+*/
+extern const QUuidEx ToxCallAction;
+
+/**
+  Событие определяет состояние tox-звонка
+*/
+extern const QUuidEx ToxCallState;
+
+/**
+  Вспомогательная команда, используется для отправки tox-сообщения
+*/
+extern const QUuidEx ToxMessage;
 
 
 
@@ -158,19 +193,20 @@ struct FriendItem : Data<&command::FriendItem,
                           Message::Type::Answer,
                           Message::Type::Event>
 {
-    enum ChangeFlaf : quint32
+    enum class ChangeFlag : quint32
     {
         None          = 0x00,
-        Name          = 0x01,
-        StatusMessage = 0x02,
-        IsConnecnted  = 0x04
+        Name          = 0x01, // Изменено имя
+        StatusMessage = 0x02, // Изменен статус-сообщение
+        IsConnecnted  = 0x04  // Изменен признак подключения к сети
     };
 
-    QByteArray publicKey;
-    ChangeFlaf changeFlaf = {None}; // Флаг определяет какое поле нужно обновить
-    QString    name;                // Имя друга
-    QString    statusMessage;       // Статус-сообщение
-    bool       isConnecnted;        // Признак подключения к сети
+    ChangeFlag changeFlag = {ChangeFlag::None};
+    QByteArray publicKey;     // Идентификатор друга
+    quint32    number;        // Числовой идентификатор друга
+    QString    name;          // Имя друга
+    QString    statusMessage; // Статус-сообщение
+    bool       isConnecnted;  // Признак подключения к сети
 
     DECLARE_B_SERIALIZE_FUNC
 };
@@ -200,9 +236,118 @@ struct DhtConnectStatus : Data<&command::DhtConnectStatus,
 };
 
 
+/**
+  Тип аудио-устройства
+*/
+enum AudioDevType : quint32
+{
+    Sink   = 0, // Устройство воспроизведения
+    Source = 1  // Микрофон
+};
+
+struct AudioDev : Data<&command::AudioDev,
+                        Message::Type::Command,
+                        Message::Type::Answer,
+                        Message::Type::Event>
+{
+    //typedef container_ptr<AudioDev> Ptr;
+    //typedef lst::List<AudioDev, lst::CompareItemDummy> List;
+
+    enum class ChangeFlag : quint32
+    {
+        None       = 0,
+        Volume     = 1, // Изменен уровень громкости
+        IsCurrent  = 2, // Изменен признак устройства по умолчанию
+    };
+
+    ChangeFlag   changeFlag = {ChangeFlag::None};
+    quint16      cardIndex;     // Индекс звуковой карты
+    AudioDevType type;          // Тип устройства
+    quint16      index;         // Индекс устройства
+    QByteArray   name;          // Наименование устройства
+    QString      description;   // Описание устройства
+    quint8       channels;      // Количество каналов
+    quint32      baseVolume;    // Базовый уровень громкости
+    quint32      currentVolume; // Текущий уровень громкости (для первого канала)
+    quint32      volumeSteps;   // Количество шагов уровня громкости
+    bool         isCurrent;     // Признак текущего устройства (для ToxPhone)
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct AudioDevList : Data<&command::AudioDevList,
+                            Message::Type::Event>
+{
+    AudioDevType type;
+    QVector<AudioDev> list;
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct AudioSourceLevel : Data<&command::AudioSourceLevel,
+                                Message::Type::Event>
+{
+    quint32 average = {0}; // Усредненное значение уровня звукового потока
+    quint32 time    = {0}; // Время обновления average (в микросекундах)
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ToxCallAction : Data<&command::ToxCallAction,
+                             Message::Type::Command,
+                             Message::Type::Answer>
+{
+    // Выполняемые действия
+    enum class Action : quint32
+    {
+        None   = 0,
+        Accept = 1, // Принять входящий вызов
+        Reject = 2, // Отклонить входящий вызов
+        Call   = 3, // Сделать вызов
+        End    = 4  // Завершить звонок
+    };
+
+    Action  action       = {Action::None};
+    quint32 friendNumber = quint32(-1); // Числовой идентификатор друга
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ToxCallState : Data<&command::ToxCallState,
+                            Message::Type::Event>
+{
+    // Направление звонка: входящий/исходящий
+    enum class Direction : quint32
+    {
+        Undefined = 0,
+        Incoming  = 1,
+        Outgoing  = 2
+    };
+
+    // Состояние соединения
+    enum class State : quint32
+    {
+        Undefined     = 0,
+        WaitingAnswer = 1, // Процесс установки соединения
+        InProgress    = 2, // Соединение установлено
+    };
+
+    Direction direction    = {Direction::Undefined};
+    State     state        = {State::Undefined};
+    quint32   friendNumber = quint32(-1);  // Числовой идентификатор друга
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+
+struct ToxMessage : Data<&command::ToxMessage,
+                          Message::Type::Command>
+{
+    quint32 friendNumber; // Числовой идентификатор друга
+    QByteArray text;
+
+    DECLARE_B_SERIALIZE_FUNC
+};
 
 
 } // namespace data
 } // namespace communication
-
-

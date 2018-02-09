@@ -3,8 +3,10 @@
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/tcp.h"
+#include "kernel/communication/commands.h"
 
 #include <QLabel>
+#include <QSlider>
 #include <QMainWindow>
 
 using namespace std;
@@ -44,6 +46,17 @@ private slots:
     void on_btnFriendAccept_clicked(bool);
     void on_btnFriendReject_clicked(bool);
     void on_btnRemoveFriend_clicked(bool);
+    void on_btnAudioTest_clicked(bool);
+    void on_btnCall_clicked(bool);
+    void on_btnEndCall_clicked(bool);
+
+    void on_cboxAudioSink_currentIndexChanged(int index);
+    void on_cboxAudioSource_currentIndexChanged(int index);
+    //void on_cboxAudioSink_activated(int index);
+    //void on_cboxAudioSource_activated(int index);
+
+    void on_sliderAudioSink_sliderReleased();
+    void on_sliderAudioSource_sliderReleased();
 
 private:
     void closeEvent(QCloseEvent*) override;
@@ -56,9 +69,14 @@ private:
     void command_FriendItem(const Message::Ptr&);
     void command_FriendList(const Message::Ptr&);
     void command_DhtConnectStatus(const Message::Ptr&);
+    void command_AudioDev(const Message::Ptr&);
+    void command_AudioDevList(const Message::Ptr&);
+    void command_AudioSourceLevel(const Message::Ptr&);
+    void command_ToxCallAction(const Message::Ptr&);
+    void command_ToxCallState(const Message::Ptr&);
 
     void friendRequestAccept(bool accept);
-
+    void setSliderLevel(QSlider* slider, int base, int current, int max);
 
 private:
     Ui::MainWindow *ui;
@@ -66,6 +84,19 @@ private:
 
     FunctionInvoker _funcInvoker;
     tcp::Socket::Ptr _socket;
+
+    data::ToxCallState _callState;
+
+//    // Вспомогательная структура, используется для приема информации
+//    // об уровне сигнала микрофона в конфигуратор
+//    union  {
+//        quint64 _audioSourceTag;
+//        struct {
+//            quint32 time;      // Время необходимое на воспроизведение
+//            quint16 average;   // Усредненное значение уровня звукового потока
+//            quint16 reserved;
+//        } _audioSourceLevel;
+//    } ;
 
     int _tabRrequestsIndex = {0};
 };

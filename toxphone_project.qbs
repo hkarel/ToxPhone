@@ -11,5 +11,8 @@ ToxPhoneBase {
         "src/kernel/kernel.qbs",
         "src/toxphone/toxphone.qbs",
         "src/toxphone_config/toxphone_config.qbs",
+        "src/examples/example2.qbs",
+        //"src/examples/example3.qbs",
+
     ]
 }

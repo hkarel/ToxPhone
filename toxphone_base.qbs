@@ -1,6 +1,7 @@
 import qbs
 import qbs.File
 import "qbs/imports/QbsUtl/qbsutl.js" as QbsUtl
+import "qbs/imports/Probes/OsProbe.qbs" as OsProbe
 
 Project {
     minimumQbsVersion: "1.10.0"
@@ -10,13 +11,17 @@ Project {
     // используется для сборки deb-пакета
     readonly property bool printPackegeBuildInfo: false
 
-    property string toxPrefix: "toxcore/"
-    property string sodiumVersion: "1.0.16"
-    //property string ffmpegVersion: "3.3.3"
+    readonly property string sodiumVersion: "1.0.16"
 
+    readonly property string osName: osProbe.osName
+    readonly property string osVersion: osProbe.osVersion
+
+    OsProbe {
+        id: osProbe
+    }
     Probe {
         id: projectProbe
-        readonly property string projectBuildDirectory: project.buildDirectory
+        property string projectBuildDirectory: project.buildDirectory
         property var projectVersion;
         property string projectGitRevision;
         configure: {
@@ -39,13 +44,9 @@ Project {
             "BPROTOCOL_VERSION_LOW=0",
             "BPROTOCOL_VERSION_HIGH=1",
             "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
-        ]
+            "TOX_PHONE=\"ToxPhone\"",
 
-//        if (qbs.targetOS.contains("windows")
-//            && qbs.toolchain && qbs.toolchain.contains("mingw"))
-//        {
-//            def.push("_POSIX");
-//        }
+        ]
 
         if (qbs.targetOS.contains("windows")
             && qbs.toolchain && qbs.toolchain.contains("mingw"))
@@ -70,4 +71,5 @@ Project {
         "-Wno-variadic-macros",
         //"-Wconversion",
     ]
+
 }

@@ -1,5 +1,10 @@
 #include "toxphone_appl.h"
-#include "tox_net.h"
+#include "tox/tox_net.h"
+#include "tox/tox_call.h"
+#include "audio/audio_dev.h"
+#include "common/functions.h"
+#include "kernel/communication/commands.h"
+
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
@@ -7,7 +12,6 @@
 #include "shared/qt/communication/transport/base.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include "shared/qt/communication/transport/udp.h"
-#include "kernel/communication/commands.h"
 
 #define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
@@ -17,6 +21,7 @@
 #define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 
 volatile bool ToxPhoneApplication::_stop = false;
+std::atomic_int ToxPhoneApplication::_exitCode = {0};
 QUuidEx ToxPhoneApplication::_applId = QUuidEx::createUuid();
 
 ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
@@ -33,6 +38,9 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
 
     chk_connect_q(&udp::socket(), SIGNAL(message(communication::Message::Ptr)),
                   this, SLOT(message(communication::Message::Ptr)))
+
+    chk_connect_q(&audioDev(), SIGNAL(sourceLevel(quint32, quint32)),
+                  this, SLOT(audioSourceLevel(quint32, quint32)))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxPhoneApplication::command_##COMMAND, this);
@@ -52,7 +60,7 @@ void ToxPhoneApplication::timerEvent(QTimerEvent* event)
     }
 }
 
-void ToxPhoneApplication::stop2(int exitCode)
+void ToxPhoneApplication::stop(int exitCode)
 {
     _exitCode = exitCode;
     stop();
@@ -72,16 +80,25 @@ void ToxPhoneApplication::message(const Message::Ptr& message)
 
 void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
 {
+    bool connected = true;
+    configConnected(&connected);
+
     Message::Ptr message = createMessage(command::IncomingConfigConnection);
     message->setTag(quint64(socketDescriptor));
     toxNet().message(message);
+    toxCall().message(message);
+
+    QMetaObject::invokeMethod(&audioDev(), "message", Qt::QueuedConnection,
+                              Q_ARG(communication::Message::Ptr, message));
 }
 
 void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor*/)
 {
+    bool connected = false;
+    configConnected(&connected);
 }
 
-void ToxPhoneApplication::sendInfo()
+void ToxPhoneApplication::sendToxPhoneInfo()
 {
     int port = 3609;
     config::base().getValue("config_connection.port", port);
@@ -104,6 +121,20 @@ void ToxPhoneApplication::sendInfo()
         message->destinationPoints().insert({intf->broadcast, port - 1});
         udp::socket().send(message);
     }
+}
+
+void ToxPhoneApplication::audioSourceLevel(quint32 averageLevel, quint32 time)
+{
+    if (!configConnected())
+        return;
+
+    data::AudioSourceLevel audioSourceLevel;
+    audioSourceLevel.average = averageLevel;
+    audioSourceLevel.time = time;
+
+    Message::Ptr m = createMessage(audioSourceLevel, Message::Type::Event);
+    m->setPriority(Message::Priority::High);
+    tcp::listener().send(m);
 }
 
 void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
