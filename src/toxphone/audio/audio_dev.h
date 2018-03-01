@@ -6,6 +6,7 @@
 #pragma once
 
 #include "wav_file.h"
+#include "common/voice_filters.h"
 #include "common/voice_frame.h"
 #include "kernel/communication/commands.h"
 
@@ -99,7 +100,6 @@ private:
 
     //void createSourceStream();
 
-
 private:
     // PulseAudio callback
     static void context_state    (pa_context* context, void* userdata);
@@ -164,6 +164,8 @@ private:
     atomic_bool _playbackActive = {false};
     atomic_bool _playbackVoice = {false};
 
+    VoiceFilters _voiceFilters;
+
     //QByteArray _voiceData;
     //mutable std::atomic_flag _voiceDataLock = ATOMIC_FLAG_INIT;
     //SpinLocker locker(_socketLock); (void) locker;
@@ -182,8 +184,8 @@ private:
     // Время необходимое на воспроизведение _recordBytes
     quint32 _recordTime = {0};
 
-    QQueue<QByteArray> _recordBuff;
-    mutable QMutex _recordBuffLock;
+    //QQueue<QByteArray> _recordBuff;
+    //mutable QMutex _recordBuffLock;
 
     QFile _sourceTestFile;
     //QFile _recordTestFile;

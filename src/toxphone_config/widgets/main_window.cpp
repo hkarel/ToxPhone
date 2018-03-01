@@ -609,7 +609,7 @@ void MainWindow::on_cboxAudioSource_currentIndexChanged(int index)
 {
     QVariant v = ui->cboxAudioSource->itemData(index);
     data::AudioDev ad = v.value<data::AudioDev>();
-    setSliderLevel(ui->sliderAudioSource, 0, ad.currentVolume, ad.volumeSteps);
+    setSliderLevel(ui->sliderAudioSource, 0, ad.currentVolume, ad.volumeSteps /** 1.5*/);
 }
 
 //void MainWindow::on_cboxAudioSink_activated(int index)

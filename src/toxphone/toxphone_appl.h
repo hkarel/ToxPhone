@@ -17,6 +17,7 @@ class ToxPhoneApplication : public QCoreApplication
 {
 public:
     ToxPhoneApplication(int &argc, char **argv);
+    ~ToxPhoneApplication();
 
     static void stop() {_stop = true;}
     static bool isStopped() {return _stop;}

@@ -18,6 +18,7 @@ Product {
     Depends { name: "Kernel" }
     Depends { name: "ToxNetwork" }
     Depends { name: "ToxCore" }
+    Depends { name: "FilterAudio" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
     //property string ffmpegVersion: "3.3.3"
@@ -71,7 +72,7 @@ Product {
         "../",
     ]
     cpp.systemIncludePaths: QbsUtl.concatPaths(
-        //Qt.core.cpp.includePaths,
+        Qt.core.cpp.includePaths,
         lib.sodium.includePath
     )
 
@@ -122,6 +123,8 @@ Product {
         "common/defines.h",
         "common/functions.cpp",
         "common/functions.h",
+        "common/voice_filters.cpp",
+        "common/voice_filters.h",
         "common/voice_frame.cpp",
         "common/voice_frame.h",
         "tox/tox_call.cpp",

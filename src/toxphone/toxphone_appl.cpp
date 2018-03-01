@@ -51,6 +51,11 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
     #undef FUNC_REGISTRATION
 }
 
+ToxPhoneApplication::~ToxPhoneApplication()
+{
+    // Реализация деструктора нужна для подавления inline warning-ов
+}
+
 void ToxPhoneApplication::timerEvent(QTimerEvent* event)
 {
     if (event->timerId() == _stopTimerId)

@@ -85,6 +85,7 @@ private:
         quint16 port;
         QString publicKey;
         QString name;      // Информационный параметр
+        ~BootstrapNode();
     };
     QVector<BootstrapNode> _bootstrapNodes;
 

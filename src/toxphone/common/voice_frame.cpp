@@ -38,6 +38,11 @@ RingBuffer& recordVoiceRBuff()
     return ::safe_singleton<RingBuffer, 0>();
 }
 
+RingBuffer& filterVoiceRBuff()
+{
+    return ::safe_singleton<RingBuffer, 1>();
+}
+
 VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
 {
     static VoiceFrameInfo::Ptr voiceFrameInfo;
@@ -54,5 +59,5 @@ VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset
 
 RingBuffer& playbackVoiceRBuff()
 {
-    return ::safe_singleton<RingBuffer, 1>();
+    return ::safe_singleton<RingBuffer, 2>();
 }

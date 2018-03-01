@@ -798,6 +798,11 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
     return true;
 }
 
+ToxNet::BootstrapNode::~BootstrapNode()
+{
+    // Реализация деструктора нужна для подавления inline warning-ов
+}
+
 //------------------------------ Tox callback --------------------------------
 
 void ToxNet::tox_friend_request(Tox* tox, const uint8_t* pub_key,

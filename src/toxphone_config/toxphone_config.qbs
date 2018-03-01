@@ -39,7 +39,7 @@ Product {
         "./",
         "../",
     ]
-    //cpp.systemIncludePaths: Qt.core.cpp.includePaths;
+    cpp.systemIncludePaths: Qt.core.cpp.includePaths;
 
     //cpp.rpaths: [
     //    pruductProbe.compilerLibraryPath,

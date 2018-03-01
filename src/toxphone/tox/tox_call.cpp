@@ -23,7 +23,6 @@
 #define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxCall")
 #define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxCall")
 
-
 static const char* tox_videocall_responce_message =
     QT_TRANSLATE_NOOP("ToxCall", "Hi, it ToxPhone client. The ToxPhone client not support a video calls.");
 
@@ -311,20 +310,6 @@ void ToxCall::iterateVoiceFrame()
     if (recordVoiceRBuff().read(data, dataSize))
     {
         _recordBytes += dataSize;
-        //_recordTestFile.write((char*)data, dataSize);
-
-//        float gainFactor = qPow(10.0, (30 / 20.0));
-
-//        int16_t* pcm = (int16_t*) data;
-//        for (quint32 i = 0; i < dataSize / sizeof(int16_t); i += 2)
-//        {
-//            // gain amplification with clipping to 16-bit boundaries
-//            //int ampPCM = qBound<int>(std::numeric_limits<int16_t>::min(),
-//            //                         qRound(*pcm * 1.0f),
-//            //                         std::numeric_limits<int16_t>::max());
-//            int ampPCM = qRound(*pcm * gainFactor);
-//            *pcm = static_cast<int16_t>(ampPCM);
-//        }
 
         int retries = 0;
         TOXAV_ERR_SEND_FRAME err;
@@ -351,12 +336,6 @@ void ToxCall::iterateVoiceFrame()
                         << "; sample count: " << sampleCount
                         << "; data size: " << dataSize;
         }
-        //else
-        //    log_debug2_m << "Success toxav_audio_send_frame"
-        //                 << "; sample count: " << dataSize / vfi->sampleSize / vfi->channels
-        //                 << "; data size: " << dataSize;
-
-        //toxav_iterate(_toxav);
     }
 }
 
@@ -562,29 +541,26 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
 {
     ToxCall* tc = static_cast<ToxCall*>(user_data);
 
-    if (alog::logger().level() == alog::Level::Debug2
-        && tc->_skipFirstFrames < 6)
-    {
-        log_debug2_m << "toxav_audio_receive_frame()"
-                     << "; frame number: " << tc->_skipFirstFrames
-                     << "; friend_number: " << friend_number
-                     << "; sample_count: " << sample_count
-                     << "; channels: " << int(channels)
-                     << "; sampling_rate: " << sampling_rate;
-    }
+    static quint32 sampleSize {sizeof(int16_t)};
+    quint32 bufferSize = sample_count * sampleSize * channels;
+                         //((latency * sampling_rate) / 1000000) * sampleSize * channels;
 
     // Пропускаем первые 10 фреймов. Таким образом даем opus-декодеру
     // возможность перестроиться в правильный режим приема данных.
     // На 11-м фрейме инициализируем аудио-систему.
     if (tc->_skipFirstFrames < 10)
     {
+        log_debug2_m << "Skip frame: " << tc->_skipFirstFrames
+                     << "; friend number: " << friend_number
+                     << "; channels: "  << int(channels)
+                     << "; sample size: "   << sampleSize
+                     << "; sample count: "  << sample_count
+                     << "; sampling rate: " << sampling_rate
+                     << "; buffer size: "   << bufferSize;
+
         ++tc->_skipFirstFrames;
         return;
     }
-
-    static quint32 sampleSize {sizeof(int16_t)};
-    quint32 bufferSize = sample_count * sampleSize * channels;
-                         //((latency * sampling_rate) / 1000000) * sampleSize * channels;
 
     if (tc->_skipFirstFrames == 10)
     {
@@ -613,7 +589,6 @@ void ToxCall::toxav_video_receive_frame(ToxAV* av, uint32_t friend_number,
                  << "; friend_number: " << friend_number;
 
 }
-
 
 #undef log_error_m
 #undef log_warn_m

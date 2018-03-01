@@ -9,20 +9,6 @@
 #include <QtCore>
 
 /**
-  Структура передачи голосовых данных
-*/
-struct VoiceFrame : clife_base
-{
-    typedef clife_ptr<VoiceFrame> Ptr;
-    typedef lst::List<VoiceFrame, lst::CompareItemDummy, clife_alloc<VoiceFrame>> List;
-
-    QByteArray data;
-    quint8  channels;
-    quint32 samplingRate;
-    quint32 sampleCount;
-};
-
-/**
   Содержит базовые параметры воспроизведения/записи
 */
 struct VoiceFrameInfo
@@ -49,6 +35,7 @@ struct VoiceFrameInfo
 
 VoiceFrameInfo::Ptr recordVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
 RingBuffer& recordVoiceRBuff();
+RingBuffer& filterVoiceRBuff();
 
 VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
 RingBuffer& playbackVoiceRBuff();

@@ -416,8 +416,8 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
         log_debug_m << "Playback stream dropped";
     }
 
-    _playbackBytes = 0;
     log_debug_m << "Create voice stream";
+    _playbackBytes = 0;
 
     pa_sample_spec paSampleSpec;
     paSampleSpec.format = PA_SAMPLE_S16LE;
@@ -435,10 +435,10 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     log_debug_m << "Initialization playback VoiceFrameInfo"
                 << "; latency: "      << voiceFrameInfo->latency
                 << "; channels: " << int(voiceFrameInfo->channels)
-                << "; sampleSize: "   << voiceFrameInfo->sampleSize
-                << "; sampleCount: "  << voiceFrameInfo->sampleCount
-                << "; samplingRate: " << voiceFrameInfo->samplingRate
-                << "; bufferSize: "   << voiceFrameInfo->bufferSize;
+                << "; sample size: "   << voiceFrameInfo->sampleSize
+                << "; sample count: "  << voiceFrameInfo->sampleCount
+                << "; sampling rate: " << voiceFrameInfo->samplingRate
+                << "; buffer size: "   << voiceFrameInfo->bufferSize;
 
     pa_stream_set_state_callback    (_playbackStream, playback_stream_state, this);
     pa_stream_set_started_callback  (_playbackStream, playback_stream_started, this);
@@ -461,24 +461,20 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
                                                 |PA_STREAM_ADJUST_LATENCY
                                                 |PA_STREAM_AUTO_TIMING_UPDATE);
 
+    // Параметр _playbackVoice должен быть установлен в TRUE до вызова функции
+    // pa_stream_connect_playback(). Таким образом мы гарантированно корректно
+    // обработаем событие PA_STREAM_READY в функции playback_stream_state().
+    _playbackVoice = true;
+
     if (pa_stream_connect_playback(_playbackStream, 0, &paBuffAttr, flags, 0, 0) < 0)
     {
         log_error_m << "Failed call pa_stream_connect_playback()"
                     << paStrError(_playbackStream);
-        ToxPhoneApplication::stop(1);
+        _playbackVoice = false;
         return;
     }
 
-//    _sourceTestFile.setFileName("/tmp/222.wav");
-//    if (!_sourceTestFile.open(QIODevice::WriteOnly))
-//    {
-//        log_error_m << "Failed open /tmp/222.wav";
-//        ToxPhoneApplication::stop(1);
-//        return;
-//    }
-
     _playbackActive = true;
-    _playbackVoice = true;
     log_debug_m << "Playback stream start";
 }
 
@@ -539,13 +535,12 @@ void AudioDev::startRecord()
         log_debug_m << "Record stream dropped";
     }
 
-    _recordBytes = 0;
     log_debug_m << "Create record stream";
+    _recordBytes = 0;
 
     pa_sample_spec paSampleSpec;
     paSampleSpec.format = PA_SAMPLE_S16LE;
     paSampleSpec.channels = 2;
-    //paSampleSpec.channels = 1;
     paSampleSpec.rate = 48000;
 
     _recordStream = pa_stream_new(_paContext, "Recording", &paSampleSpec, 0);
@@ -566,10 +561,10 @@ void AudioDev::startRecord()
     log_debug_m << "Initialization record VoiceFrameInfo"
                 << "; latency: "      << voiceFrameInfo.latency
                 << "; channels: " << int(voiceFrameInfo.channels)
-                << "; sampleSize: "   << voiceFrameInfo.sampleSize
-                << "; sampleCount: "  << voiceFrameInfo.sampleCount
-                << "; samplingRate: " << voiceFrameInfo.samplingRate
-                << "; bufferSize: "   << voiceFrameInfo.bufferSize;
+                << "; sample size: "   << voiceFrameInfo.sampleSize
+                << "; sample count: "  << voiceFrameInfo.sampleCount
+                << "; sampling rate: " << voiceFrameInfo.samplingRate
+                << "; buffer size: "   << voiceFrameInfo.bufferSize;
 
     pa_stream_set_state_callback    (_recordStream, record_stream_state, this);
     pa_stream_set_started_callback  (_recordStream, record_stream_started, this);
@@ -599,6 +594,7 @@ void AudioDev::startRecord()
         return;
     }
 
+    _voiceFilters.start();
     _recordActive = true;
     log_debug_m << "Record stream start";
 }
@@ -611,9 +607,13 @@ void AudioDev::stopRecord()
         return;
 
     log_debug_m << "Record stream stop";
+    log_debug_m << "Filter ring buffer; available: "
+                << filterVoiceRBuff().available();
     log_debug_m << "Record ring buffer; available: "
                 << recordVoiceRBuff().available();
 
+    _voiceFilters.stop();
+    filterVoiceRBuff().reset();
     recordVoiceRBuff().reset();
     recordVoiceFrameInfo(0, true);
 
@@ -1415,30 +1415,31 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
                 }
                 else
                     log_error_m << "Failed get VoiceFrameInfo for playback";
+            }
 
-                if (!(attr = pa_stream_get_buffer_attr(stream)))
+            if (alog::logger().level() >= alog::Level::Debug)
+            {
+                if (!!(attr = pa_stream_get_buffer_attr(stream)))
                 {
-                    log_error_m << "Failed call pa_stream_get_buffer_attr()"
-                                << paStrError(stream);
+                    log_debug_m << "PA playback buffer metrics"
+                                << "; maxlength: " << attr->maxlength
+                                << ", fragsize: " << attr->fragsize;
+
+                    log_debug_m << "PA playback using sample spec "
+                                << pa_sample_spec_snprint(sst, sizeof(sst), pa_stream_get_sample_spec(stream))
+                                << ", channel map "
+                                << pa_channel_map_snprint(cmt, sizeof(cmt), pa_stream_get_channel_map(stream));
+
+                    log_debug_m << "PA playback connected to device "
+                                << pa_stream_get_device_name(stream)
+                                << " (" << pa_stream_get_device_index(stream)
+                                << ", "
+                                << (pa_stream_is_suspended(stream) ? "" : "not ")
+                                << " suspended)";
                 }
                 else
-                {
-                    log_debug2_m << "PA playback buffer metrics"
-                                 << "; maxlength: " << attr->maxlength
-                                 << ", fragsize: " << attr->fragsize;
-
-                    log_debug2_m << "PA playback using sample spec "
-                                 << pa_sample_spec_snprint(sst, sizeof(sst), pa_stream_get_sample_spec(stream))
-                                 << ", channel map "
-                                 << pa_channel_map_snprint(cmt, sizeof(cmt), pa_stream_get_channel_map(stream));
-
-                    log_debug2_m << "PA playback connected to device "
-                                 << pa_stream_get_device_name(stream)
-                                 << " (" << pa_stream_get_device_index(stream)
-                                 << ", "
-                                 << (pa_stream_is_suspended(stream) ? "" : "not ")
-                                 << " suspended)";
-                }
+                    log_error_m << "Failed call pa_stream_get_buffer_attr()"
+                                << paStrError(stream);
             }
             break;
 
@@ -1476,18 +1477,17 @@ void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* use
     else
         memset(data, 0, nbytes);
 
-        float gainFactor = qPow(10.0, (10 / 20.0));
-
-        int16_t* pcm = (int16_t*) data;
-        for (quint32 i = 0; i < nbytes / sizeof(int16_t); i += 2)
-        {
-            // gain amplification with clipping to 16-bit boundaries
-            //int ampPCM = qBound<int>(std::numeric_limits<int16_t>::min(),
-            //                         qRound(*pcm * 1.0f),
-            //                         std::numeric_limits<int16_t>::max());
-            int ampPCM = qRound(*pcm * gainFactor);
-            *pcm = static_cast<int16_t>(ampPCM);
-        }
+//    float gainFactor = qPow(10.0, (10 / 20.0));
+//    int16_t* pcm = (int16_t*) data;
+//    for (quint32 i = 0; i < nbytes / sizeof(int16_t); i += 2)
+//    {
+//        // gain amplification with clipping to 16-bit boundaries
+//        //int ampPCM = qBound<int>(std::numeric_limits<int16_t>::min(),
+//        //                         qRound(*pcm * 1.0f),
+//        //                         std::numeric_limits<int16_t>::max());
+//        int ampPCM = qRound(*pcm * gainFactor);
+//        *pcm = static_cast<int16_t>(ampPCM);
+//    }
 
     if (pa_stream_write(stream, data, nbytes, 0, 0LL, PA_SEEK_RELATIVE) < 0)
         log_error_m << "Failed call pa_stream_write()" << paStrError(stream);
@@ -1549,32 +1549,37 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
                 recordVoiceRBuff().init(rbuffSize);
                 log_debug_m  << "Initialization a record ring buffer"
                              << "; size: " << rbuffSize;
+
+                filterVoiceRBuff().init(rbuffSize);
+                log_debug_m  << "Initialization a filter ring buffer"
+                             << "; size: " << rbuffSize;
             }
             else
                 log_error_m << "Failed get VoiceFrameInfo for record";
 
-            if (!(attr = pa_stream_get_buffer_attr(stream)))
+            if (alog::logger().level() >= alog::Level::Debug)
             {
-                log_error_m << "Failed call pa_stream_get_buffer_attr()"
-                            << paStrError(stream);
-            }
-            else
-            {
-                log_debug2_m << "PA record buffer metrics"
-                             << "; maxlength: " << attr->maxlength
-                             << ", fragsize: " << attr->fragsize;
+                if (!!(attr = pa_stream_get_buffer_attr(stream)))
+                {
+                    log_debug_m << "PA record buffer metrics"
+                                << "; maxlength: " << attr->maxlength
+                                << ", fragsize: " << attr->fragsize;
 
-                log_debug2_m << "PA record using sample spec "
-                             << pa_sample_spec_snprint(sst, sizeof(sst), pa_stream_get_sample_spec(stream))
-                             << ", channel map "
-                             << pa_channel_map_snprint(cmt, sizeof(cmt), pa_stream_get_channel_map(stream));
+                    log_debug_m << "PA record using sample spec "
+                                << pa_sample_spec_snprint(sst, sizeof(sst), pa_stream_get_sample_spec(stream))
+                                << ", channel map "
+                                << pa_channel_map_snprint(cmt, sizeof(cmt), pa_stream_get_channel_map(stream));
 
-                log_debug2_m << "PA record connected to device "
-                             << pa_stream_get_device_name(stream)
-                             << " (" << pa_stream_get_device_index(stream)
-                             << ", "
-                             << (pa_stream_is_suspended(stream) ? "" : "not ")
-                             << " suspended)";
+                    log_debug_m << "PA record connected to device "
+                                << pa_stream_get_device_name(stream)
+                                << " (" << pa_stream_get_device_index(stream)
+                                << ", "
+                                << (pa_stream_is_suspended(stream) ? "" : "not ")
+                                << " suspended)";
+                }
+                else
+                    log_error_m << "Failed call pa_stream_get_buffer_attr()"
+                                << paStrError(stream);
             }
             break;
 
@@ -1599,6 +1604,8 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
     AudioDev* ad = static_cast<AudioDev*>(userdata); (void) ad;
     //size_t sampleSize = pa_sample_size(sampleSpec);
 
+    //return;
+
     //size_t frame_size = pa_frame_size(sampleSpec);
     //size_t sample_size = pa_sample_size(sampleSpec);
     //log_debug2_m << "frame_size: " << frame_size;
@@ -1619,9 +1626,14 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
             {
                 ad->_recordBytes += nbytes;
 
-                if (!recordVoiceRBuff().write((char*)data, nbytes))
-                    log_error_m << "Failed write data to voice ring buffer"
+                //if (!recordVoiceRBuff().write((char*)data, nbytes))
+                //    log_error_m << "Failed write data to voice ring buffer"
+                //                << ". Data size: " << nbytes;
+                if (!filterVoiceRBuff().write((char*)data, nbytes))
+                {
+                    log_error_m << "Failed write data to filterVoiceRBuff"
                                 << ". Data size: " << nbytes;
+                }
 
                 //                if (configConnected())
                 //                {
