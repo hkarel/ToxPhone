@@ -10,7 +10,8 @@ Product {
     Depends { name: "cpp" }
     Depends { name: "lib.sodium" }
 
-    lib.sodium.version: project.sodiumVersion
+    lib.sodium.version:   project.sodiumVersion
+    lib.sodium.useSystem: project.useSystemSodium
 
     Probe {
         id: baseProbe
@@ -106,14 +107,15 @@ Product {
         lib.sodium.includePath
     )
 
-    //cpp.rpaths: QbsUtl.concatPaths(
-    //    baseProbe.compilerLibraryPath,
-    //    lib.sodium.libraryPath,
-    //    "$ORIGIN/../lib"
-    //)
+    cpp.rpaths: QbsUtl.concatPaths(
+        baseProbe.compilerLibraryPath,
+        lib.sodium.libraryPath,
+        "$ORIGIN/../lib"
+    )
+
     cpp.libraryPaths: QbsUtl.concatPaths(
-         lib.sodium.libraryPath,
-         project.buildDirectory + "/lib"
+        lib.sodium.libraryPath,
+        project.buildDirectory + "/lib"
     )
 
     Export {

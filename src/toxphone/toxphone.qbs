@@ -21,10 +21,8 @@ Product {
     Depends { name: "FilterAudio" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
-    //property string ffmpegVersion: "3.3.3"
-
-    lib.sodium.useSystem: false
-    lib.sodium.version: project.sodiumVersion
+    lib.sodium.version:   project.sodiumVersion
+    lib.sodium.useSystem: project.useSystemSodium
 
     Probe {
         id: productProbe
@@ -76,22 +74,25 @@ Product {
         lib.sodium.includePath
     )
 
-    //cpp.rpaths: QbsUtl.concatPaths(
-    //    productProbe.compilerLibraryPath,
-    //    "$ORIGIN/../lib"
-    //)
+    cpp.rpaths: QbsUtl.concatPaths(
+        productProbe.compilerLibraryPath,
+        lib.sodium.libraryPath,
+        "$ORIGIN/../lib"
+    )
 
-    //cpp.libraryPaths: QbsUtl.concatPaths(
-    //    //lib.opencv.libraryPath,
-    //    //lib.pylon.libraryPath
-    //)
+    cpp.libraryPaths: QbsUtl.concatPaths(
+        lib.sodium.libraryPath
+    )
 
     cpp.dynamicLibraries: {
         var libs = [
             "pthread",
             "opus",
             "pulse",
-         ];
+        ].concat(
+            lib.sodium.dynamicLibraries
+        );
+
         if (!(project.osName === "ubuntu" && project.osVersion === "14.04")) {
             libs.push("vpx");
         }
@@ -99,10 +100,7 @@ Product {
     }
 
     cpp.staticLibraries: {
-        var libs = QbsUtl.concatPaths(
-            lib.sodium.staticLibrariesPaths(product)
-            //lib.ffmpeg.staticLibrariesPaths(product)
-        );
+        var libs = [];
         if (project.osName === "ubuntu" && project.osVersion === "14.04") {
             // Version VPX must be not less than 1.5.0
             libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");

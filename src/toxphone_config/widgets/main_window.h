@@ -46,17 +46,20 @@ private slots:
     void on_btnFriendAccept_clicked(bool);
     void on_btnFriendReject_clicked(bool);
     void on_btnRemoveFriend_clicked(bool);
-    void on_btnAudioTest_clicked(bool);
     void on_btnCall_clicked(bool);
     void on_btnEndCall_clicked(bool);
 
-    void on_cboxAudioSink_currentIndexChanged(int index);
-    void on_cboxAudioSource_currentIndexChanged(int index);
-    //void on_cboxAudioSink_activated(int index);
-    //void on_cboxAudioSource_activated(int index);
+    void on_btnPlaybackTest_clicked(bool);
+    void on_btnRecordTest_clicked(bool);
 
-    void on_sliderAudioSink_sliderReleased();
-    void on_sliderAudioSource_sliderReleased();
+    void on_cboxAudioPlayback_currentIndexChanged(int index);
+    void on_cboxAudioRecord_currentIndexChanged(int index);
+
+    void on_btnPlaybackAsDefault_clicked(bool);
+    void on_btnRecordAsDefault_clicked(bool);
+
+    void on_sliderAudioPlayback_sliderReleased();
+    void on_sliderAudioRecord_sliderReleased();
 
 private:
     void closeEvent(QCloseEvent*) override;
@@ -69,9 +72,10 @@ private:
     void command_FriendItem(const Message::Ptr&);
     void command_FriendList(const Message::Ptr&);
     void command_DhtConnectStatus(const Message::Ptr&);
-    void command_AudioDev(const Message::Ptr&);
-    void command_AudioDevList(const Message::Ptr&);
-    void command_AudioSourceLevel(const Message::Ptr&);
+    void command_AudioDevInfo(const Message::Ptr&);
+    void command_AudioDevChange(const Message::Ptr&);
+    void command_AudioTest(const Message::Ptr&);
+    void command_AudioRecordLevel(const Message::Ptr&);
     void command_ToxCallAction(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
 
@@ -87,16 +91,9 @@ private:
 
     data::ToxCallState _callState;
 
-//    // Вспомогательная структура, используется для приема информации
-//    // об уровне сигнала микрофона в конфигуратор
-//    union  {
-//        quint64 _audioSourceTag;
-//        struct {
-//            quint32 time;      // Время необходимое на воспроизведение
-//            quint16 average;   // Усредненное значение уровня звукового потока
-//            quint16 reserved;
-//        } _audioSourceLevel;
-//    } ;
+    data::AudioDevInfo::List _sinkDevices;
+    data::AudioDevInfo::List _sourceDevices;
+
 
     int _tabRrequestsIndex = {0};
 };

@@ -6,12 +6,10 @@
 #include "common/defines.h"
 #include "common/functions.h"
 #include "shared/break_point.h"
-//#include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
 #include "shared/qt/communication/functions.h"
-#include "shared/qt/communication/transport/base.h"
 #include "shared/qt/communication/transport/tcp.h"
 
 #include <chrono>
@@ -368,7 +366,7 @@ void ToxNet::run()
             continue;
 
         iterationSleepTime -= iterationTimer.elapsed();
-        if (iterationSleepTime > 2)
+        if (iterationSleepTime > 0)
         {
             unique_lock<mutex> locker(_threadLock); (void) locker;
             if (!_messages.empty())
@@ -915,7 +913,7 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
             return;
 
         friendItem.changeFlag = data::FriendItem::ChangeFlag::IsConnecnted;
-        //friendItem.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
+        friendItem.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
 
         Message::Ptr m = createMessage(friendItem, Message::Type::Event);
         tcp::listener().send(m);

@@ -12,6 +12,7 @@ Project {
     readonly property bool printPackegeBuildInfo: false
 
     readonly property string sodiumVersion: "1.0.16"
+    readonly property bool   useSystemSodium: false
 
     readonly property string osName: osProbe.osName
     readonly property string osVersion: osProbe.osVersion

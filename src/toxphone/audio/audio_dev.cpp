@@ -1,16 +1,9 @@
 #include "audio_dev.h"
 #include "toxphone_appl.h"
-#include "common/functions.h"
 
 #include "shared/break_point.h"
 #include "shared/simple_ptr.h"
 #include "shared/spin_locker.h"
-#include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/communication/functions.h"
-#include "shared/qt/communication/transport/base.h"
-#include "shared/qt/communication/transport/tcp.h"
 
 //#include <chrono>
 #include <string>
@@ -74,8 +67,10 @@ AudioDev::AudioDev()
         _funcInvoker.registration(command:: COMMAND, &AudioDev::command_##COMMAND, this);
 
     FUNC_REGISTRATION(IncomingConfigConnection)
-    FUNC_REGISTRATION(AudioDev)
-    FUNC_REGISTRATION(AudioSinkTest)
+    //FUNC_REGISTRATION(AudioDev)
+    FUNC_REGISTRATION(AudioDevChange)
+    FUNC_REGISTRATION(AudioTest)
+    FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -83,14 +78,6 @@ AudioDev::AudioDev()
 
 bool AudioDev::init()
 {
-//    if (_init)
-//    {
-//        log_error_m << "AudioDev module already initialized";
-//        return false;
-//    }
-
-
-    //_paMainLoop = pa_mainloop_new();
     _paMainLoop = pa_threaded_mainloop_new();
     if (!_paMainLoop)
     {
@@ -98,7 +85,6 @@ bool AudioDev::init()
         return false;
     }
 
-    //_paApi = pa_mainloop_get_api(_paMainLoop);
     _paApi = pa_threaded_mainloop_get_api(_paMainLoop);
     if (!_paApi)
     {
@@ -124,8 +110,6 @@ bool AudioDev::init()
             deinit();
             return false;
         }
-
-    //QTimer::singleShot(2*1000, this, SLOT(audioSinkTest()));
 
     return true;
 }
@@ -165,56 +149,6 @@ void AudioDev::deinit()
     _paApi = 0;
 }
 
-void AudioDev::audioSinkTest()
-{
-    if (ringtoneActive())
-        stopRingtone();
-    else
-        startRingtone();
-
-//    if (_sinkStreamPlaying)
-//    {
-//        stopSinkStream();
-//        return;
-//    }
-
-//    //createDefaultSinkStream();
-//    //return;
-
-//    //QString fileName = getFilePath("sound/sound_test.wav");
-//    QString fileName = getFilePath("sound/ring.wav");
-//    //QString fileName = "/tmp/2.wav";
-//    if (fileName.isEmpty())
-//    {
-//        log_error_m << "File sound_test.wav not found";
-//        return;
-//    }
-
-//    if (_sinkTestFile.isOpen())
-//        _sinkTestFile.close();
-
-//    _sinkTestFile.setFileName(fileName);
-//    if (!_sinkTestFile.open())
-//    {
-//        log_error_m << "Failed open the sound file " << fileName;
-//        return;
-//    }
-//    if (_sinkTestFile.header().bitsPerSample != 16)
-//    {
-//        log_error_m << "Only 16 bits per sample is supported"
-//                    << ". FIle: " << _sinkTestFile.fileName();
-//        _sinkTestFile.close();
-//        return;
-//    }
-
-//    pa_sample_spec paSampleSpec;
-//    paSampleSpec.format = PA_SAMPLE_S16LE;
-//    paSampleSpec.channels = _sinkTestFile.header().numChannels;
-//    paSampleSpec.rate = _sinkTestFile.header().sampleRate;
-
-//    playSinkStream(&paSampleSpec);
-}
-
 void AudioDev::startRingtone()
 {
     QMutexLocker locker(&_streamLock); (void) locker;
@@ -222,26 +156,26 @@ void AudioDev::startRingtone()
     if (_ringtoneActive)
         return;
 
-    QString fileName = getFilePath("sound/ringtone.wav");
-    if (fileName.isEmpty())
+    QString filePath = getFilePath("sound/ringtone.wav");
+    if (filePath.isEmpty())
     {
-        log_error_m << "File ringtone.wav not found";
+        log_error_m << "File " << filePath << " not found";
         return;
     }
     if (_ringtoneFile.isOpen())
         _ringtoneFile.close();
 
-    _ringtoneFile.setFileName(fileName);
+    _ringtoneFile.setFileName(filePath);
     if (!_ringtoneFile.open())
     {
-        log_error_m << "Failed open the ringtone file " << fileName;
+        log_error_m << "Failed open the ringtone file " << filePath;
         return;
     }
     if (_ringtoneFile.header().bitsPerSample != 16)
     {
         log_error_m << "Only 16 bits per sample is supported"
                     << ". FIle: " << _ringtoneFile.fileName();
-        _sinkTestFile.close();
+        _ringtoneFile.close();
         return;
     }
 
@@ -249,11 +183,11 @@ void AudioDev::startRingtone()
     {
         log_debug_m << "Ringtone stream drop";
         pa_stream_set_write_callback(_ringtoneStream, 0, 0);
-
         if (pa_stream_disconnect(_ringtoneStream) < 0)
-            log_error_m << "Failed call pa_stream_connect_playback()"
+        {
+            log_error_m << "Failed call pa_stream_disconnect()"
                         << paStrError(_ringtoneStream);
-
+        }
         pa_stream_unref(_ringtoneStream);
         log_debug_m << "Ringtone stream dropped";
     }
@@ -280,12 +214,13 @@ void AudioDev::startRingtone()
     pa_stream_set_suspended_callback(_ringtoneStream, ringtone_stream_suspended, this);
     pa_stream_set_moved_callback    (_ringtoneStream, ringtone_stream_moved, this);
 
+    QByteArray devNameByff;
+    const char* devName = currentDeviceName(_sinkDevices, devNameByff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_NOFLAGS);
-    if (pa_stream_connect_playback(_ringtoneStream, 0, 0, flags, 0, 0) < 0)
+    if (pa_stream_connect_playback(_ringtoneStream, devName, 0, flags, 0, 0) < 0)
     {
         log_error_m << "Failed call pa_stream_connect_playback()"
                     << paStrError(_ringtoneStream);
-        ToxPhoneApplication::stop(1);
         return;
     }
 
@@ -301,62 +236,64 @@ void AudioDev::stopRingtone()
         return;
 
     log_debug_m << "Ringtone stream stop";
-    pa_stream_set_write_callback(_ringtoneStream, 0, 0);
 
+    pa_stream_set_write_callback(_ringtoneStream, 0, 0);
     O_PTR_MSG(pa_stream_drain(_ringtoneStream, ringtone_stream_drain, this),
               "Failed call pa_stream_drain()", _ringtoneStream, {})
 
     while (_ringtoneActive)
-        this_thread::sleep_for(chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(5));
 
-    if (pa_stream_disconnect(_ringtoneStream) < 0)
-        log_error_m << "Failed call pa_stream_connect_playback()"
-                    << paStrError(_ringtoneStream);
-
-    pa_stream_unref(_ringtoneStream);
-    _ringtoneActive = false;
+    if (_ringtoneStream)
+    {
+        if (pa_stream_disconnect(_ringtoneStream) < 0)
+            log_error_m << "Failed call pa_stream_connect_playback()"
+                        << paStrError(_ringtoneStream);
+        pa_stream_unref(_ringtoneStream);
+    }
     _ringtoneStream = 0;
+    _ringtoneActive = false;
 }
 
-void AudioDev::startPlayback()
+void AudioDev::startPlayback(const QString& fileName)
 {
     QMutexLocker locker(&_streamLock); (void) locker;
 
     if (_playbackActive)
         return;
 
-//    QString fileName = getFilePath("sound/ringtone.wav");
-//    if (fileName.isEmpty())
-//    {
-//        log_error_m << "File ringtone.wav not found";
-//        return;
-//    }
-//    if (_ringtoneFile.isOpen())
-//        _ringtoneFile.close();
+    QString filePath = getFilePath(fileName);
+    if (filePath.isEmpty())
+    {
+        log_error_m << "File " << filePath << " not found";
+        return;
+    }
+    if (_playbackFile.isOpen())
+        _playbackFile.close();
 
-//    _ringtoneFile.setFileName(fileName);
-//    if (!_ringtoneFile.open())
-//    {
-//        log_error_m << "Failed open the ringtone file " << fileName;
-//        return;
-//    }
-//    if (_ringtoneFile.header().bitsPerSample != 16)
-//    {
-//        log_error_m << "Only 16 bits per sample is supported"
-//                    << ". FIle: " << _ringtoneFile.fileName();
-//        _sinkTestFile.close();
-//        return;
-//    }
+    _playbackFile.setFileName(filePath);
+    if (!_playbackFile.open())
+    {
+        log_error_m << "Failed open the playback file " << filePath;
+        return;
+    }
+    if (_playbackFile.header().bitsPerSample != 16)
+    {
+        log_error_m << "Only 16 bits per sample is supported"
+                    << ". FIle: " << _playbackFile.fileName();
+        _playbackFile.close();
+        return;
+    }
 
     if (_playbackStream)
     {
         log_debug_m << "Playback stream drop";
         pa_stream_set_write_callback(_playbackStream, 0, 0);
-
         if (pa_stream_disconnect(_playbackStream) < 0)
-            log_error_m << "Failed call pa_stream_connect_playback()"
+        {
+            log_error_m << "Failed call pa_stream_disconnect()"
                         << paStrError(_playbackStream);
-
+        }
         pa_stream_unref(_playbackStream);
         log_debug_m << "Playback stream dropped";
     }
@@ -364,9 +301,9 @@ void AudioDev::startPlayback()
     log_debug_m << "Create playback stream";
 
     pa_sample_spec paSampleSpec;
-//    paSampleSpec.format = PA_SAMPLE_S16LE;
-//    paSampleSpec.channels = _ringtoneFile.header().numChannels;
-//    paSampleSpec.rate = _ringtoneFile.header().sampleRate;
+    paSampleSpec.format = PA_SAMPLE_S16LE;
+    paSampleSpec.channels = _playbackFile.header().numChannels;
+    paSampleSpec.rate = _playbackFile.header().sampleRate;
 
     _playbackStream = pa_stream_new(_paContext, "Playback", &paSampleSpec, 0);
     if (!_playbackStream)
@@ -383,21 +320,52 @@ void AudioDev::startPlayback()
     pa_stream_set_suspended_callback(_playbackStream, playback_stream_suspended, this);
     pa_stream_set_moved_callback    (_playbackStream, playback_stream_moved, this);
 
+    QByteArray devNameByff;
+    const char* devName = currentDeviceName(_sinkDevices, devNameByff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_NOFLAGS);
-    if (pa_stream_connect_playback(_playbackStream, 0, 0, flags, 0, 0) < 0)
+    if (pa_stream_connect_playback(_playbackStream, devName, 0, flags, 0, 0) < 0)
     {
         log_error_m << "Failed call pa_stream_connect_playback()"
                     << paStrError(_playbackStream);
-        ToxPhoneApplication::stop(1);
         return;
     }
 
     _playbackActive = true;
-    log_debug_m << "Playback stream start";
+    log_debug_m << "Playback stream start (file: " << _playbackFile.fileName() << ")";
+}
+
+void AudioDev::stopPlayback()
+{
+    QMutexLocker locker(&_streamLock); (void) locker;
+
+    if (!_playbackActive)
+        return;
+
+    log_debug_m << "Playback stream stop";
+
+    pa_stream_set_write_callback(_playbackStream, 0, 0);
+    O_PTR_MSG(pa_stream_drain(_playbackStream, playback_stream_drain, this),
+              "Failed call pa_stream_drain()", _ringtoneStream, {})
+
+    while (_playbackActive)
+        this_thread::sleep_for(chrono::milliseconds(5));
+
+    if (_playbackStream)
+    {
+        if (pa_stream_disconnect(_playbackStream) < 0)
+            log_error_m << "Failed call pa_stream_disconnect()"
+                        << paStrError(_playbackStream);
+        pa_stream_unref(_playbackStream);
+    }
+    _playbackStream = 0;
+    _playbackActive = false;
 }
 
 void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
 {
+    stopRingtone();
+    stopPlayback();
+
     QMutexLocker locker(&_streamLock); (void) locker;
 
     if (_playbackActive)
@@ -407,11 +375,11 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     {
         log_debug_m << "Playback stream drop";
         pa_stream_set_write_callback(_playbackStream, 0, 0);
-
         if (pa_stream_disconnect(_playbackStream) < 0)
+        {
             log_error_m << "Failed call pa_stream_connect_playback()"
                         << paStrError(_playbackStream);
-
+        }
         pa_stream_unref(_playbackStream);
         log_debug_m << "Playback stream dropped";
     }
@@ -433,8 +401,8 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
 
     playbackVoiceFrameInfo(voiceFrameInfo.get());
     log_debug_m << "Initialization playback VoiceFrameInfo"
-                << "; latency: "      << voiceFrameInfo->latency
-                << "; channels: " << int(voiceFrameInfo->channels)
+                << "; latency: "       << voiceFrameInfo->latency
+                << "; channels: "  << int(voiceFrameInfo->channels)
                 << "; sample size: "   << voiceFrameInfo->sampleSize
                 << "; sample count: "  << voiceFrameInfo->sampleCount
                 << "; sampling rate: " << voiceFrameInfo->samplingRate
@@ -457,6 +425,8 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     paBuffAttr.minreq    = uint32_t(-1);
     paBuffAttr.fragsize  = uint32_t(-1);
 
+    QByteArray devNameByff;
+    const char* devName = currentDeviceName(_sinkDevices, devNameByff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
                                                 |PA_STREAM_ADJUST_LATENCY
                                                 |PA_STREAM_AUTO_TIMING_UPDATE);
@@ -466,7 +436,7 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     // обработаем событие PA_STREAM_READY в функции playback_stream_state().
     _playbackVoice = true;
 
-    if (pa_stream_connect_playback(_playbackStream, 0, &paBuffAttr, flags, 0, 0) < 0)
+    if (pa_stream_connect_playback(_playbackStream, devName, &paBuffAttr, flags, 0, 0) < 0)
     {
         log_error_m << "Failed call pa_stream_connect_playback()"
                     << paStrError(_playbackStream);
@@ -475,44 +445,36 @@ void AudioDev::startPlaybackVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     }
 
     _playbackActive = true;
-    log_debug_m << "Playback stream start";
+    log_debug_m << "Voice playback stream start";
 }
 
-void AudioDev::stopPlayback()
+void AudioDev::stopPlaybackVoice()
 {
     QMutexLocker locker(&_streamLock); (void) locker;
 
     if (!_playbackActive)
         return;
 
-    log_debug_m << "Playback stream stop";
-    log_debug_m << "Playback ring buffer; available: "
+    log_debug_m << "Voice playback stream stop";
+    log_debug_m << "Voice playback ring buffer available: "
                 << playbackVoiceRBuff().available();
 
     playbackVoiceRBuff().reset();
     playbackVoiceFrameInfo(0, true);
 
     pa_stream_set_write_callback(_playbackStream, 0, 0);
-    if (!_playbackVoice)
-    {
-        O_PTR_MSG(pa_stream_drain(_playbackStream, playback_stream_drain, this),
-                  "Failed call pa_stream_drain()", _ringtoneStream, {})
-
-        while (_playbackActive)
-            this_thread::sleep_for(chrono::milliseconds(10));
-    }
     if (pa_stream_disconnect(_playbackStream) < 0)
     {
         log_error_m << "Failed call pa_stream_disconnect()"
                     << paStrError(_playbackStream);
     }
     pa_stream_unref(_playbackStream);
+    _playbackStream = 0;
     _playbackActive = false;
     _playbackVoice = false;
-    _playbackStream = 0;
 
-    log_debug_m << "Playback bytes: " << _playbackBytes;
-    log_debug_m << "Playback stream stopped";
+    log_debug_m << "Voice playback bytes: " << _playbackBytes;
+    log_debug_m << "Voice playback stream stopped";
 }
 
 void AudioDev::startRecord()
@@ -541,6 +503,7 @@ void AudioDev::startRecord()
     pa_sample_spec paSampleSpec;
     paSampleSpec.format = PA_SAMPLE_S16LE;
     paSampleSpec.channels = 2;
+    //paSampleSpec.channels = 1;
     paSampleSpec.rate = 48000;
 
     _recordStream = pa_stream_new(_paContext, "Recording", &paSampleSpec, 0);
@@ -551,6 +514,8 @@ void AudioDev::startRecord()
     }
 
     quint32 latency = 20000;
+    //latency = 10000;
+
     quint32 bufferSize = pa_usec_to_bytes(latency, &paSampleSpec);
     quint32 sampleSize = pa_sample_size(&paSampleSpec);
     quint32 sampleCount = bufferSize / (sampleSize * paSampleSpec.channels);
@@ -559,8 +524,8 @@ void AudioDev::startRecord()
 
     recordVoiceFrameInfo(&voiceFrameInfo);
     log_debug_m << "Initialization record VoiceFrameInfo"
-                << "; latency: "      << voiceFrameInfo.latency
-                << "; channels: " << int(voiceFrameInfo.channels)
+                << "; latency: "       << voiceFrameInfo.latency
+                << "; channels: "  << int(voiceFrameInfo.channels)
                 << "; sample size: "   << voiceFrameInfo.sampleSize
                 << "; sample count: "  << voiceFrameInfo.sampleCount
                 << "; sampling rate: " << voiceFrameInfo.samplingRate
@@ -581,13 +546,13 @@ void AudioDev::startRecord()
     paBuffAttr.minreq    = uint32_t(-1);
     paBuffAttr.fragsize  = pa_usec_to_bytes(latency, &paSampleSpec);
 
-    //const char* dev = "alsa_input.pci-0000_03_01.0.analog-stereo";
-
+    QByteArray devNameByff;
+    const char* devName = currentDeviceName(_sourceDevices, devNameByff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
                                                 |PA_STREAM_ADJUST_LATENCY
                                                 |PA_STREAM_AUTO_TIMING_UPDATE);
 
-    if (pa_stream_connect_record(_recordStream, 0, &paBuffAttr, flags) < 0)
+    if (pa_stream_connect_record(_recordStream, devName, &paBuffAttr, flags) < 0)
     {
         log_error_m << "Failed call pa_stream_connect_record()"
                     << paStrError(_recordStream);
@@ -607,28 +572,48 @@ void AudioDev::stopRecord()
         return;
 
     log_debug_m << "Record stream stop";
-    log_debug_m << "Filter ring buffer; available: "
-                << filterVoiceRBuff().available();
-    log_debug_m << "Record ring buffer; available: "
+    log_debug_m << "Record ring buffer available: "
                 << recordVoiceRBuff().available();
 
     _voiceFilters.stop();
-    filterVoiceRBuff().reset();
     recordVoiceRBuff().reset();
     recordVoiceFrameInfo(0, true);
+
+    if (_recordTest)
+    {
+        if (configConnected())
+        {
+            data::AudioTest audioTest;
+            audioTest.begin = false;
+            audioTest.record = true;
+
+            Message::Ptr m = createMessage(audioTest, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+        _recordTest = false;
+    }
 
     pa_stream_set_read_callback(_recordStream, 0, 0);
     if (pa_stream_disconnect(_recordStream) < 0)
     {
-        log_error_m << "Failed call pa_stream_connect_playback()"
+        log_error_m << "Failed call pa_stream_disconnect()"
                     << paStrError(_recordStream);
     }
     pa_stream_unref(_recordStream);
-    _recordActive = false;
     _recordStream = 0;
+    _recordActive = false;
 
     log_debug_m << "Record bytes: " << _recordBytes;
     log_debug_m << "Record stream stopped";
+}
+
+void AudioDev::stopAudioTests()
+{
+    if (_playbackTest)
+        stopPlayback();
+
+    if (_recordTest)
+        stopRecord();
 }
 
 void AudioDev::start()
@@ -636,11 +621,12 @@ void AudioDev::start()
     pa_threaded_mainloop_start(_paMainLoop);
 }
 
-bool AudioDev::stop(unsigned long time)
+bool AudioDev::stop(unsigned long /*time*/)
 {
-//    if (_paMainLoop)
-//        pa_mainloop_quit(_paMainLoop, 0);
-//    return QThreadEx::stop(time);
+    stopRingtone();
+    stopPlayback();
+    stopPlaybackVoice();
+    stopRecord();
 
     if (_paMainLoop)
         pa_threaded_mainloop_stop(_paMainLoop);
@@ -648,21 +634,6 @@ bool AudioDev::stop(unsigned long time)
     deinit();
     return true;
 }
-
-//void AudioDev::run()
-//{
-//    log_info_m << "Started";
-
-//    int retval;
-//    int res = pa_mainloop_run(_paMainLoop, &retval);
-//    (void) res;
-
-//    deinit();
-
-//    _sourceTestFile.close();
-
-//    log_info_m << "Stopped";
-//}
 
 void AudioDev::message(const communication::Message::Ptr& message)
 {
@@ -680,330 +651,325 @@ void AudioDev::message(const communication::Message::Ptr& message)
 
 void AudioDev::command_IncomingConfigConnection(const Message::Ptr& message)
 {
-    updateDevicesInConfig(data::AudioDevType::Sink);
-    updateDevicesInConfig(data::AudioDevType::Source);
-}
+    QMutexLocker locker(&_devicesLock); (void) locker;
 
-void AudioDev::command_AudioDev(const Message::Ptr& message)
-{
-    data::AudioDev audioDev;
-    readFromMessage(message, audioDev);
-
-    pa_cvolume volume;
-    volume.channels = audioDev.channels;
-    for (quint8 i = 0; i < volume.channels; ++i)
-        volume.values[i] = audioDev.currentVolume; // * 1.2;
-
-    if (audioDev.type == data::AudioDevType::Sink)
+    for (int i = 0; i < _sinkDevices.count(); ++i)
     {
-        O_PTR_MSG(pa_context_set_sink_volume_by_index(_paContext, audioDev.index, &volume, 0, 0),
-                  "Failed call pa_context_set_sink_volume_by_index()", _paContext, {})
+        Message::Ptr m = createMessage(_sinkDevices[i], Message::Type::Event);
+        tcp::listener().send(m);
     }
-    else
+    for (int i = 0; i < _sourceDevices.count(); ++i)
     {
-        O_PTR_MSG(pa_context_set_source_volume_by_index(_paContext, audioDev.index, &volume, 0, 0),
-                  "Failed call pa_context_set_source_volume_by_index()", _paContext, {})
+        Message::Ptr m = createMessage(_sourceDevices[i], Message::Type::Event);
+        tcp::listener().send(m);
     }
 }
 
-void AudioDev::command_AudioSinkTest(const Message::Ptr& message)
-{
-    audioSinkTest();
-
-}
-
-int AudioDev::findDevByName(const QVector<data::AudioDev>& devices, const QByteArray& name)
-{
-    int index = -1;
-    for (int i = 0; i < devices.count(); ++i)
-        if (devices[i].name == name)
-        {
-            index = i;
-            break;
-        }
-
-    return index;
-}
-
-void AudioDev::updateDevices(const data::AudioDev& audioDev)
+void AudioDev::command_AudioDevChange(const Message::Ptr& message)
 {
     QMutexLocker locker(&_devicesLock); (void) locker;
-    QVector<data::AudioDev>* devices;
-    if (audioDev.type == data::AudioDevType::Sink)
-        devices = &_sinkDevices;
-    else
-        devices = &_sourceDevices;
 
-    int index = findDevByName(*devices, audioDev.name);
-    if (index != -1)
-        (*devices)[index] = audioDev;
-    else
-        devices->append(audioDev);
+    data::AudioDevChange audioDevChange;
+    readFromMessage(message, audioDevChange);
+
+    // ChangeFlag::Volume
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Volume)
+    {
+        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.failed())
+        {
+            log_error_m << "Failed change a device volume level. "
+                        << (audioDevChange.type == data::AudioDevType::Sink ? "Sink " : "Source ")
+                        << "device not found by index: " << audioDevChange.index;
+            return;
+        }
+        data::AudioDevInfo* audioDevInfo = devices->item(fr.index());
+        audioDevInfo->volume = audioDevChange.value;
+
+        pa_cvolume volume;
+        volume.channels = audioDevInfo->channels;
+        for (quint8 i = 0; i < volume.channels; ++i)
+            volume.values[i] = audioDevInfo->volume;
+
+        if (audioDevInfo->type == data::AudioDevType::Sink)
+        {
+            O_PTR_MSG(pa_context_set_sink_volume_by_index(_paContext, audioDevInfo->index, &volume, 0, 0),
+                      "Failed call pa_context_set_sink_volume_by_index()", _paContext, {})
+        }
+        else
+        {
+            O_PTR_MSG(pa_context_set_source_volume_by_index(_paContext, audioDevInfo->index, &volume, 0, 0),
+                      "Failed call pa_context_set_source_volume_by_index()", _paContext, {})
+        }
+    }
+
+    // ChangeFlag::Current
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Current)
+    {
+        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.failed())
+        {
+            log_error_m << "Failed set device as current. "
+                        << (audioDevChange.type == data::AudioDevType::Sink ? "Sink " : "Source ")
+                        << "device not found by index: " << audioDevChange.index;
+            return;
+        }
+
+        for (int i = 0; i < devices->count(); ++i)
+            devices->item(i)->isCurrent = false;
+
+        data::AudioDevInfo* audioDevInfo = devices->item(fr.index());
+        audioDevInfo->isCurrent = true;
+
+        alog::Line logLine = log_verbose_m
+            << ((audioDevInfo->type == data::AudioDevType::Sink)
+                ? "Sound sink "
+                : "Sound source ");
+        logLine << "set as current"
+                << "; index: "  << audioDevInfo->index
+                << "; (card: "  << audioDevInfo->cardIndex << ")"
+                << "; volume: " << audioDevInfo->volume
+                << "; name: "   << audioDevInfo->name;
+
+
+        if (configConnected())
+        {
+            data::AudioDevChange audioDevChange {*audioDevInfo};
+            audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+    }
+
+    // ChangeFlag::Default
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Default)
+    {
+        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.failed())
+        {
+            log_error_m << "Failed set device as default. "
+                        << (audioDevChange.type == data::AudioDevType::Sink ? "Sink " : "Source ")
+                        << "device not found by index: " << audioDevChange.index;
+            return;
+        }
+
+        for (int i = 0; i < devices->count(); ++i)
+        {
+            devices->item(i)->isCurrent = false;
+            devices->item(i)->isDefault = false;
+        }
+
+        data::AudioDevInfo* audioDevInfo = devices->item(fr.index());
+        audioDevInfo->isCurrent = true;
+        audioDevInfo->isDefault = true;
+
+        const char* confName =
+            (audioDevInfo->type == data::AudioDevType::Sink)
+            ? "audio.device.playback_default"
+            : "audio.device.record_default";
+        config::state().setValue(confName, audioDevInfo->name.constData());
+        config::state().save();
+
+        alog::Line logLine = log_verbose_m
+            << ((audioDevInfo->type == data::AudioDevType::Sink)
+                ? "Sound sink "
+                : "Sound source ");
+        logLine << "set as default"
+                << "; index: "  << audioDevInfo->index
+                << "; (card: "  << audioDevInfo->cardIndex << ")"
+                << "; volume: " << audioDevInfo->volume
+                << "; name: "   << audioDevInfo->name;
+
+        if (configConnected())
+        {
+            data::AudioDevChange audioDevChange {*audioDevInfo};
+            audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
+
+            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+    }
 }
 
-void AudioDev::updateDevicesInConfig(data::AudioDevType type)
+void AudioDev::command_AudioTest(const Message::Ptr& message)
 {
-    if (!configConnected())
+    data::AudioTest audioTest;
+    readFromMessage(message, audioTest);
+
+    if (_callState.direction != data::ToxCallState::Direction::Undefined)
+    {
+        Message::Ptr answer = message->cloneForAnswer();
+
+        data::MessageFailed failed;
+        failed.description = tr("A call is in progress, the test cannot be started");
+        writeToMessage(failed, answer);
+
+        tcp::listener().send(answer);
         return;
-
-    QMutexLocker locker(&_devicesLock); (void) locker;
-    data::AudioDevList audioDevList;
-    if (type == data::AudioDevType::Sink)
-    {
-        audioDevList.type = data::AudioDevType::Sink;
-        audioDevList.list = _sinkDevices;
-    }
-    else
-    {
-        audioDevList.type = data::AudioDevType::Source;
-        audioDevList.list = _sourceDevices;
     }
 
-    Message::Ptr m = createMessage(audioDevList, Message::Type::Event);
-    tcp::listener().send(m);
+    if (audioTest.playback)
+    {
+        if (audioTest.begin)
+        {
+            stopPlayback();
+            startPlayback("sound/test.wav");
+            _playbackTest = true;
+        }
+        else
+            stopPlayback();
+    }
+    if (audioTest.record)
+    {
+        if (audioTest.begin)
+        {
+            startRecord();
+            _recordTest = true;
+        }
+        else
+            stopRecord();
+    }
 }
 
-bool AudioDev::removeDeviceByCardIndex(int index, data::AudioDevType type)
+void AudioDev::command_ToxCallState(const Message::Ptr& message)
+{
+    readFromMessage(message, _callState);
+
+    if (_callState.direction != data::ToxCallState::Direction::Undefined)
+    {
+        stopAudioTests();
+    }
+    if (_callState.direction == data::ToxCallState::Direction::Incoming
+        && _callState.state == data::ToxCallState::State::WaitingAnswer)
+    {
+        startRingtone();
+    }
+    if (_callState.direction == data::ToxCallState::Direction::Incoming
+        && _callState.state == data::ToxCallState::State::InProgress)
+    {
+        stopRingtone();
+        startRecord();
+    }
+    if (_callState.direction == data::ToxCallState::Direction::Outgoing
+        && _callState.state == data::ToxCallState::State::InProgress)
+    {
+        //stopRingtone();
+        startRecord();
+    }
+    if (_callState.direction == data::ToxCallState::Direction:: Undefined
+        && _callState.state == data::ToxCallState::State::Undefined)
+    {
+        stopRingtone();
+        stopPlaybackVoice();
+        stopRecord();
+    }
+
+}
+
+data::AudioDevInfo::List* AudioDev::getDevices(data::AudioDevType type)
+{
+    return (type == data::AudioDevType::Sink) ? &_sinkDevices : &_sourceDevices;
+}
+
+data::AudioDevInfo* AudioDev::currentDevice(const data::AudioDevInfo::List& devices)
+{
+    for (int i = 0; i < devices.count(); ++i)
+        if (devices.item(i)->isCurrent)
+            return devices.item(i);
+
+    return 0;
+}
+
+const char* AudioDev::currentDeviceName(const data::AudioDevInfo::List& devices,
+                                        QByteArray& buff)
 {
     QMutexLocker locker(&_devicesLock); (void) locker;
-    QVector<data::AudioDev>* devices;
-    if (type == data::AudioDevType::Sink)
-        devices = &_sinkDevices;
-    else
-        devices = &_sourceDevices;
+    if (data::AudioDevInfo* audioDevInfo = currentDevice(devices))
+        buff = audioDevInfo->name;
 
-    bool ret = false;
-    for (int i = 0; i < devices->count(); ++i)
-        if (devices->at(i).cardIndex == index)
-        {
-            devices->remove(i--);
-            ret = true;
-        }
-    return ret;
+    return (!buff.isEmpty()) ? buff.constData() : 0;
 }
 
-bool AudioDev::removeDeviceByIndex(int index, data::AudioDevType type)
+bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardIndex)
 {
     QMutexLocker locker(&_devicesLock); (void) locker;
-    QVector<data::AudioDev>* devices;
-    if (type == data::AudioDevType::Sink)
-        devices = &_sinkDevices;
-    else
-        devices = &_sourceDevices;
 
-    bool ret = false;
+    bool isRemoved = false;
+    bool isCurrent = false;
+    data::AudioDevInfo::List* devices = getDevices(type);
     for (int i = 0; i < devices->count(); ++i)
-        if (devices->at(i).index == index)
+    {
+        quint32 devIndex = (byCardIndex) ? devices->at(i).cardIndex
+                                         : devices->at(i).index;
+        if (devIndex == index)
         {
+            if (configConnected())
+            {
+                data::AudioDevChange audioDevChange {devices->at(i)};
+                audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Remove;
+
+                Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+                tcp::listener().send(m);
+            }
+            isCurrent |= devices->at(i).isCurrent;
             devices->remove(i--);
-            ret = true;
+            isRemoved = true;
         }
-    return ret;
+    }
+
+    if (isRemoved && isCurrent && !devices->empty())
+    {
+        // Сбрасываем флаг текущего устройства
+        for (int i = 0; i < devices->count(); ++i)
+            (*devices)[i].isCurrent = false;
+
+        // Выбираем новое текущее устройство
+        isCurrent = false;
+        for (int i = 0; i < devices->count(); ++i)
+            if (devices->at(i).isDefault)
+            {
+                (*devices)[i].isCurrent = true;
+
+                if (configConnected())
+                {
+                    Message::Ptr m = createMessage(devices->at(i), Message::Type::Event);
+                    tcp::listener().send(m);
+
+                    data::AudioDevChange audioDevChange {devices->at(i)};
+                    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+                    m = createMessage(audioDevChange, Message::Type::Event);
+                    tcp::listener().send(m);
+                }
+                isCurrent = true;
+                break;
+            }
+
+        if (!isCurrent)
+        {
+            // Если новое текущее устройство не выбрали, то делаем текущим
+            // первое устройство.
+            (*devices)[0].isCurrent = true;
+
+            if (configConnected())
+            {
+                Message::Ptr m = createMessage(devices->at(0), Message::Type::Event);
+                tcp::listener().send(m);
+
+                data::AudioDevChange audioDevChange {devices->at(0)};
+                audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+                m = createMessage(audioDevChange, Message::Type::Event);
+                tcp::listener().send(m);
+            }
+        }
+    }
+    return isRemoved;
 }
-
-//void AudioDev::createDefaultSinkStream()
-//{
-////    if (_sinkStream)
-////        return;
-
-////    log_debug_m << "Create sink stream (default)";
-
-////    pa_sample_spec paSampleSpec;
-////    paSampleSpec.format = PA_SAMPLE_S16LE;
-////    //paSampleSpec.channels = 2;
-////    //paSampleSpec.rate = 48000;
-////    paSampleSpec.channels = 1;
-////    paSampleSpec.rate = 44100;
-
-////    // Создаем Sink Stream
-////    _sinkStream = pa_stream_new(_paContext, "Playback", &paSampleSpec, 0);
-////    if (!_sinkStream)
-////    {
-////        log_error_m << "Failed call pa_stream_new()" << paStrError(_paContext);
-////        ToxPhoneApplication::stop(1);
-////        return;
-////    }
-
-////    pa_stream_set_state_callback    (_sinkStream, sink_stream_state_cb, this);
-////    pa_stream_set_started_callback  (_sinkStream, sink_stream_started_cb, this);
-////    pa_stream_set_write_callback    (_sinkStream, sink_stream_write_cb, this);
-////    pa_stream_set_overflow_callback (_sinkStream, sink_stream_overflow_cb, this);
-////    pa_stream_set_underflow_callback(_sinkStream, sink_stream_underflow_cb, this);
-////    pa_stream_set_suspended_callback(_sinkStream, sink_stream_suspended_cb, this);
-////    pa_stream_set_moved_callback    (_sinkStream, sink_stream_moved_cb, this);
-
-//////    size_t latency = 20000;
-//////    pa_buffer_attr paBuffAttr; (void) paBuffAttr;
-//////    paBuffAttr.fragsize  = (uint32_t)-1;
-//////    paBuffAttr.maxlength = pa_usec_to_bytes(latency, &paSampleSpec);
-//////    paBuffAttr.minreq    = (uint32_t)-1;
-//////    paBuffAttr.prebuf    = (uint32_t)-1;
-//////    paBuffAttr.tlength   = (uint32_t)-1;
-
-//////    pa_buffer_attr paBuffAttr; (void) paBuffAttr;
-//////    paBuffAttr.maxlength = pa_usec_to_bytes(latency, &paSampleSpec);
-//////    paBuffAttr.tlength   = uint32_t(-1);
-//////    paBuffAttr.prebuf    = uint32_t(-1);
-//////    paBuffAttr.minreq    = uint32_t(-1);
-//////    paBuffAttr.fragsize  = uint32_t(-1);
-
-////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_NOFLAGS);
-
-////    if (pa_stream_connect_playback(_sinkStream, 0, 0, flags, 0, 0) < 0)
-////    {
-////        log_error_m << "Failed call pa_stream_connect_playback()"
-////                    << paStrError(_sinkStream);
-////        ToxPhoneApplication::stop(1);
-////    }
-//}
-
-//void AudioDev::playSinkStream(const pa_sample_spec* sampleSpec)
-//{
-////    if (pa_sample_spec_valid(sampleSpec) == 0)
-////    {
-////        log_error_m << "Invalid sample specification" << paStrError(_paContext);
-////        return;
-////    }
-
-////    if (_sinkStream)
-////    {
-////        pa_stream_set_write_callback(_sinkStream, 0, 0);
-////        if (pa_stream_disconnect(_sinkStream) < 0)
-////        {
-////            log_error_m << "Failed call pa_stream_connect_playback()"
-////                        << paStrError(_sinkStream);
-////            return;
-////        }
-////        pa_stream_unref(_sinkStream);
-////    }
-
-////    log_debug_m << "Create sink stream";
-
-////    _sinkStream = pa_stream_new(_paContext, "Playback", sampleSpec, 0);
-////    if (!_sinkStream)
-////    {
-////        log_error_m << "Failed call pa_stream_new()" << paStrError(_paContext);
-////        ToxPhoneApplication::stop(1);
-////        return;
-////    }
-
-////    pa_stream_set_state_callback    (_sinkStream, sink_stream_state_cb, this);
-////    pa_stream_set_started_callback  (_sinkStream, sink_stream_started_cb, this);
-////    pa_stream_set_write_callback    (_sinkStream, sink_stream_write_cb, this);
-////    pa_stream_set_overflow_callback (_sinkStream, sink_stream_overflow_cb, this);
-////    pa_stream_set_underflow_callback(_sinkStream, sink_stream_underflow_cb, this);
-////    pa_stream_set_suspended_callback(_sinkStream, sink_stream_suspended_cb, this);
-////    pa_stream_set_moved_callback    (_sinkStream, sink_stream_moved_cb, this);
-
-////    size_t latency = 20000;
-//////    pa_buffer_attr paBuffAttr;
-//////    paBuffAttr.fragsize  = (uint32_t)-1;
-//////    paBuffAttr.maxlength = pa_usec_to_bytes(latency, sampleSpec);
-//////    paBuffAttr.minreq    = (uint32_t)-1;
-//////    paBuffAttr.prebuf    = (uint32_t)-1;
-//////    paBuffAttr.tlength   = (uint32_t)-1;
-
-////    pa_buffer_attr paBuffAttr; (void) paBuffAttr;
-////    paBuffAttr.maxlength = pa_usec_to_bytes(latency, sampleSpec);
-////    paBuffAttr.tlength   = uint32_t(-1);
-////    paBuffAttr.prebuf    = uint32_t(-1);
-////    paBuffAttr.minreq    = uint32_t(-1);
-////    paBuffAttr.fragsize  = uint32_t(-1);
-
-////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
-////                                                |PA_STREAM_ADJUST_LATENCY
-////                                                |PA_STREAM_AUTO_TIMING_UPDATE);
-//////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_ADJUST_LATENCY);
-
-////    //if (pa_stream_connect_playback(_sinkStream, 0, &paBuffAttr, flags, 0, 0) < 0)
-////    if (pa_stream_connect_playback(_sinkStream, 0, 0, flags, 0, 0) < 0)
-////    {
-////        log_error_m << "Failed call pa_stream_connect_playback()"
-////                    << paStrError(_sinkStream);
-////        ToxPhoneApplication::stop(1);
-////        return;
-////    }
-
-////    _sinkStreamPlaying = true;
-////    log_debug_m << "Playback start";
-//}
-
-//void AudioDev::stopSinkStream()
-//{
-////    if (_sinkStream == 0)
-////        return;
-
-////    log_debug_m << "Playback stop";
-////    pa_stream_set_write_callback(_sinkStream, 0, 0);
-
-////    O_PTR_MSG(pa_stream_drain(_sinkStream, sink_stream_drain_complete, this),
-////              "Failed call pa_stream_drain()", _sinkStream, {})
-//}
-
-//void AudioDev::createSourceStream()
-//{
-////    if (_sourceStream)
-////        return;
-
-////    log_debug_m << "Create source stream";
-
-////    _sourceTestFile.setFileName("/tmp/222.wav");
-////    if (!_sourceTestFile.open(QIODevice::WriteOnly))
-////    {
-////        log_error_m << "Failed open /tmp/222.wav";
-////        ToxPhoneApplication::stop(1);
-////        return;
-////    }
-
-////    pa_sample_spec paSampleSpec;
-////    paSampleSpec.format = PA_SAMPLE_S16LE;
-////    //paSampleSpec.format = PA_SAMPLE_U8;
-////    paSampleSpec.channels = 2;
-////    paSampleSpec.rate = 44100;
-////    paSampleSpec.rate = 48000;
-
-////    _sourceStream = pa_stream_new(_paContext, "Recording", &paSampleSpec, 0);
-////    if (!_sourceStream)
-////    {
-////        log_error_m << "Failed call pa_stream_new()" << paStrError(_paContext);
-////        ToxPhoneApplication::stop(1);
-////        return;
-////    }
-
-////    pa_stream_set_state_callback    (_sourceStream, source_stream_state_cb, this);
-////    pa_stream_set_started_callback  (_sourceStream, source_stream_started_cb, this);
-////    pa_stream_set_write_callback    (_sourceStream, source_stream_write_cb, this);
-////    pa_stream_set_read_callback     (_sourceStream, source_stream_read_cb, this);
-////    pa_stream_set_overflow_callback (_sourceStream, source_stream_overflow_cb, this);
-////    pa_stream_set_underflow_callback(_sourceStream, source_stream_underflow_cb, this);
-////    pa_stream_set_suspended_callback(_sourceStream, source_stream_suspended_cb, this);
-////    pa_stream_set_moved_callback    (_sourceStream, source_stream_moved_cb, this);
-
-////    size_t latency = 20000;
-////    pa_buffer_attr paBuffAttr; (void) paBuffAttr;
-////    paBuffAttr.maxlength = 3 * pa_usec_to_bytes(latency, &paSampleSpec);
-////    paBuffAttr.tlength   = uint32_t(-1);
-////    paBuffAttr.prebuf    = uint32_t(-1);
-////    paBuffAttr.minreq    = uint32_t(-1);
-////    paBuffAttr.fragsize  = pa_usec_to_bytes(latency, &paSampleSpec);
-
-////    //const char* dev = "alsa_input.pci-0000_03_01.0.analog-stereo";
-
-////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
-////                                                |PA_STREAM_ADJUST_LATENCY
-////                                                |PA_STREAM_AUTO_TIMING_UPDATE);
-//////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_NOFLAGS);
-//////    pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_ADJUST_LATENCY);
-
-////    int res = pa_stream_connect_record(_sourceStream, 0, &paBuffAttr, flags);
-
-////    if (res < 0)
-////    {
-////        log_error_m << "Failed call pa_stream_connect_record()"
-////                    << paStrError(_sinkStream);
-////        ToxPhoneApplication::stop(1);
-////    }
-//}
 
 //-------------------------- PulseAudio callback -----------------------------
 
@@ -1048,11 +1014,7 @@ void AudioDev::context_state(pa_context* context, void* userdata)
                        break)
 
             O_PTR_FAIL(pa_context_get_card_info_list(context, card_info, ad),
-                       "Failed call pa_context_get_card_info_list()", context,
-                       break)
-
-            //ad->createDefaultSinkStream();
-            //ad->createSourceStream();
+                       "Failed call pa_context_get_card_info_list()", context, {})
             break;
 
         case PA_CONTEXT_FAILED:
@@ -1085,11 +1047,8 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
             {
                 log_verbose_m << "Sound card detached; index: " << index;
 
-                if (ad->removeDeviceByCardIndex(index, data::AudioDevType::Sink))
-                    ad->updateDevicesInConfig(data::AudioDevType::Sink);
-
-                if (ad->removeDeviceByCardIndex(index, data::AudioDevType::Source))
-                    ad->updateDevicesInConfig(data::AudioDevType::Source);
+                ad->removeDevice(index, data::AudioDevType::Sink, true);
+                ad->removeDevice(index, data::AudioDevType::Source, true);
             }
             else
             {
@@ -1102,43 +1061,71 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
             if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
             {
                 log_verbose_m << "Sound sink detached; index: " << index;
-                if (ad->removeDeviceByIndex(index, data::AudioDevType::Sink))
-                    ad->updateDevicesInConfig(data::AudioDevType::Sink);
+                ad->removeDevice(index, data::AudioDevType::Sink, false);
             }
             else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
             {
-                O_PTR_MSG(pa_context_get_sink_info_by_index(context, index, sink_volume, ad),
+                O_PTR_MSG(pa_context_get_sink_info_by_index(context, index, sink_change, ad),
+                          "Failed call pa_context_get_sink_info_by_index()", context, {})
+            }
+
+            break;
+
+        /** Вывод информации по потоку воспроизведения **
+        case PA_SUBSCRIPTION_EVENT_SINK_INPUT:
+            //log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT";
+            if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_NEW)
+            {
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT new; index: " << index;
+
+                O_PTR_MSG(pa_context_get_sink_input_info(context, index, sink_input_info, ad),
+                          "Failed call pa_context_get_sink_info_by_index()", context, {})
+            }
+            else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
+            {
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT remove; index: " << index;
+            }
+            else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
+            {
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT change; index: " << index;
+
+                O_PTR_MSG(pa_context_get_sink_input_info(context, index, sink_input_info, ad),
                           "Failed call pa_context_get_sink_info_by_index()", context, {})
             }
             break;
+        */
 
         case PA_SUBSCRIPTION_EVENT_SOURCE:
             if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
             {
                 log_verbose_m << "Sound source detached; index: " << index;
-                if (ad->removeDeviceByIndex(index, data::AudioDevType::Source))
-                    ad->updateDevicesInConfig(data::AudioDevType::Source);
+                ad->removeDevice(index, data::AudioDevType::Source, false);
             }
             else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
             {
-                O_PTR_MSG(pa_context_get_source_info_by_index(context, index, source_volume, ad),
+                O_PTR_MSG(pa_context_get_source_info_by_index(context, index, source_change, ad),
                           "Failed call pa_context_get_source_info_by_index()", context, {})
             }
+            break;
+
+        case PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT:
+            // Вывод информации по потоку записи
+            //pa_context_get_source_output_info
             break;
     }
 }
 
-void AudioDev::card_info(pa_context* context, const pa_card_info* info,
+void AudioDev::card_info(pa_context* context, const pa_card_info* card_info,
                          int eol, void* userdata)
 {
     if (eol != 0)
         return;
 
     log_verbose_m << "Sound card detected"
-                  << "; index: " << info->index
-                  << "; name: " << info->name;
+                  << "; index: " << card_info->index
+                  << "; name: " << card_info->name;
 
-    /*
+    /** Расширенная информация по звуковой карте **
     pa_card_profile_info* profile = info->profiles;
     for (size_t i = 0; i < info->n_profiles; ++i)
     {
@@ -1160,7 +1147,9 @@ void AudioDev::card_info(pa_context* context, const pa_card_info* info,
     }
     */
 
+
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     O_PTR_MSG(pa_context_get_sink_info_list(context, sink_info, ad),
               "Failed call pa_context_get_sink_info_list()", context, {})
 
@@ -1171,33 +1160,41 @@ void AudioDev::card_info(pa_context* context, const pa_card_info* info,
 void AudioDev::sink_info(pa_context* context, const pa_sink_info* info,
                          int eol, void* userdata)
 {
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     if (eol != 0)
         return;
 
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    log_verbose_m << "Sound sink detected"
-                  << "; index: " << info->index
-                  << "; (card: " << info->card << ")"
-                  << "; volume: " << info->volume.values[0]
-                  << "; name: " << info->name;
-                  //<< "; description: " << sinkDescr
+    QMutexLocker locker(&ad->_devicesLock); (void) locker;
+    lst::FindResult fr = ad->_sinkDevices.find(info->name);
+    if (fr.failed())
+        log_verbose_m << "Sound sink detected"
+                      << "; index: " << info->index
+                      << "; (card: " << info->card << ")"
+                      << "; volume: " << info->volume.values[0]
+                      << "; name: " << info->name;
+                      //<< "; description: " << sinkDescr
 
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-    data::AudioDev audioDev;
-    ad->fillAudioDev(info, audioDev);
-    ad->updateDevices(audioDev);
-    ad->updateDevicesInConfig(data::AudioDevType::Sink);
+    ad->updateAudioDevInfo(info, ad->_sinkDevices);
 }
 
-void AudioDev::sink_volume(pa_context* context, const pa_sink_info* info,
+void AudioDev::sink_change(pa_context* context, const pa_sink_info* info,
                            int eol, void* userdata)
 {
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     if (eol != 0)
         return;
 
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+        return;
+
+    QMutexLocker locker(&ad->_devicesLock); (void) locker;
+    lst::FindResult fr = ad->_sinkDevices.findRef(quint32(info->index));
+    if (fr.failed())
         return;
 
     log_debug_m << "Sound sink changed"
@@ -1206,49 +1203,62 @@ void AudioDev::sink_volume(pa_context* context, const pa_sink_info* info,
                 << "; volume: " << info->volume.values[0]
                 << "; name: " << info->name;
 
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-    data::AudioDev audioDev;
-    ad->fillAudioDev(info, audioDev);
-    ad->updateDevices(audioDev);
+    ad->updateAudioDevInfo(info, ad->_sinkDevices);
+}
 
-    if (configConnected())
-    {
-        audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
-        Message::Ptr m = createMessage(audioDev, Message::Type::Event);
-        tcp::listener().send(m);
-    }
+void AudioDev::sink_input_info(pa_context* context, const pa_sink_input_info* info,
+                               int eol, void* userdata)
+{
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Sound sink input changed"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                //<< "; (card: " << info->card << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
 }
 
 void AudioDev::source_info(pa_context* context, const pa_source_info* info,
                            int eol, void* userdata)
 {
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     if (eol != 0)
         return;
 
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    log_verbose_m << "Sound source detected"
-                  << "; index: " << info->index
-                  << "; (card: " << info->card << ")"
-                  << "; volume: " << info->volume.values[0]
-                  << "; name: " << info->name;
-                  //<< "; description: " << sourceDescr
+    QMutexLocker locker(&ad->_devicesLock); (void) locker;
+    lst::FindResult fr = ad->_sourceDevices.find(info->name);
+    if (fr.failed())
+        log_verbose_m << "Sound source detected"
+                      << "; index: " << info->index
+                      << "; (card: " << info->card << ")"
+                      << "; volume: " << info->volume.values[0]
+                      << "; name: " << info->name;
+                      //<< "; description: " << sourceDescr
 
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-    data::AudioDev audioDev;
-    ad->fillAudioDev(info,  audioDev);
-    ad->updateDevices(audioDev);
-    ad->updateDevicesInConfig(data::AudioDevType::Source);
+    ad->updateAudioDevInfo(info, ad->_sourceDevices);
 }
 
-void AudioDev::source_volume(pa_context* context, const pa_source_info* info,
+void AudioDev::source_change(pa_context* context, const pa_source_info* info,
                              int eol, void* userdata)
 {
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     if (eol != 0)
         return;
 
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+        return;
+
+    QMutexLocker locker(&ad->_devicesLock); (void) locker;
+    lst::FindResult fr = ad->_sourceDevices.findRef(quint32(info->index));
+    if (fr.failed())
         return;
 
     log_debug_m << "Sound source changed"
@@ -1257,17 +1267,7 @@ void AudioDev::source_volume(pa_context* context, const pa_source_info* info,
                 << "; volume: " << info->volume.values[0]
                 << "; name: " << info->name;
 
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-    data::AudioDev audioDev;
-    ad->fillAudioDev(info, audioDev);
-    ad->updateDevices(audioDev);
-
-    if (configConnected())
-    {
-        audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
-        Message::Ptr m = createMessage(audioDev, Message::Type::Event);
-        tcp::listener().send(m);
-    }
+    ad->updateAudioDevInfo(info, ad->_sourceDevices);
 }
 
 void AudioDev::ringtone_stream_state(pa_stream* stream, void* userdata)
@@ -1319,7 +1319,6 @@ void AudioDev::ringtone_stream_write(pa_stream* stream, size_t nbytes, void* use
     }
 
     qint64 len = ad->_ringtoneFile.read((char*)data, nbytes);
-    //if (len > 0)
     if (len == qint64(nbytes))
     {
         if (pa_stream_write(stream, data, len, 0, 0LL, PA_SEEK_RELATIVE) < 0)
@@ -1376,6 +1375,13 @@ void AudioDev::ringtone_stream_drain(pa_stream* stream, int success, void *userd
     log_debug2_m << "ringtone_stream_drain_cb()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+    ad->_ringtoneFile.close();
+
+    if (pa_stream_disconnect(stream) < 0)
+        log_error_m << "Failed call pa_stream_disconnect()" << paStrError(stream);
+
+    pa_stream_unref(stream);
+    ad->_ringtoneStream = 0;
     ad->_ringtoneActive = false;
 
     log_debug_m << "Ringtone stream stopped";
@@ -1402,15 +1408,20 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 
         case PA_STREAM_READY:
             log_debug2_m << "Playback stream event: PA_STREAM_READY";
-            log_debug_m  << "Playback stream started";
+
+            if (ad->_playbackVoice)
+                log_debug_m  << "Voice playback stream started";
+            else
+                log_debug_m  << "Playback stream started";
 
             if (ad->_playbackVoice)
             {
+
                 if (VoiceFrameInfo::Ptr voiceFrameInfo = playbackVoiceFrameInfo())
                 {
                     size_t rbuffSize = 8 * voiceFrameInfo->bufferSize;
                     playbackVoiceRBuff().init(rbuffSize);
-                    log_debug_m  << "Initialization a playback ring buffer"
+                    log_debug_m  << "Initialization a voice playback ring buffer"
                                  << "; size: " << rbuffSize;
                 }
                 else
@@ -1454,9 +1465,6 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 void AudioDev::playback_stream_started(pa_stream* stream, void* userdata)
 {
     log_debug2_m << "playback_stream_started_cb()";
-
-    //AudioDev* ad = static_cast<AudioDev*>(userdata);
-    //ad->_sinkStreamPlaying = true;
 }
 
 void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* userdata)
@@ -1472,25 +1480,33 @@ void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* use
         return;
     }
 
-    if (playbackVoiceRBuff().read((char*)data, nbytes))
-        ad->_playbackBytes += nbytes;
+    if (ad->_playbackVoice)
+    {
+        if (playbackVoiceRBuff().read((char*)data, nbytes))
+            ad->_playbackBytes += nbytes;
+        else
+            memset(data, 0, nbytes);
+
+        if (pa_stream_write(stream, data, nbytes, 0, 0LL, PA_SEEK_RELATIVE) < 0)
+            log_error_m << "Failed call pa_stream_write()" << paStrError(stream);
+    }
     else
-        memset(data, 0, nbytes);
-
-//    float gainFactor = qPow(10.0, (10 / 20.0));
-//    int16_t* pcm = (int16_t*) data;
-//    for (quint32 i = 0; i < nbytes / sizeof(int16_t); i += 2)
-//    {
-//        // gain amplification with clipping to 16-bit boundaries
-//        //int ampPCM = qBound<int>(std::numeric_limits<int16_t>::min(),
-//        //                         qRound(*pcm * 1.0f),
-//        //                         std::numeric_limits<int16_t>::max());
-//        int ampPCM = qRound(*pcm * gainFactor);
-//        *pcm = static_cast<int16_t>(ampPCM);
-//    }
-
-    if (pa_stream_write(stream, data, nbytes, 0, 0LL, PA_SEEK_RELATIVE) < 0)
-        log_error_m << "Failed call pa_stream_write()" << paStrError(stream);
+    {
+        qint64 len = ad->_playbackFile.read((char*)data, nbytes);
+        if (len > 0)
+        {
+            if (pa_stream_write(stream, data, len, 0, 0LL, PA_SEEK_RELATIVE) < 0)
+                log_error_m << "Failed call pa_stream_write()" << paStrError(stream);
+        }
+        else
+        {
+            log_debug_m << "Playback data empty";
+            pa_stream_cancel_write(stream);
+            pa_stream_set_write_callback(stream, 0, 0);
+            O_PTR_MSG(pa_stream_drain(stream, playback_stream_drain, ad),
+                      "Failed call pa_stream_drain()", stream, {})
+        }
+    }
 }
 
 void AudioDev::playback_stream_overflow(pa_stream*, void* userdata)
@@ -1518,7 +1534,30 @@ void AudioDev::playback_stream_drain(pa_stream* stream, int success, void *userd
     log_debug2_m << "playback_stream_drain_cb()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+    ad->_playbackFile.close();
+
+    if (ad->_playbackTest)
+    {
+        if (configConnected())
+        {
+            data::AudioTest audioTest;
+            audioTest.begin = false;
+            audioTest.playback = true;
+
+            Message::Ptr m = createMessage(audioTest, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+        ad->_playbackTest = false;
+    }
+
+    if (pa_stream_disconnect(stream) < 0)
+        log_error_m << "Failed call pa_stream_disconnect()" << paStrError(stream);
+
+    pa_stream_unref(stream);
+    ad->_playbackStream = 0;
     ad->_playbackActive = false;
+
+    log_debug_m << "Playback stream stopped (file: " << ad->_playbackFile.fileName() << ")";
 }
 
 void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
@@ -1545,14 +1584,9 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 
             if (VoiceFrameInfo::Ptr voiceFrameInfo = recordVoiceFrameInfo())
             {
-                size_t rbuffSize = 5 * voiceFrameInfo->bufferSize;
-                recordVoiceRBuff().init(rbuffSize);
+                recordVoiceRBuff().init(5 * voiceFrameInfo->bufferSize);
                 log_debug_m  << "Initialization a record ring buffer"
-                             << "; size: " << rbuffSize;
-
-                filterVoiceRBuff().init(rbuffSize);
-                log_debug_m  << "Initialization a filter ring buffer"
-                             << "; size: " << rbuffSize;
+                             << "; size: " << recordVoiceRBuff().size();
             }
             else
                 log_error_m << "Failed get VoiceFrameInfo for record";
@@ -1626,37 +1660,11 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
             {
                 ad->_recordBytes += nbytes;
 
-                //if (!recordVoiceRBuff().write((char*)data, nbytes))
-                //    log_error_m << "Failed write data to voice ring buffer"
-                //                << ". Data size: " << nbytes;
-                if (!filterVoiceRBuff().write((char*)data, nbytes))
-                {
-                    log_error_m << "Failed write data to filterVoiceRBuff"
+                if (recordVoiceRBuff().write((char*)data, nbytes))
+                    ad->_voiceFilters.bufferUpdated();
+                else
+                    log_error_m << "Failed write data to recordVoiceRBuff"
                                 << ". Data size: " << nbytes;
-                }
-
-                //                if (configConnected())
-                //                {
-                //                    ad->_sourceBytes += buff;
-                //                    ad->_sourceTime += bytes_to_usec;
-                //                    if (ad->_sourceTime > 200000 /*Интервал отправки данных 200 мс*/)
-                //                    {
-                //                        quint32 average = 0;
-                //                        quint16* sample = (quint16*)ad->_sourceBytes.constData();
-                //                        for (int i = 0; i < ad->_sourceBytes.count(); i += 2)
-                //                            average += *sample++;
-                //                        average /= ad->_sourceBytes.count();
-                //                        average = average << 1;
-
-                //                        log_debug2_m << "sourceLevel.average: " << average;
-                //                        log_debug2_m << "sourceLevel.time: " << ad->_sourceTime;
-
-                //                        emit ad->sourceLevel(average, ad->_sourceTime);
-
-                //                        ad->_sourceBytes.clear();
-                //                        ad->_sourceTime = 0;
-                //                    }
-                //                }
             }
         }
         if (nbytes)

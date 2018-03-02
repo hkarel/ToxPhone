@@ -34,7 +34,6 @@ Project {
         files: [
             /* В субпроекте ToxPhone выполнена подмена реализации логгера */
             //toxPrefix + "toxcore/logger.c",
-            //toxPrefix + "../toxcore_logger.cpp",
 
             toxPrefix + "toxcore/logger.h",
             toxPrefix + "toxcore/network.c",
@@ -230,17 +229,22 @@ Project {
         Depends { name: "ToxNetCrypto" }
         Depends { name: "ToxDHT" }
 
-//        cpp.defines : base.concat([
-//            "HAVE_CONFIG_H",
-//        ])
+        //cpp.defines : base.concat([
+        //    "HAVE_CONFIG_H",
+        //])
 
-        cpp.dynamicLibraries: [
-            "pthread",
-        ]
+        cpp.dynamicLibraries: QbsUtl.concatPaths(
+            ["pthread"],
+            lib.sodium.dynamicLibraries
+        );
 
-        cpp.staticLibraries: QbsUtl.concatPaths(
-            lib.sodium.staticLibrariesPaths(product)
-        )
+        //cpp.dynamicLibraries: [
+        //    "pthread",
+        //]
+
+        //cpp.staticLibraries: QbsUtl.concatPaths(
+        //    lib.sodium.staticLibrariesPaths(product)
+        //)
 
         files: [
             toxPrefix + "other/DHT_bootstrap.c",
@@ -273,14 +277,20 @@ Project {
         Depends { name: "ToxNetCrypto" }
         Depends { name: "ToxDHT" }
 
-        cpp.dynamicLibraries: [
-            "pthread",
-            "config",
-        ]
 
-        cpp.staticLibraries: QbsUtl.concatPaths(
-            lib.sodium.staticLibrariesPaths(product)
-        )
+        cpp.dynamicLibraries: QbsUtl.concatPaths(
+            ["pthread", "config"],
+            lib.sodium.dynamicLibraries
+        );
+
+        //cpp.dynamicLibraries: [
+        //    "pthread",
+        //    "config",
+        //]
+
+        //cpp.staticLibraries: QbsUtl.concatPaths(
+        //    lib.sodium.staticLibrariesPaths(product)
+        //)
 
         files: [
             toxPrefix + "other/bootstrap_daemon/src/command_line_arguments.c",

@@ -10,7 +10,7 @@
 
 #pragma once
 
-//#include "shared/_list.h"
+#include "shared/_list.h"
 //#include "shared/clife_base.h"
 //#include "shared/clife_ptr.h"
 #include "shared/container_ptr.h"
@@ -83,22 +83,22 @@ extern const QUuidEx DhtConnectStatus;
 /**
   Информация по аудио-устройству
 */
-extern const QUuidEx AudioDev;
+extern const QUuidEx AudioDevInfo;
 
 /**
-  Список аудио-устройств
+  Информация по изменению состояния аудио-устройства
 */
-extern const QUuidEx AudioDevList;
+extern const QUuidEx AudioDevChange;
 
 /**
-  Тест вывода звука
+  Команда для запуска/остановки аудио-тестов
 */
-extern const QUuidEx AudioSinkTest;
+extern const QUuidEx AudioTest;
 
 /**
   Отображение уровня сигнала микрофона в конфигураторе
 */
-extern const QUuidEx AudioSourceLevel;
+extern const QUuidEx AudioRecordLevel;
 
 /**
   Команда для управления tox-звоноком
@@ -245,49 +245,88 @@ enum AudioDevType : quint32
     Source = 1  // Микрофон
 };
 
-struct AudioDev : Data<&command::AudioDev,
-                        Message::Type::Command,
-                        Message::Type::Answer,
-                        Message::Type::Event>
+struct AudioDevInfo : Data<&command::AudioDevInfo,
+                            Message::Type::Command,
+                            Message::Type::Answer,
+                            Message::Type::Event>
 {
-    //typedef container_ptr<AudioDev> Ptr;
-    //typedef lst::List<AudioDev, lst::CompareItemDummy> List;
+    quint32      cardIndex;   // Индекс звуковой карты
+    AudioDevType type;        // Тип устройства
+    quint32      index;       // Индекс устройства
+    QByteArray   name;        // Наименование устройства
+    QString      description; // Описание устройства
+    quint8       channels;    // Количество каналов
+    qint32       baseVolume;  // Базовый уровень громкости
+    qint32       volume;      // Текущий уровень громкости (для первого канала)
+    qint32       volumeSteps; // Количество шагов уровня громкости
+    bool         isCurrent  = {false}; // Признак текущего устройства (для ToxPhone)
+    bool         isDefault  = {false}; // Признак устройства по умолчанию (для ToxPhone)
+    bool         isRingtone = {false}; // Признак, что устройство используется
+                                       // для проигрывания звонка вызова
+    struct Find
+    {
+        int operator() (const char*       devName,  const AudioDevInfo* item2, void*) const;
+        int operator() (const QByteArray* devName,  const AudioDevInfo* item2, void*) const;
+        int operator() (const quint32*    devIndex, const AudioDevInfo* item2, void*) const;
+    };
+    typedef lst::List<AudioDevInfo, Find> List;
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct AudioDevChange: Data<&command::AudioDevChange,
+                             Message::Type::Command,
+                             Message::Type::Answer,
+                             Message::Type::Event>
+{
+    AudioDevChange() = default;
+    AudioDevChange(const AudioDevInfo&);
 
     enum class ChangeFlag : quint32
     {
-        None       = 0,
-        Volume     = 1, // Изменен уровень громкости
-        IsCurrent  = 2, // Изменен признак устройства по умолчанию
+        None    = 0,
+        Volume  = 1, // Изменен уровень громкости
+        Current = 2, // Изменен признак текущего устройства
+        Default = 3, // Изменен признак устройства по умолчанию
+        Remove  = 4, // Устройство удалено
     };
-
     ChangeFlag   changeFlag = {ChangeFlag::None};
-    quint16      cardIndex;     // Индекс звуковой карты
-    AudioDevType type;          // Тип устройства
-    quint16      index;         // Индекс устройства
-    QByteArray   name;          // Наименование устройства
-    QString      description;   // Описание устройства
-    quint8       channels;      // Количество каналов
-    quint32      baseVolume;    // Базовый уровень громкости
-    quint32      currentVolume; // Текущий уровень громкости (для первого канала)
-    quint32      volumeSteps;   // Количество шагов уровня громкости
-    bool         isCurrent;     // Признак текущего устройства (для ToxPhone)
-
+    quint32      cardIndex; // Индекс звуковой карты
+    AudioDevType type;      // Тип устройства
+    quint32      index;     // Индекс устройства
+    qint64       value;     // Зачение изменяемого параметра
+    bool         isRingtone = {false}; // Признак, что измененный параметр относится
+                                       // к устройству для  проигрывания звонка вызова
     DECLARE_B_SERIALIZE_FUNC
 };
 
-struct AudioDevList : Data<&command::AudioDevList,
-                            Message::Type::Event>
+//struct AudioDevList : Data<&command::AudioDevList,
+//                            Message::Type::Event>
+//{
+//    AudioDevType type;
+//    QVector<AudioDev> list;
+//    DECLARE_B_SERIALIZE_FUNC
+//};
+
+struct AudioTest : Data<&command::AudioTest,
+                         Message::Type::Command,
+                         Message::Type::Answer,
+                         Message::Type::Event>
 {
-    AudioDevType type;
-    QVector<AudioDev> list;
+    bool begin = {false};
+    bool end() const {return !begin;}
+
+    bool playback = {false}; // Тест проигрывания звука
+    bool record   = {false}; // Тест микрофона
+
     DECLARE_B_SERIALIZE_FUNC
 };
 
-struct AudioSourceLevel : Data<&command::AudioSourceLevel,
+struct AudioRecordLevel : Data<&command::AudioRecordLevel,
                                 Message::Type::Event>
 {
-    quint32 average = {0}; // Усредненное значение уровня звукового потока
-    quint32 time    = {0}; // Время обновления average (в микросекундах)
+    quint32 max  = {0}; // Максимальное значение уровня звукового сигнала
+    quint32 time = {0}; // Время обновления max (в миллисекундах)
 
     DECLARE_B_SERIALIZE_FUNC
 };

@@ -27,10 +27,6 @@ public slots:
     static void stop(int exitCode);
     void sendToxPhoneInfo();
 
-    // Используется для подготовки данных об индикации уровня сигнала
-    // микрофона в конфигураторе
-    void audioSourceLevel(quint32 averageLevel, quint32 time);
-
 private slots:
     void message(const communication::Message::Ptr&);
     void socketConnected(communication::SocketDescriptor);

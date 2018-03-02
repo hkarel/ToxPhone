@@ -229,10 +229,17 @@
         <property name="geometry">
          <rect>
           <x>390</x>
-          <y>180</y>
-          <width>83</width>
-          <height>25</height>
+          <y>380</y>
+          <width>151</width>
+          <height>41</height>
          </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
         </property>
         <property name="text">
          <string>End call</string>
@@ -241,11 +248,19 @@
        <widget class="QPushButton" name="btnCall">
         <property name="geometry">
          <rect>
-          <x>500</x>
-          <y>180</y>
-          <width>83</width>
-          <height>25</height>
+          <x>560</x>
+          <y>380</y>
+          <width>151</width>
+          <height>41</height>
          </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>Verdana</family>
+          <pointsize>10</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
         </property>
         <property name="text">
          <string>Call</string>
@@ -467,40 +482,15 @@
            </property>
            <item>
             <layout class="QGridLayout" name="gridLayout">
-             <item row="0" column="2">
-              <widget class="QPushButton" name="btnAudioTest">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>100</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>100</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Sound test</string>
-               </property>
-              </widget>
-             </item>
              <item row="1" column="1">
-              <widget class="QSlider" name="sliderAudioSink">
+              <widget class="QSlider" name="sliderAudioPlayback">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="cboxAudioSink"/>
+              <widget class="QComboBox" name="cboxAudioPlayback"/>
              </item>
              <item row="0" column="0">
               <widget class="QLabel" name="label_5">
@@ -521,6 +511,58 @@
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
               </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="btnPlaybackTest">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>80</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>80</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Test</string>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_6">
+               <item>
+                <spacer name="horizontalSpacer_5">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QPushButton" name="btnPlaybackAsDefault">
+                 <property name="text">
+                  <string>Set device as default</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>
@@ -558,25 +600,9 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QSlider" name="sliderAudioSource">
+              <widget class="QSlider" name="sliderAudioRecord">
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QWidget" name="widget" native="true">
-               <property name="minimumSize">
-                <size>
-                 <width>100</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>100</width>
-                 <height>16777215</height>
-                </size>
                </property>
               </widget>
              </item>
@@ -591,23 +617,7 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="cboxAudioSource"/>
-             </item>
-             <item row="2" column="1">
-              <widget class="QProgressBar" name="pbarAudioSource">
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>8</height>
-                </size>
-               </property>
-               <property name="value">
-                <number>24</number>
-               </property>
-               <property name="format">
-                <string/>
-               </property>
-              </widget>
+              <widget class="QComboBox" name="cboxAudioRecord"/>
              </item>
              <item row="2" column="0">
               <widget class="QLabel" name="label_9">
@@ -615,6 +625,116 @@
                 <string>Volume</string>
                </property>
               </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QPushButton" name="btnRecordTest">
+               <property name="minimumSize">
+                <size>
+                 <width>80</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>80</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Test</string>
+               </property>
+               <property name="checkable">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QWidget" name="widget" native="true">
+                 <property name="minimumSize">
+                  <size>
+                   <width>5</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>5</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QProgressBar" name="pbarAudioRecord">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>8</height>
+                  </size>
+                 </property>
+                 <property name="value">
+                  <number>24</number>
+                 </property>
+                 <property name="textVisible">
+                  <bool>false</bool>
+                 </property>
+                 <property name="format">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QWidget" name="widget_2" native="true">
+                 <property name="minimumSize">
+                  <size>
+                   <width>5</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>5</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="3" column="1">
+              <layout class="QHBoxLayout" name="horizontalLayout_7">
+               <item>
+                <spacer name="horizontalSpacer_6">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QPushButton" name="btnRecordAsDefault">
+                 <property name="text">
+                  <string>Set device as default</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>
@@ -629,7 +749,7 @@
           <property name="sizeHint" stdset="0">
            <size>
             <width>20</width>
-            <height>292</height>
+            <height>249</height>
            </size>
           </property>
          </spacer>

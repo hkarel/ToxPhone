@@ -11,7 +11,6 @@
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
 #include "shared/qt/communication/functions.h"
-#include "shared/qt/communication/transport/base.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include <chrono>
 #include <string>
@@ -59,8 +58,12 @@ bool ToxCall::init(Tox* tox)
 
     toxav_callback_call               (_toxav, toxav_call_cb, this);
     toxav_callback_call_state         (_toxav, toxav_call_state, this);
+#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
     toxav_callback_audio_bit_rate     (_toxav, toxav_audio_bit_rate, this);
     toxav_callback_video_bit_rate     (_toxav, toxav_video_bit_rate, this);
+#else
+    toxav_callback_bit_rate_status    (_toxav, toxav_bit_rate_status, this);
+#endif
     toxav_callback_audio_receive_frame(_toxav, toxav_audio_receive_frame, this);
     toxav_callback_video_receive_frame(_toxav, toxav_video_receive_frame, this);
 
@@ -128,7 +131,7 @@ void ToxCall::run()
             continue;
 
         iterationSleepTime -= iterationTimer.elapsed();
-        if (iterationSleepTime > 2)
+        if (iterationSleepTime > 0)
         {
             unique_lock<mutex> locker(_threadLock); (void) locker;
             if (!_messages.empty())
@@ -166,9 +169,7 @@ void ToxCall::message(const communication::Message::Ptr& message)
 
 void ToxCall::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
 {
-
-    Message::Ptr m = createMessage(_callState, Message::Type::Event);
-    tcp::listener().send(m);
+    sendCallState();
 }
 
 void ToxCall::command_ToxCallAction(const Message::Ptr& message)
@@ -181,6 +182,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
     {
         log_verbose_m << "Begin outgoing call (state: WaitingAnswer). "
                       << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
+
+        _sendVoiceFriendNumber = quint32(-1);
 
         _callState.direction = data::ToxCallState::Direction::Outgoing;
         _callState.state = data::ToxCallState::State::WaitingAnswer;
@@ -207,8 +210,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             _callState.state = data::ToxCallState::State::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
         }
-        Message::Ptr m = createMessage(_callState, Message::Type::Event);
-        tcp::listener().send(m);
+        sendCallState();
     }
 
     // Принять входящий вызов
@@ -225,7 +227,15 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         TOXAV_ERR_ANSWER err;
         toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
 
-        if (err != TOXAV_ERR_ANSWER_OK)
+        if (err == TOXAV_ERR_ANSWER_OK)
+        {
+            _recordBytes = 0;
+            _sendVoiceFriendNumber = toxCallAction.friendNumber;
+
+            //emit stopRingtone();
+            //emit startRecordVoice();
+        }
+        else
         {
             log_error_m << "Failed toxav_answer: " << toxError(err);
 
@@ -243,8 +253,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             _callState.state = data::ToxCallState::State::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
         }
-        Message::Ptr m = createMessage(_callState, Message::Type::Event);
-        tcp::listener().send(m);
+        sendCallState();
     }
 
     // Отклонить входящий вызов или завершить активный вызов
@@ -265,11 +274,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             logLine << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
         }
 
-        if (_callState.state == data::ToxCallState::State::InProgress)
-        {
-            //_recordTestFile.close();
-            stopCalling();
-        }
+        endCalling();
 
         _callState.direction = data::ToxCallState::Direction::Undefined;
         _callState.state = data::ToxCallState::State::Undefined;
@@ -290,13 +295,15 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             writeToMessage(error, answer);
             tcp::listener().send(answer);
         }
-        Message::Ptr m = createMessage(_callState, Message::Type::Event);
-        tcp::listener().send(m);
+        sendCallState();
     }
 }
 
 void ToxCall::iterateVoiceFrame()
 {
+    if (_sendVoiceFriendNumber == quint32(-1))
+        return;
+
     VoiceFrameInfo::Ptr voiceFrameInfo = recordVoiceFrameInfo();
     if (voiceFrameInfo.empty())
         return;
@@ -307,7 +314,7 @@ void ToxCall::iterateVoiceFrame()
     char data[4000];
     quint32 dataSize = voiceFrameInfo->bufferSize;
 
-    if (recordVoiceRBuff().read(data, dataSize))
+    if (filterVoiceRBuff().read(data, dataSize))
     {
         _recordBytes += dataSize;
 
@@ -315,7 +322,7 @@ void ToxCall::iterateVoiceFrame()
         TOXAV_ERR_SEND_FRAME err;
         while (retries++ < 5)
         {
-            toxav_audio_send_frame(_toxav, _voiceFriendNumber,
+            toxav_audio_send_frame(_toxav, _sendVoiceFriendNumber,
                                    (int16_t*)data,
                                    voiceFrameInfo->sampleCount,
                                    voiceFrameInfo->channels,
@@ -339,13 +346,22 @@ void ToxCall::iterateVoiceFrame()
     }
 }
 
-void ToxCall::stopCalling()
+void ToxCall::endCalling()
 {
-    emit stopPlaybackVoice();
-    emit stopRecordVoice();
+//    emit stopRingtone();
+//    emit stopPlaybackVoice();
+//    emit stopRecordVoice();
+    _sendVoiceFriendNumber = quint32(-1);
 
     log_debug_m << "Record bytes (read): " << _recordBytes;
     log_debug_m << "Playback bytes (write): " << _playbackBytes;
+}
+
+void ToxCall::sendCallState()
+{
+    Message::Ptr m = createMessage(_callState, Message::Type::Event);
+    emit internalMessage(m);
+    tcp::listener().send(m);
 }
 
 //----------------------------- Tox callback ---------------------------------
@@ -387,11 +403,8 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
     tc->_callState.state = data::ToxCallState::State::WaitingAnswer;
     tc->_callState.friendNumber = friend_number;
 
-    if (configConnected())
-    {
-        Message::Ptr m = createMessage(tc->_callState, Message::Type::Event);
-        tcp::listener().send(m);
-    }
+    //emit tc->startRingtone();
+    tc->sendCallState();
 }
 
 void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state,
@@ -416,17 +429,13 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
 
-        tc->stopCalling();
+        tc->endCalling();
 
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
         tc->_callState.state = data::ToxCallState::State::Undefined;
         tc->_callState.friendNumber = quint32(-1);
 
-        if (configConnected())
-        {
-            Message::Ptr m = createMessage(tc->_callState, Message::Type::Event);
-            tcp::listener().send(m);
-        }
+        tc->sendCallState();
     }
 
     if ((state & TOXAV_FRIEND_CALL_STATE_FINISHED) == TOXAV_FRIEND_CALL_STATE_FINISHED)
@@ -443,17 +452,13 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
 
-        tc->stopCalling();
+        tc->endCalling();
 
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
         tc->_callState.state = data::ToxCallState::State::Undefined;
         tc->_callState.friendNumber = quint32(-1);
 
-        if (configConnected())
-        {
-            Message::Ptr m = createMessage(tc->_callState, Message::Type::Event);
-            tcp::listener().send(m);
-        }
+        tc->sendCallState();
     }
 
     if ((state & TOXAV_FRIEND_CALL_STATE_SENDING_A) == TOXAV_FRIEND_CALL_STATE_SENDING_A)
@@ -466,6 +471,8 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
         {
             tc->_skipFirstFrames = 0;
             tc->_callState.state = data::ToxCallState::State::InProgress;
+
+            //emit tc->stopRingtone();
 
             log_verbose_m << "Accept outgoing call (state: InProgress). "
                           << ToxFriendLog(toxav_get_tox(av), friend_number);
@@ -486,11 +493,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
                 tc->_callState.state = data::ToxCallState::State::Undefined;
                 //_callState.friendNumber = toxCallAction.friendNumber;
             }
-            if (configConnected())
-            {
-                Message::Ptr m = createMessage(tc->_callState, Message::Type::Event);
-                tcp::listener().send(m);
-            }
+            tc->sendCallState();
         }
     }
     if ((state & TOXAV_FRIEND_CALL_STATE_SENDING_V) == TOXAV_FRIEND_CALL_STATE_SENDING_V)
@@ -501,14 +504,10 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
     {
         log_debug2_m << "ToxAV event: TOXAV_FRIEND_CALL_STATE_ACCEPTING_A";
 
-        //tc->_recordTestFile.setFileName("/tmp/444.wav");
-        //if (!tc->_recordTestFile.open(QIODevice::WriteOnly))
-        //    log_error_m << "Failed open /tmp/444.wav";
-
         tc->_recordBytes = 0;
-        tc->_voiceFriendNumber = friend_number;
-        emit tc->startRecordVoice();
+        tc->_sendVoiceFriendNumber = friend_number;
 
+        //emit tc->startRecordVoice();
     }
     if ((state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_V) == TOXAV_FRIEND_CALL_STATE_ACCEPTING_V)
     {
@@ -516,13 +515,13 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
     }
 }
 
+#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
 void ToxCall::toxav_audio_bit_rate(ToxAV* av, uint32_t friend_number,
-                                   uint32_t audio_bit_rate, void* tox_call)
+                                   uint32_t audio_bit_rate, void* user_data)
 {
     log_debug2_m << "toxav_audio_bit_rate()"
                  << "; friend_number: " << friend_number
                  << "; audio_bit_rate: " << audio_bit_rate;
-
 }
 
 void ToxCall::toxav_video_bit_rate(ToxAV* av, uint32_t friend_number,
@@ -531,8 +530,18 @@ void ToxCall::toxav_video_bit_rate(ToxAV* av, uint32_t friend_number,
     log_debug2_m << "toxav_video_bit_rate()"
                  << "; friend_number: " << friend_number
                  << "; video_bit_rate: " << video_bit_rate;
-
 }
+#else
+void ToxCall::toxav_bit_rate_status(ToxAV* av, uint32_t friend_number,
+                                    uint32_t audio_bit_rate, uint32_t video_bit_rate,
+                                    void* user_data)
+{
+    log_debug2_m << "toxav_bit_rate_status()"
+                 << "; friend_number: " << friend_number
+                 << "; audio_bit_rate: " << audio_bit_rate
+                 << "; video_bit_rate: " << video_bit_rate;
+}
+#endif
 
 void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
                                         const int16_t* pcm, size_t sample_count,
@@ -567,7 +576,8 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
         ++tc->_skipFirstFrames;
         tc->_playbackBytes = 0;
 
-        quint32 latency = 20000;
+        //quint32 latency = 20000;
+        quint32 latency = (bufferSize * 1000000) / sampling_rate / sampleSize / channels;
         VoiceFrameInfo voiceFrameInfo {latency, channels, sampleSize,
                                        quint32(sample_count), sampling_rate, bufferSize};
 

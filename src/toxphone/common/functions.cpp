@@ -18,7 +18,7 @@ QString getFilePath(const QString& fileName)
     {
         QString filePath = paths[i] + fileName;
         if (QFile::exists(filePath))
-            return filePath;
+            return QFileInfo(filePath).absoluteFilePath();
     }
     return "";
 }

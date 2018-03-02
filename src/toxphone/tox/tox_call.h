@@ -14,8 +14,8 @@
 
 #include <QtCore>
 #include <atomic>
-
-#include "tox_net.h"
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 using namespace communication;
@@ -27,19 +27,22 @@ public:
     bool init(Tox* tox);
 
 signals:
-    void startPlaybackVoice(const VoiceFrameInfo::Ptr&);
-    void stopPlaybackVoice();
-    // Эмитируется когда получен голосовой фрейм от друга
-    //void playbackVoiceFrame(const VoiceFrameInfo::Ptr&);
+    // Используется для отправки сообщения в пределах программы
+    void internalMessage(const communication::Message::Ptr&);
 
-    void startRecordVoice();
-    void stopRecordVoice();
+    //void startRingtone();
+    //void stopRingtone();
+
+    void startPlaybackVoice(const VoiceFrameInfo::Ptr&);
+    //void stopPlaybackVoice();
+
+    //void startRecordVoice();
+    //void stopRecordVoice();
+
+    //void stopAudioTests();
 
 public slots:
     void message(const communication::Message::Ptr&);
-
-    // Вызывается когда нужно отправить голосовой фрейм другу
-    //void sendVoiceFrame(const VoiceFrame::Ptr&);
 
 private:
     Q_OBJECT
@@ -53,7 +56,8 @@ private:
     void command_ToxCallAction(const Message::Ptr&);
 
     void iterateVoiceFrame();
-    void stopCalling();
+    void endCalling();
+    void sendCallState();
 
 private:
     // Tox callback
@@ -62,10 +66,16 @@ private:
                                           void* user_data);
     static void toxav_call_state         (ToxAV* av, uint32_t friend_number,
                                           uint32_t state, void* user_data);
+#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
     static void toxav_audio_bit_rate     (ToxAV* av, uint32_t friend_number,
-                                          uint32_t audio_bit_rate, void* tox_call);
+                                          uint32_t audio_bit_rate, void* user_data);
     static void toxav_video_bit_rate     (ToxAV* av, uint32_t friend_number,
                                           uint32_t video_bit_rate, void* user_data);
+#else
+    static void toxav_bit_rate_status    (ToxAV* av, uint32_t friend_number,
+                                          uint32_t audio_bit_rate, uint32_t video_bit_rate,
+                                          void* user_data);
+#endif
     static void toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
                                           const int16_t* pcm, size_t sample_count,
                                           uint8_t channels, uint32_t sampling_rate,
@@ -79,11 +89,10 @@ private:
     ToxAV* _toxav;
     data::ToxCallState _callState;
     int _skipFirstFrames = {0};
-    atomic<quint32> _voiceFriendNumber = {quint32(-1)};
+    atomic<quint32> _sendVoiceFriendNumber = {quint32(-1)};
 
     size_t _recordBytes = {0};
     size_t _playbackBytes = {0};
-    //QFile _recordTestFile;
 
     FunctionInvoker _funcInvoker;
 

@@ -9,7 +9,6 @@
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
 #include "shared/qt/communication/functions.h"
-#include "shared/qt/communication/transport/base.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include "shared/qt/communication/transport/udp.h"
 
@@ -38,9 +37,6 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
 
     chk_connect_q(&udp::socket(), SIGNAL(message(communication::Message::Ptr)),
                   this, SLOT(message(communication::Message::Ptr)))
-
-    chk_connect_q(&audioDev(), SIGNAL(sourceLevel(quint32, quint32)),
-                  this, SLOT(audioSourceLevel(quint32, quint32)))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxPhoneApplication::command_##COMMAND, this);
@@ -126,20 +122,6 @@ void ToxPhoneApplication::sendToxPhoneInfo()
         message->destinationPoints().insert({intf->broadcast, port - 1});
         udp::socket().send(message);
     }
-}
-
-void ToxPhoneApplication::audioSourceLevel(quint32 averageLevel, quint32 time)
-{
-    if (!configConnected())
-        return;
-
-    data::AudioSourceLevel audioSourceLevel;
-    audioSourceLevel.average = averageLevel;
-    audioSourceLevel.time = time;
-
-    Message::Ptr m = createMessage(audioSourceLevel, Message::Type::Event);
-    m->setPriority(Message::Priority::High);
-    tcp::listener().send(m);
 }
 
 void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)

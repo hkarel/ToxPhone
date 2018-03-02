@@ -347,15 +347,26 @@ int main(int argc, char *argv[])
         }
         toxNet().start();
 
-        chk_connect_d(&toxCall(), SIGNAL(startPlaybackVoice(VoiceFrameInfo::Ptr)),
-                      &audioDev(), SLOT(startPlaybackVoice(VoiceFrameInfo::Ptr)))
-        chk_connect_d(&toxCall(), SIGNAL(stopPlaybackVoice()),
-                      &audioDev(), SLOT(stopPlayback()))
+        qRegisterMetaType<VoiceFrameInfo::Ptr>("VoiceFrameInfo::Ptr");
 
-        chk_connect_d(&toxCall(), SIGNAL(startRecordVoice()),
-                      &audioDev(), SLOT(startRecord()))
-        chk_connect_d(&toxCall(), SIGNAL(stopRecordVoice()),
-                      &audioDev(), SLOT(stopRecord()))
+//        chk_connect_q(&toxCall(), SIGNAL(startRingtone()),
+//                      &audioDev(),  SLOT(startRingtone()))
+//        chk_connect_q(&toxCall(), SIGNAL(stopRingtone()),
+//                      &audioDev(),  SLOT(stopRingtone()))
+
+        chk_connect_q(&toxCall(), SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &audioDev(),  SLOT(message(communication::Message::Ptr)))
+
+        chk_connect_q(&toxCall(), SIGNAL(startPlaybackVoice(VoiceFrameInfo::Ptr)),
+                      &audioDev(),  SLOT(startPlaybackVoice(VoiceFrameInfo::Ptr)))
+//        chk_connect_q(&toxCall(), SIGNAL(stopPlaybackVoice()),
+//                      &audioDev(),  SLOT(stopPlaybackVoice()))
+
+//        chk_connect_q(&toxCall(), SIGNAL(startRecordVoice()),
+//                      &audioDev(),  SLOT(startRecord()))
+//        chk_connect_q(&toxCall(), SIGNAL(stopRecordVoice()),
+//                      &audioDev(),  SLOT(stopRecord()))
+
 
         if (!toxCall().init(toxNet().tox()))
         {

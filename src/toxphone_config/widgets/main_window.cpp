@@ -14,7 +14,7 @@
 #include <limits>
 #include <unistd.h>
 
-Q_DECLARE_METATYPE(communication::data::AudioDev)
+//Q_DECLARE_METATYPE(communication::data::AudioDevInfo)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -34,9 +34,9 @@ MainWindow::MainWindow(QWidget *parent) :
     //_labelConnectStatus = new QLabel(tr("Disconnected"), this);
     //ui->statusBar->addWidget(_labelConnectStatus);
 
-    ui->pbarAudioSource->setMinimum(0);
-    ui->pbarAudioSource->setMaximum(std::numeric_limits<quint16>::max());
-    ui->pbarAudioSource->setValue(0);
+    ui->pbarAudioRecord->setMinimum(0);
+    ui->pbarAudioRecord->setMaximum(std::numeric_limits<quint16>::max() / 2);
+    ui->pbarAudioRecord->setValue(0);
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &MainWindow::command_##COMMAND, this);
@@ -48,9 +48,11 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(FriendItem)
     FUNC_REGISTRATION(FriendList)
     FUNC_REGISTRATION(DhtConnectStatus)
-    FUNC_REGISTRATION(AudioDev)
-    FUNC_REGISTRATION(AudioDevList)
-    FUNC_REGISTRATION(AudioSourceLevel)
+    FUNC_REGISTRATION(AudioDevInfo)
+    FUNC_REGISTRATION(AudioDevChange)
+    //FUNC_REGISTRATION(AudioDevList)
+    FUNC_REGISTRATION(AudioTest)
+    FUNC_REGISTRATION(AudioRecordLevel)
     FUNC_REGISTRATION(ToxCallAction)
     FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
@@ -131,6 +133,12 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     hide();
     //_labelConnectStatus->setText(tr("Disconnected"));
     ui->labelConnectStatus->clear();
+
+    ui->cboxAudioPlayback->clear();
+    ui->cboxAudioRecord->clear();
+    _sinkDevices.clear();
+    _sourceDevices.clear();
+
 }
 
 void MainWindow::command_ToxProfile(const Message::Ptr& message)
@@ -311,78 +319,175 @@ void MainWindow::command_DhtConnectStatus(const Message::Ptr& message)
         ui->labelDhtConnecntStatus->setText(tr("Inactive"));
 }
 
-void MainWindow::command_AudioDev(const Message::Ptr& message)
+void MainWindow::command_AudioDevInfo(const Message::Ptr& message)
 {
-    data::AudioDev audioDev;
-    readFromMessage(message, audioDev);
+    data::AudioDevInfo audioDevInfo;
+    readFromMessage(message, audioDevInfo);
 
     QComboBox* cbox;
     QSlider* slider;
-    if (audioDev.type == data::AudioDevType::Sink)
+    data::AudioDevInfo::List* devices;
+    if (audioDevInfo.type == data::AudioDevType::Sink)
     {
-        cbox = ui->cboxAudioSink;
-        slider = ui->sliderAudioSink;
+        cbox = ui->cboxAudioPlayback;
+        slider = ui->sliderAudioPlayback;
+        devices = &_sinkDevices;
     }
     else
     {
-        cbox = ui->cboxAudioSource;
-        slider = ui->sliderAudioSource;
+        cbox = ui->cboxAudioRecord;
+        slider = ui->sliderAudioRecord;
+        devices = &_sourceDevices;
     }
 
-    for (int i = 0; i < cbox->count(); ++i)
+    lst::FindResult fr = devices->findRef(audioDevInfo.name);
+    if (fr.success())
     {
-        QVariant v = cbox->itemData(i);
-        data::AudioDev ad = v.value<data::AudioDev>();
-        if (audioDev.name == ad.name)
+        (*devices)[fr.index()] = audioDevInfo;
+        if (cbox->currentIndex() == fr.index())
         {
-            v.setValue(audioDev);
-            cbox->setItemData(i, v);
-            if (audioDev.changeFlag == data::AudioDev::ChangeFlag::Volume)
-            {
-                if (slider->value() != int(audioDev.currentVolume))
-                    slider->setValue(audioDev.currentVolume);
-            }
-            break;
+            if (slider->value() != int(audioDevInfo.volume))
+                slider->setValue(audioDevInfo.volume);
+        }
+    }
+    else
+    {
+        cbox->blockSignals(true);
+        cbox->addItem(audioDevInfo.description);
+        devices->addCopy(audioDevInfo);
+        cbox->blockSignals(false);
+
+        if (audioDevInfo.isCurrent)
+        {
+            data::AudioDevChange audioDevChange {audioDevInfo};
+            audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            command_AudioDevChange(m);
+        }
+
+        if (audioDevInfo.isDefault)
+        {
+            data::AudioDevChange audioDevChange {audioDevInfo};
+            audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
+
+            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            command_AudioDevChange(m);
         }
     }
 }
 
-void MainWindow::command_AudioDevList(const Message::Ptr& message)
+void MainWindow::command_AudioDevChange(const Message::Ptr& message)
 {
-    data::AudioDevList audioDevList;
-    readFromMessage(message, audioDevList);
+    data::AudioDevChange audioDevChange;
+    readFromMessage(message, audioDevChange);
 
     QComboBox* cbox;
-    if (audioDevList.type == data::AudioDevType::Sink)
-        cbox = ui->cboxAudioSink;
-    else
-        cbox = ui->cboxAudioSource;
-
-    cbox->blockSignals(true);
-    cbox->clear();
-    for (int i = 0; i < audioDevList.list.count(); ++i)
+    QSlider* slider;
+    QPushButton* btdDefault;
+    data::AudioDevInfo::List* devices;
+    if (audioDevChange.type == data::AudioDevType::Sink)
     {
-        const data::AudioDev& audioDev = audioDevList.list[i];
-        QVariant v;
-        v.setValue(audioDev);
-        cbox->addItem(audioDev.description, v);
+        cbox = ui->cboxAudioPlayback;
+        slider = ui->sliderAudioPlayback;
+        btdDefault = ui->btnPlaybackAsDefault;
+        devices = &_sinkDevices;
     }
-    cbox->blockSignals(false);
-
-    if (cbox->count())
+    else
     {
-        cbox->setCurrentIndex(0);
-        QMetaObject::invokeMethod(cbox, "currentIndexChanged", Qt::AutoConnection, Q_ARG(int, 0));
+        cbox = ui->cboxAudioRecord;
+        slider = ui->sliderAudioRecord;
+        btdDefault = ui->btnRecordAsDefault;
+        devices = &_sourceDevices;
+    }
+
+    // ChangeFlag::Remove
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Remove)
+    {
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.success())
+        {
+            cbox->removeItem(fr.index());
+            devices->remove(fr.index());
+        }
+    }
+
+    // ChangeFlag::Current
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Current)
+    {
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.success())
+        {
+            for (int i = 0; i < devices->count(); ++i)
+                devices->item(i)->isCurrent = false;
+
+            data::AudioDevInfo* audioDevInfo = devices->item(fr.index());
+            audioDevInfo->isCurrent = true;
+
+            cbox->blockSignals(true);
+            cbox->setCurrentIndex(fr.index());
+            cbox->blockSignals(false);
+
+            //slider->setValue(devices->item(fr.index())->volume);
+            setSliderLevel(slider, 0, audioDevInfo->volume, audioDevInfo->volumeSteps);
+            btdDefault->setDisabled(devices->item(fr.index())->isDefault);
+        }
+    }
+
+    // ChangeFlag::Default
+    if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Default)
+    {
+        lst::FindResult fr = devices->findRef(audioDevChange.index);
+        if (fr.success())
+        {
+            for (int i = 0; i < devices->count(); ++i)
+                devices->item(i)->isDefault = false;
+
+            devices->item(fr.index())->isDefault = true;
+
+            if (cbox->currentIndex() == fr.index())
+                btdDefault->setDisabled(true);
+        }
     }
 
 }
 
-void MainWindow::command_AudioSourceLevel(const Message::Ptr& message)
+void MainWindow::command_AudioTest(const Message::Ptr& message)
 {
-    data::AudioSourceLevel audioSourceLevel;
-    readFromMessage(message, audioSourceLevel);
 
-    ui->pbarAudioSource->setValue(audioSourceLevel.average);
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() != Message::ExecStatus::Success)
+    {
+        ui->btnPlaybackTest->setChecked(false);
+        ui->btnRecordTest->setChecked(false);
+
+        QString msg = errorDescription(message);
+        QMessageBox::information(this, qApp->applicationName(), msg);
+        return;
+    }
+
+    data::AudioTest audioTest;
+    readFromMessage(message, audioTest);
+
+    if (audioTest.playback)
+    {
+        ui->btnPlaybackTest->setChecked(false);
+        ui->cboxAudioPlayback->setEnabled(true);
+    }
+
+    if (audioTest.record)
+    {
+        ui->btnRecordTest->setChecked(false);
+        ui->cboxAudioRecord->setEnabled(true);
+    }
+}
+
+void MainWindow::command_AudioRecordLevel(const Message::Ptr& message)
+{
+    data::AudioRecordLevel audioRecordLevel;
+    readFromMessage(message, audioRecordLevel);
+
+    ui->pbarAudioRecord->setValue(audioRecordLevel.max);
 }
 
 void MainWindow::command_ToxCallAction(const Message::Ptr& message)
@@ -440,6 +545,17 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
         ui->btnEndCall->setText(tr(ENDCALL));
         ui->btnEndCall->setEnabled(false);
     }
+
+    if (_callState.direction == data::ToxCallState::Direction::Undefined)
+    {
+        ui->btnPlaybackTest->setEnabled(true);
+        ui->btnRecordTest->setEnabled(true);
+    }
+    else
+    {
+        ui->btnPlaybackTest->setEnabled(false);
+        ui->btnRecordTest->setEnabled(false);
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -459,8 +575,8 @@ void MainWindow::on_btnSaveProfile_clicked(bool)
     toxProfile.name = ui->lineSelfToxName->text();
     toxProfile.status = ui->lineSelfToxStatus->text();
 
-    Message::Ptr message = createMessage(toxProfile);
-    _socket->send(message);
+    Message::Ptr m = createMessage(toxProfile);
+    _socket->send(m);
 }
 
 void MainWindow::on_btnRequestFriendship_clicked(bool)
@@ -469,8 +585,8 @@ void MainWindow::on_btnRequestFriendship_clicked(bool)
     reqFriendship.toxId = ui->lineRequestToxId->text().trimmed().toLatin1();
     reqFriendship.message = ui->txtRequestMessage->toPlainText();
 
-    Message::Ptr message = createMessage(reqFriendship);
-    _socket->send(message);
+    Message::Ptr m = createMessage(reqFriendship);
+    _socket->send(m);
 }
 
 void MainWindow::friendRequestAccept(bool accept)
@@ -489,8 +605,8 @@ void MainWindow::friendRequestAccept(bool accept)
     friendRequest.publicKey = frw->publicKey();
     friendRequest.accept = (accept) ? 1 : 0;
 
-    Message::Ptr message = createMessage(friendRequest);
-    _socket->send(message);
+    Message::Ptr m = createMessage(friendRequest);
+    _socket->send(m);
 }
 
 void MainWindow::on_btnFriendAccept_clicked(bool)
@@ -519,15 +635,32 @@ void MainWindow::on_btnRemoveFriend_clicked(bool)
     removeFriend.name = fw->properties().name;
     removeFriend.publicKey = fw->properties().publicKey;
 
-    Message::Ptr message = createMessage(removeFriend);
-    _socket->send(message);
+    Message::Ptr m = createMessage(removeFriend);
+    _socket->send(m);
 }
 
-void MainWindow::on_btnAudioTest_clicked(bool)
+void MainWindow::on_btnPlaybackTest_clicked(bool)
 {
-    Message::Ptr message = createMessage(command::AudioSinkTest);
-    message->setTag(1);
-    _socket->send(message);
+    ui->cboxAudioPlayback->setDisabled(true);
+
+    data::AudioTest audioTest;
+    audioTest.begin = ui->btnPlaybackTest->isChecked();
+    audioTest.playback = true;
+
+    Message::Ptr m = createMessage(audioTest);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnRecordTest_clicked(bool)
+{
+    ui->cboxAudioRecord->setDisabled(true);
+
+    data::AudioTest audioTest;
+    audioTest.begin = ui->btnRecordTest->isChecked();
+    audioTest.record = true;
+
+    Message::Ptr m = createMessage(audioTest);
+    _socket->send(m);
 }
 
 void MainWindow::on_btnCall_clicked(bool)
@@ -559,8 +692,8 @@ void MainWindow::on_btnCall_clicked(bool)
         toxCallAction.friendNumber = _callState.friendNumber;
     }
 
-    Message::Ptr message = createMessage(toxCallAction);
-    _socket->send(message);
+    Message::Ptr m = createMessage(toxCallAction);
+    _socket->send(m);
 }
 
 void MainWindow::on_btnEndCall_clicked(bool)
@@ -593,58 +726,104 @@ void MainWindow::on_btnEndCall_clicked(bool)
         toxCallAction.friendNumber = _callState.friendNumber;
     }
 
-    Message::Ptr message = createMessage(toxCallAction);
-    _socket->send(message);
+    Message::Ptr m = createMessage(toxCallAction);
+    _socket->send(m);
 
 }
 
-void MainWindow::on_cboxAudioSink_currentIndexChanged(int index)
+void MainWindow::on_cboxAudioPlayback_currentIndexChanged(int index)
 {
-    QVariant v = ui->cboxAudioSink->itemData(index);
-    data::AudioDev ad = v.value<data::AudioDev>();
-    setSliderLevel(ui->sliderAudioSink, 0, ad.currentVolume, ad.volumeSteps);
+    if (!lst::checkBounds(index, _sinkDevices))
+        return;
+
+    data::AudioDevInfo* audioDevInfo = _sinkDevices.item(index);
+    setSliderLevel(ui->sliderAudioPlayback, 0, audioDevInfo->volume, audioDevInfo->volumeSteps);
+    ui->btnPlaybackAsDefault->setDisabled(audioDevInfo->isDefault);
+
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
 }
 
-void MainWindow::on_cboxAudioSource_currentIndexChanged(int index)
+void MainWindow::on_cboxAudioRecord_currentIndexChanged(int index)
 {
-    QVariant v = ui->cboxAudioSource->itemData(index);
-    data::AudioDev ad = v.value<data::AudioDev>();
-    setSliderLevel(ui->sliderAudioSource, 0, ad.currentVolume, ad.volumeSteps /** 1.5*/);
+    if (!lst::checkBounds(index, _sourceDevices))
+        return;
+
+    data::AudioDevInfo* audioDevInfo = _sourceDevices.item(index);
+    setSliderLevel(ui->sliderAudioRecord, 0, audioDevInfo->volume, audioDevInfo->volumeSteps);
+    ui->pbarAudioRecord->setMaximum(audioDevInfo->volumeSteps / 2);
+    ui->btnRecordAsDefault->setDisabled(audioDevInfo->isDefault);
+
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
 }
 
-//void MainWindow::on_cboxAudioSink_activated(int index)
-//{
-
-//}
-
-//void MainWindow::on_cboxAudioSource_activated(int index)
-//{
-
-//}
-
-
-void MainWindow::on_sliderAudioSink_sliderReleased()
+void MainWindow::on_btnPlaybackAsDefault_clicked(bool)
 {
-    int index = ui->cboxAudioSink->currentIndex();
-    QVariant v = ui->cboxAudioSink->itemData(index);
-    data::AudioDev audioDev = v.value<data::AudioDev>();
-    audioDev.currentVolume = ui->sliderAudioSink->value();
-    audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
+    int index = ui->cboxAudioPlayback->currentIndex();
+    if (index < 0)
+        return;
 
-    Message::Ptr message = createMessage(audioDev);
-    _socket->send(message);
+    data::AudioDevInfo* audioDevInfo = _sinkDevices.item(index);
+    audioDevInfo->isDefault = true;
+
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
 }
 
-void MainWindow::on_sliderAudioSource_sliderReleased()
+void MainWindow::on_btnRecordAsDefault_clicked(bool)
 {
-    int index = ui->cboxAudioSource->currentIndex();
-    QVariant v = ui->cboxAudioSource->itemData(index);
-    data::AudioDev audioDev = v.value<data::AudioDev>();
-    audioDev.currentVolume = ui->sliderAudioSource->value();
-    audioDev.changeFlag = data::AudioDev::ChangeFlag::Volume;
+    int index = ui->cboxAudioRecord->currentIndex();
+    if (index < 0)
+        return;
 
-    Message::Ptr message = createMessage(audioDev);
-    _socket->send(message);
+    data::AudioDevInfo* audioDevInfo = _sourceDevices.item(index);
+    audioDevInfo->isDefault = true;
+
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_sliderAudioPlayback_sliderReleased()
+{
+    int index = ui->cboxAudioPlayback->currentIndex();
+    if (index < 0)
+        return;
+
+    data::AudioDevInfo* audioDevInfo = _sinkDevices.item(index);
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
+    audioDevChange.value = ui->sliderAudioPlayback->value();
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_sliderAudioRecord_sliderReleased()
+{
+    int index = ui->cboxAudioRecord->currentIndex();
+    if (index < 0)
+        return;
+
+    data::AudioDevInfo* audioDevInfo = _sourceDevices.item(index);
+    data::AudioDevChange audioDevChange {*audioDevInfo};
+    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
+    audioDevChange.value = ui->sliderAudioRecord->value();
+
+    Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
 }
 
 void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
