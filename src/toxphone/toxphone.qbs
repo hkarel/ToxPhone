@@ -89,6 +89,7 @@ Product {
             "pthread",
             "opus",
             "pulse",
+            "usb",
         ].concat(
             lib.sodium.dynamicLibraries
         );
@@ -125,6 +126,12 @@ Product {
         "common/voice_filters.h",
         "common/voice_frame.cpp",
         "common/voice_frame.h",
+        "diverter/phone_diverter.cpp",
+        "diverter/phone_diverter.h",
+        "diverter/phone_ring.cpp",
+        "diverter/phone_ring.h",
+        "diverter/yealink_protocol.cpp",
+        "diverter/yealink_protocol.h",
         "tox/tox_call.cpp",
         "tox/tox_call.h",
         "tox/tox_error.cpp",

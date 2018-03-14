@@ -23,9 +23,6 @@ extern "C" {
 
 void VoiceFilters::bufferUpdated()
 {
-    //std::lock_guard<mutex> locker(_threadLock); (void) locker;
-    //_threadCond.notify_all();
-
     QMutexLocker locker(&_threadLock); (void) locker;
     _threadCond.wakeAll();
 }
@@ -45,7 +42,7 @@ void VoiceFilters::run()
 {
     log_info_m << "Started";
 
-    VoiceFrameInfo::Ptr voiceFrameInfo = recordVoiceFrameInfo();
+    VoiceFrameInfo::Ptr voiceFrameInfo = getRecordFrameInfo();
     if (voiceFrameInfo.empty())
     {
         log_error_m << "Failed get VoiceFrameInfo for record";
@@ -53,9 +50,9 @@ void VoiceFilters::run()
         return;
     }
 
-    filterVoiceRBuff().init(5 * voiceFrameInfo->bufferSize);
+    filterRingBuff().init(5 * voiceFrameInfo->bufferSize);
     log_debug_m  << "Initialization a filter ring buffer"
-                 << "; size: " << filterVoiceRBuff().size();
+                 << "; size: " << filterRingBuff().size();
 
     Filter_Audio* filters = new_filter_audio(voiceFrameInfo->samplingRate);
     if (!filters)
@@ -95,7 +92,7 @@ void VoiceFilters::run()
         if (threadStop())
             break;
 
-        while (recordVoiceRBuff().read(data, dataSize))
+        while (recordRingBuff().read(data, dataSize))
         {
             if (threadStop())
                 break;
@@ -106,7 +103,7 @@ void VoiceFilters::run()
                 log_error_m << "Failed filter_audio()";
             }
 
-            if (!filterVoiceRBuff().write((char*)data, dataSize))
+            if (!filterRingBuff().write((char*)data, dataSize))
             {
                 log_error_m << "Failed write data to filterVoiceRBuff"
                             << ". Data size: " << dataSize;
@@ -135,9 +132,6 @@ void VoiceFilters::run()
         }
         if (!threadStop())
         {
-            //std::unique_lock<mutex> locker(_threadLock); (void) locker;
-            //_threadCond.wait_for(locker, std::chrono::milliseconds(10));
-
             QMutexLocker locker(&_threadLock); (void) locker;
             _threadCond.wait(&_threadLock, 10);
         }
@@ -145,8 +139,8 @@ void VoiceFilters::run()
     kill_filter_audio(filters);
 
     log_debug_m << "Filter ring buffer available: "
-                << filterVoiceRBuff().available();
-    filterVoiceRBuff().reset();
+                << filterRingBuff().available();
+    filterRingBuff().reset();
 
     _recordLevetMax = 0;
     sendRecordLevet(_recordLevetMax, 200);

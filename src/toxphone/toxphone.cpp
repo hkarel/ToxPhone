@@ -3,6 +3,7 @@
 #include "tox/tox_call.h"
 #include "audio/audio_dev.h"
 #include "common/voice_frame.h"
+#include "diverter/phone_diverter.h"
 #include "kernel/communication/commands.h"
 
 #include "shared/defmac.h"
@@ -81,11 +82,12 @@ void stopProgram()
             THREAD_FUNC.terminate(); \
         }
 
-    STOP_THREAD(udp::socket(), "TransportUDP", 15)
-    STOP_THREAD(audioDev(),    "AudioDev",     15)
-    STOP_THREAD(toxCall(),     "ToxCall",      15)
-    STOP_THREAD(toxNet(),      "ToxNet",       15)
     tcp::listener().close();
+    STOP_THREAD(udp::socket(),   "TransportUDP",  15)
+    STOP_THREAD(phoneDiverter(), "PhoneDiverter", 15)
+    STOP_THREAD(audioDev(),      "AudioDev",      15)
+    STOP_THREAD(toxCall(),       "ToxCall",       15)
+    STOP_THREAD(toxNet(),        "ToxNet",        15)
 
     log_info << "ToxPhone service is stopped";
     alog::logger().stop();
@@ -118,7 +120,6 @@ int main(int argc, char *argv[])
     //testRingBuffer();
     //return 0;
     //------------------------------
-
 
 
     // Устанавливаем в качестве разделителя целой и дробной части символ '.',
@@ -274,6 +275,9 @@ int main(int argc, char *argv[])
         }
         alog::printSaversInfo();
 
+        // Test
+        //const QUuidEx cmd = CommandsPool::Registry{"917b1e18-4a5e-4432-b6d6-457a666ef2b1", "IncomingConfigConnection1", true};
+
         if (!communication::commandsPool().checkUnique())
         {
             stopProgram();
@@ -349,24 +353,32 @@ int main(int argc, char *argv[])
 
         qRegisterMetaType<VoiceFrameInfo::Ptr>("VoiceFrameInfo::Ptr");
 
-//        chk_connect_q(&toxCall(), SIGNAL(startRingtone()),
-//                      &audioDev(),  SLOT(startRingtone()))
-//        chk_connect_q(&toxCall(), SIGNAL(stopRingtone()),
-//                      &audioDev(),  SLOT(stopRingtone()))
+        chk_connect_q(&toxCall(), SIGNAL(startVoice(VoiceFrameInfo::Ptr)),
+                      &audioDev(),  SLOT(startVoice(VoiceFrameInfo::Ptr)))
 
         chk_connect_q(&toxCall(), SIGNAL(internalMessage(communication::Message::Ptr)),
                       &audioDev(),  SLOT(message(communication::Message::Ptr)))
 
-        chk_connect_q(&toxCall(), SIGNAL(startPlaybackVoice(VoiceFrameInfo::Ptr)),
-                      &audioDev(),  SLOT(startPlaybackVoice(VoiceFrameInfo::Ptr)))
-//        chk_connect_q(&toxCall(), SIGNAL(stopPlaybackVoice()),
-//                      &audioDev(),  SLOT(stopPlaybackVoice()))
+        chk_connect_q(&toxCall(), SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &appl,        SLOT(message(communication::Message::Ptr)))
 
-//        chk_connect_q(&toxCall(), SIGNAL(startRecordVoice()),
-//                      &audioDev(),  SLOT(startRecord()))
-//        chk_connect_q(&toxCall(), SIGNAL(stopRecordVoice()),
-//                      &audioDev(),  SLOT(stopRecord()))
+        chk_connect_d(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxNet(),     SLOT(message(communication::Message::Ptr)))
+        chk_connect_d(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &audioDev(),   SLOT(message(communication::Message::Ptr)))
 
+        chk_connect_q(&phoneDiverter(), SIGNAL(attached()),
+                      &appl,              SLOT(phoneDiverterAttached()))
+        chk_connect_q(&phoneDiverter(), SIGNAL(detached()),
+                      &appl,              SLOT(phoneDiverterDetached()))
+        chk_connect_q(&phoneDiverter(), SIGNAL(pstnRing()),
+                      &appl,              SLOT(phoneDiverterPstnRing()))
+        chk_connect_q(&phoneDiverter(), SIGNAL(key(int)),
+                      &appl,              SLOT(phoneDiverterKey(int)))
+        chk_connect_q(&phoneDiverter(), SIGNAL(handset(PhoneDiverter::Handset)),
+                      &appl,              SLOT(phoneDiverterHandset(PhoneDiverter::Handset)))
 
         if (!toxCall().init(toxNet().tox()))
         {
@@ -375,12 +387,19 @@ int main(int argc, char *argv[])
         }
         toxCall().start();
 
-        if (!audioDev().init())
+        if (!audioDev().init()
+            || !audioDev().start())
         {
             stopProgram();
             return 1;
         }
-        audioDev().start();
+
+        if (!phoneDiverter().init())
+        {
+            stopProgram();
+            return 1;
+        }
+        phoneDiverter().start();
 
         if (ToxPhoneApplication::isStopped())
         {
@@ -389,6 +408,7 @@ int main(int argc, char *argv[])
         }
 
         QMetaObject::invokeMethod(&appl, "sendToxPhoneInfo", Qt::QueuedConnection);
+        appl.initPhoneDiverter();
         ret = appl.exec();
 
         communication::data::ApplShutdown applShutdown;

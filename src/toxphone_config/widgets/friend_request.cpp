@@ -22,15 +22,15 @@ FriendRequestWidget::~FriendRequestWidget()
 
 QByteArray FriendRequestWidget::publicKey() const
 {
-    return ui->txtPublicKey->toPlainText().toLatin1();
+    return ui->labelPublicKey->text().toLatin1();
 }
 
 void FriendRequestWidget::setPublicKey(const QByteArray& val)
 {
-    ui->txtPublicKey->setPlainText(val);
+    ui->labelPublicKey->setText(val);
 }
 
 void FriendRequestWidget::setMessage(const QString& val)
 {
-    ui->txtMessage->setPlainText(val);
+    ui->labelMessage->setText(val);
 }

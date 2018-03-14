@@ -5,8 +5,6 @@
 #include "shared/qt/thread/qthreadex.h"
 
 #include <QtCore>
-//#include <mutex>
-//#include <condition_variable>
 
 class VoiceFilters : public QThreadEx
 {
@@ -27,8 +25,6 @@ private:
     quint32 _recordLevetMax = {0};
     steady_timer _recordLevetTimer;
 
-    //std::mutex _threadLock;
-    //std::condition_variable _threadCond;
     QMutex _threadLock;
     QWaitCondition _threadCond;
 };

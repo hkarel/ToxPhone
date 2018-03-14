@@ -5,27 +5,20 @@
 
 #pragma once
 
-#include "wav_file.h"
-#include "common/functions.h"
-#include "common/voice_filters.h"
+#include "audio/wav_file.h"
 #include "common/voice_frame.h"
+#include "common/voice_filters.h"
 #include "kernel/communication/commands.h"
 
 #include "shared/_list.h"
 #include "shared/defmac.h"
 #include "shared/safe_singleton.h"
-#include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/config/config.h"
 #include "shared/qt/communication/message.h"
-#include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/func_invoker.h"
-#include "shared/qt/communication/transport/tcp.h"
 
 #include <pulse/pulseaudio.h>
 #include <QtCore>
 #include <atomic>
-#include <type_traits>
 
 using namespace std;
 using namespace communication;
@@ -38,33 +31,33 @@ class AudioDev : public QObject
 {
 public:
     bool init();
-    void start();
+    bool start();
     bool stop(unsigned long time = ULONG_MAX);
     void terminate() {}
 
 public slots:
     void message(const communication::Message::Ptr&);
 
-    // Старт/стоп проигрывания звука звонка
+    // Старт проигрывания звука звонка
     void startRingtone();
-    void stopRingtone();
 
-    // Старт/стоп воспроизведения голоса и звуков
-    void startPlayback(const QString& fileName);
+    // Старт/стоп воспроизведения звуков
+    void startPlayback(const QString& fileName, int cycleCount = 1);
     void stopPlayback();
 
-    void startPlaybackVoice(const VoiceFrameInfo::Ptr&);
-    void stopPlaybackVoice();
+    // Старт/стоп воспроизведения голоса
+    void startVoice(const VoiceFrameInfo::Ptr&);
+    void stopVoice();
 
     // Старт/стоп записи голоса
     void startRecord();
     void stopRecord();
 
     // Признак активности звука звонка
-    bool ringtoneActive() const {return _ringtoneActive;}
+    //bool ringtoneActive() const {return _ringtoneActive;}
 
     // Признак активности воспроизведения голосового потока
-    bool voiceActive() const {return _playbackActive;}
+    bool voiceActive() const {return _voiceActive;}
 
     // Признак активности записи голосового потока
     bool recordActive() const {return _recordActive;}
@@ -73,7 +66,6 @@ private:
     Q_OBJECT
     DISABLE_DEFAULT_COPY(AudioDev)
     AudioDev();
-
     void deinit();
 
     //--- Обработчики команд ---
@@ -119,15 +111,6 @@ private:
     static void source_output_info(pa_context* context, const pa_source_output_info* info,
                                    int eol, void* userdata);
 
-    static void ringtone_stream_state    (pa_stream*, void* userdata);
-    static void ringtone_stream_started  (pa_stream*, void* userdata);
-    static void ringtone_stream_write    (pa_stream*, size_t nbytes, void* userdata);
-    static void ringtone_stream_overflow (pa_stream*, void* userdata);
-    static void ringtone_stream_underflow(pa_stream*, void* userdata);
-    static void ringtone_stream_suspended(pa_stream*, void* userdata);
-    static void ringtone_stream_moved    (pa_stream*, void* userdata);
-    static void ringtone_stream_drain    (pa_stream*, int success, void *userdata);
-
     static void playback_stream_state    (pa_stream*, void* userdata);
     static void playback_stream_started  (pa_stream*, void* userdata);
     static void playback_stream_write    (pa_stream*, size_t nbytes, void* userdata);
@@ -136,6 +119,14 @@ private:
     static void playback_stream_suspended(pa_stream*, void* userdata);
     static void playback_stream_moved    (pa_stream*, void* userdata);
     static void playback_stream_drain    (pa_stream*, int success, void *userdata);
+
+    static void voice_stream_state       (pa_stream*, void* userdata);
+    static void voice_stream_started     (pa_stream*, void* userdata);
+    static void voice_stream_write       (pa_stream*, size_t nbytes, void* userdata);
+    static void voice_stream_overflow    (pa_stream*, void* userdata);
+    static void voice_stream_underflow   (pa_stream*, void* userdata);
+    static void voice_stream_suspended   (pa_stream*, void* userdata);
+    static void voice_stream_moved       (pa_stream*, void* userdata);
 
     static void record_stream_state      (pa_stream*, void* userdata);
     static void record_stream_started    (pa_stream*, void* userdata);
@@ -155,42 +146,28 @@ private:
     data::AudioDevInfo::List _sourceDevices;
     mutable QMutex _devicesLock;
 
-    pa_stream* _ringtoneStream = {0}; // Поток для воспроизведения звука звонка
-    pa_stream* _playbackStream = {0}; // Поток для воспроизведения голоса и звуков
+    pa_stream* _playbackStream = {0}; // Поток для воспроизведения звуков
+    pa_stream* _voiceStream = {0};    // Поток для воспроизведения голоса
     pa_stream* _recordStream = {0};   // Поток для записи голоса
     mutable QMutex _streamLock;
 
-    atomic_bool _ringtoneActive = {false};
-    atomic_bool _recordActive = {false};
     atomic_bool _playbackActive = {false};
-    atomic_bool _playbackVoice = {false};
+    atomic_bool _voiceActive = {false};
+    atomic_bool _recordActive = {false};
 
     VoiceFilters _voiceFilters;
 
-    //QByteArray _voiceData;
-    //mutable std::atomic_flag _voiceDataLock = ATOMIC_FLAG_INIT;
-    //SpinLocker locker(_socketLock); (void) locker;
-
-    size_t _playbackBytes = {0};
+    size_t _voiceBytes = {0};
     size_t _recordBytes = {0};
 
     atomic_bool _playbackTest = {false};
     atomic_bool _recordTest = {false};
 
-    WavFile _ringtoneFile;
+    atomic_int _playbackCycleCount = {1};
     WavFile _playbackFile;
 
-    // Индикатор состояния звонка, нужен здесь для прерывания тестов
+    // Индикатор состояния звонка
     data::ToxCallState _callState;
-
-    // Время необходимое на воспроизведение _recordBytes
-    //quint32 _recordTime = {0};
-
-    //QQueue<QByteArray> _recordBuff;
-    //mutable QMutex _recordBuffLock;
-
-    //QFile _sourceTestFile;
-    //QFile _recordTestFile;
 
     FunctionInvoker _funcInvoker;
 
@@ -198,110 +175,3 @@ private:
 
 };
 AudioDev& audioDev();
-
-//----------------------------- Implementation -------------------------------
-
-template<typename InfoType>
-void AudioDev::fillAudioDevInfo(const InfoType* info, data::AudioDevInfo& audioDevInfo)
-{
-    data::AudioDevType type = data::AudioDevType::Sink;
-    if (std::is_same<InfoType, pa_source_info>::value)
-        type = data::AudioDevType::Source;
-
-    audioDevInfo.cardIndex = info->card;
-    audioDevInfo.type = type;
-    audioDevInfo.index = info->index;
-    audioDevInfo.name = info->name;
-    audioDevInfo.description = QString::fromUtf8(info->description);
-    audioDevInfo.channels = info->volume.channels;
-    audioDevInfo.baseVolume = info->base_volume;
-    audioDevInfo.volume = info->volume.values[0];
-    audioDevInfo.volumeSteps = info->n_volume_steps;
-}
-
-template<typename InfoType>
-void AudioDev::fillAudioDevVolume(const InfoType* info, data::AudioDevChange& audioDevChange)
-{
-    data::AudioDevType type = data::AudioDevType::Sink;
-    if (std::is_same<InfoType, pa_source_info>::value)
-        type = data::AudioDevType::Source;
-
-    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
-    audioDevChange.cardIndex = info->card;
-    audioDevChange.type = type;
-    audioDevChange.index = info->index;
-    audioDevChange.value = info->volume.values[0];
-}
-
-template<typename InfoType>
-data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List& devices)
-{
-    data::AudioDevInfo* audioDevInfoPtr = 0;
-    if (lst::FindResult fr = devices.find(info->name))
-    {
-        // Если устройство найдено, то обновляем по нему информацию
-        fillAudioDevInfo(info, devices[fr.index()]);
-        audioDevInfoPtr = &devices[fr.index()];
-    }
-    else
-    {
-        data::AudioDevInfo audioDevInfo;
-        fillAudioDevInfo(info, audioDevInfo);
-
-        if (devices.empty())
-        {
-            audioDevInfo.isCurrent = true;
-
-            alog::Line logLine =
-                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-                << ((audioDevInfo.type == data::AudioDevType::Sink)
-                    ? "Sound sink "
-                    : "Sound source ");
-            logLine << "is current"
-                    << "; index: "  << audioDevInfo.index
-                    << "; (card: "  << audioDevInfo.cardIndex << ")"
-                    << "; volume: " << audioDevInfo.volume
-                    << "; name: "   << audioDevInfo.name;
-        }
-
-        // Инициализация isDefault
-        const char* confName =
-            (audioDevInfo.type == data::AudioDevType::Sink)
-            ? "audio.device.playback_default"
-            : "audio.device.record_default";
-        string devName;
-        config::state().getValue(confName, devName);
-        if (devName == audioDevInfo.name.constData())
-        {
-            for (int i = 0; i < devices.count(); ++i)
-            {
-                devices[i].isCurrent = false;
-                devices[i].isDefault = false;
-            }
-            audioDevInfo.isCurrent = true;
-            audioDevInfo.isDefault = true;
-
-            alog::Line logLine =
-                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-                << ((audioDevInfo.type == data::AudioDevType::Sink)
-                    ? "Sound sink "
-                    : "Sound source ");
-            logLine << "is default/current"
-                    << "; index: "  << audioDevInfo.index
-                    << "; (card: "  << audioDevInfo.cardIndex << ")"
-                    << "; volume: " << audioDevInfo.volume
-                    << "; name: "   << audioDevInfo.name;
-        }
-
-        audioDevInfoPtr = devices.addCopy(audioDevInfo);
-    }
-
-    if (configConnected())
-    {
-        Message::Ptr m = createMessage(*audioDevInfoPtr, Message::Type::Event);
-        tcp::listener().send(m);
-    }
-    return audioDevInfoPtr;
-}
-
-

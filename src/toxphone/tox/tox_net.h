@@ -5,19 +5,18 @@
 
 #pragma once
 
+#include "kernel/communication/commands.h"
+
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
 #include "shared/qt/thread/qthreadex.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
-#include "kernel/communication/commands.h"
 #include "toxcore/tox.h"
 
 #include <QtCore>
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
 
 using namespace std;
 using namespace communication;
@@ -51,6 +50,7 @@ private:
     void command_RequestFriendship(const Message::Ptr&);
     void command_FriendRequest(const Message::Ptr&);
     void command_RemoveFriend(const Message::Ptr&);
+    void command_PhoneFriendInfo(const Message::Ptr&);
     void command_ToxMessage(const Message::Ptr&);
 
     // Функции обновляют состояние конфигуратора
@@ -92,7 +92,7 @@ private:
 
     Tox* _tox = {0};
     Tox_Options _toxOptions;
-    QByteArray  _savedState;
+    QByteArray _savedState;
     QString _configPath;
     QString _configFile;
     bool _dhtConnected = {false};
@@ -100,9 +100,8 @@ private:
     FunctionInvoker _funcInvoker;
 
     Message::List _messages;
-    mutex _threadLock;
-    condition_variable _threadCond;
-    atomic_bool _threadSleep = {false};
+    QMutex _threadLock;
+    QWaitCondition _threadCond;
 
     template<typename T, int> friend T& ::safe_singleton();
 };

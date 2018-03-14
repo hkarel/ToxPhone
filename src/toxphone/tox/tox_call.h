@@ -14,8 +14,6 @@
 
 #include <QtCore>
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
 
 using namespace std;
 using namespace communication;
@@ -29,17 +27,7 @@ public:
 signals:
     // Используется для отправки сообщения в пределах программы
     void internalMessage(const communication::Message::Ptr&);
-
-    //void startRingtone();
-    //void stopRingtone();
-
-    void startPlaybackVoice(const VoiceFrameInfo::Ptr&);
-    //void stopPlaybackVoice();
-
-    //void startRecordVoice();
-    //void stopRecordVoice();
-
-    //void stopAudioTests();
+    void startVoice(const VoiceFrameInfo::Ptr&);
 
 public slots:
     void message(const communication::Message::Ptr&);
@@ -51,7 +39,7 @@ private:
 
     void run() override;
 
-//    //--- Обработчики команд ---
+    //--- Обработчики команд ---
     void command_IncomingConfigConnection(const Message::Ptr&);
     void command_ToxCallAction(const Message::Ptr&);
 
@@ -97,9 +85,8 @@ private:
     FunctionInvoker _funcInvoker;
 
     Message::List _messages;
-    mutex _threadLock;
-    condition_variable _threadCond;
-    atomic_bool _threadSleep = {false};
+    QMutex _threadLock;
+    QWaitCondition _threadCond;
 
     template<typename T, int> friend T& ::safe_singleton();
 };

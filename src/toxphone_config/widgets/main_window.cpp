@@ -31,6 +31,9 @@ MainWindow::MainWindow(QWidget *parent) :
             break;
         }
 
+    ui->labelCallState->clear();
+    ui->widgetFriends->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
     //_labelConnectStatus = new QLabel(tr("Disconnected"), this);
     //ui->statusBar->addWidget(_labelConnectStatus);
 
@@ -47,14 +50,18 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(FriendRequests)
     FUNC_REGISTRATION(FriendItem)
     FUNC_REGISTRATION(FriendList)
+    FUNC_REGISTRATION(RemoveFriend)
+    FUNC_REGISTRATION(PhoneFriendInfo)
     FUNC_REGISTRATION(DhtConnectStatus)
     FUNC_REGISTRATION(AudioDevInfo)
     FUNC_REGISTRATION(AudioDevChange)
-    //FUNC_REGISTRATION(AudioDevList)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(AudioRecordLevel)
     FUNC_REGISTRATION(ToxCallAction)
     FUNC_REGISTRATION(ToxCallState)
+    FUNC_REGISTRATION(DiverterInfo)
+    FUNC_REGISTRATION(DiverterChange)
+    FUNC_REGISTRATION(DiverterTest)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -101,6 +108,16 @@ void MainWindow::loadGeometry()
     move(v[0], v[1]);
     resize(v[2], v[3]);
 
+    QVector<int> qv;
+    config::state().getValue("windows.main_window.friends_splitter", qv);
+    if (qv.isEmpty())
+    {
+        QList<int> spl; spl << (width() * 1./3) << (width() * 2./3);
+        ui->splitterFriends->setSizes(spl);
+    }
+    else
+        ui->splitterFriends->setSizes(qv.toList());
+
 //    QVector<int> splitterSizes;
 //    if (config::state().getValue("windows.main_window.splitter_sizes", splitterSizes))
 //        ui->splitter->setSizes(splitterSizes.toList());
@@ -139,6 +156,13 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     _sinkDevices.clear();
     _sourceDevices.clear();
 
+    ui->cboxAudioPlayback->setEnabled(true);
+    ui->cboxAudioRecord->setEnabled(true);
+
+    ui->btnPlaybackTest->setChecked(false);
+    ui->btnRecordTest->setChecked(false);
+
+    ui->pbarAudioRecord->setValue(0);
 }
 
 void MainWindow::command_ToxProfile(const Message::Ptr& message)
@@ -305,6 +329,45 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
         QListWidgetItem* lwi = ui->listFriends->item(i);
         FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
         fw->setProperties(fi);
+    }
+}
+
+void MainWindow::command_RemoveFriend(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            QString msg = tr("Friend was successfully removed");
+            QMessageBox::information(this, qApp->applicationName(), msg);
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
+    }
+}
+
+void MainWindow::command_PhoneFriendInfo(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            data::PhoneFriendInfo phoneFriendInfo;
+            readFromMessage(message, phoneFriendInfo);
+
+            QString msg = tr(
+                "ToxPhone parameters for friend %1 was successfully saved");
+            QMessageBox::information(this, qApp->applicationName(),
+                                     msg.arg(phoneFriendInfo.name));
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
     }
 }
 
@@ -503,6 +566,12 @@ void MainWindow::command_ToxCallAction(const Message::Ptr& message)
 
 void MainWindow::command_ToxCallState(const Message::Ptr& message)
 {
+    // Отбрасываем повторно переданное сообщение
+    if (_callStateMessageId == message->id())
+        return;
+
+    _callStateMessageId = message->id();
+
     const char* CALL    = QT_TRANSLATE_NOOP("MainWindow", "Call");
     const char* ENDCALL = QT_TRANSLATE_NOOP("MainWindow", "End call");
     const char* ACCEPT  = QT_TRANSLATE_NOOP("MainWindow", "Accept");
@@ -512,8 +581,11 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
 
     if (_callState.direction == data::ToxCallState::Direction::Incoming)
     {
-        if (_callState.state == data::ToxCallState::State::WaitingAnswer)
+        if (_callState.callState == data::ToxCallState::CallState::WaitingAnswer)
         {
+            log_debug << "Call command_ToxCallState() "
+                      << "Direction: Incoming; CallState: WaitingAnswer";
+
             ui->btnCall->setText(tr(ACCEPT));
             ui->btnCall->setEnabled(true);
 
@@ -522,28 +594,48 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
         }
         else
         {
+            log_debug << "Call command_ToxCallState() "
+                      << "Direction: Incoming; CallState: Undefined/InProgress";
+
             ui->btnCall->setText(tr(CALL));
             ui->btnCall->setEnabled(false);
 
             ui->btnEndCall->setText(tr(ENDCALL));
             ui->btnEndCall->setEnabled(true);
         }
+
+        QString msg = "Incoming call: " + friendCalling(_callState.friendNumber);
+        ui->labelCallState->setText(msg);
     }
     else if (_callState.direction == data::ToxCallState::Direction::Outgoing)
     {
+        if (_callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+            log_debug << "Call command_ToxCallState() "
+                      << "Direction: Outgoing; CallState: WaitingAnswer";
+        else
+            log_debug << "Call command_ToxCallState() "
+                     <<  "Direction: Outgoing; CallState: Undefined/InProgress";
+
         ui->btnCall->setText(tr(CALL));
         ui->btnCall->setEnabled(false);
 
         ui->btnEndCall->setText(tr(ENDCALL));
         ui->btnEndCall->setEnabled(true);
+
+        QString msg = "Outgoing call: " + friendCalling(_callState.friendNumber);
+        ui->labelCallState->setText(msg);
     }
     else // data::ToxCall::Direction::Undefined
     {
+        log_debug << "Call command_ToxCallState() Direction: Undefined";
+
         ui->btnCall->setText(tr(CALL));
         ui->btnCall->setEnabled(true);
 
         ui->btnEndCall->setText(tr(ENDCALL));
         ui->btnEndCall->setEnabled(false);
+
+        ui->labelCallState->clear();
     }
 
     if (_callState.direction == data::ToxCallState::Direction::Undefined)
@@ -556,6 +648,44 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
         ui->btnPlaybackTest->setEnabled(false);
         ui->btnRecordTest->setEnabled(false);
     }
+}
+
+void MainWindow::command_DiverterInfo(const Message::Ptr& message)
+{
+    data::DiverterInfo diverterInfo;
+    readFromMessage(message, diverterInfo);
+
+    ui->cboxUseDiverter->blockSignals(true);
+    ui->cboxUseDiverter->setChecked(diverterInfo.active);
+    ui->cboxUseDiverter->blockSignals(false);
+
+    ui->linePhoneRingtone->setText(diverterInfo.ringTone.trimmed());
+    if (diverterInfo.defaultMode == data::DiverterDefaultMode::Pstn)
+        ui->rbtnDiverterPSTN->setChecked(true);
+    else
+        ui->rbtnDiverterUSB->setChecked(true);
+
+    ui->labelDiverterDevUsbBus ->setText(diverterInfo.deviceUsbBus);
+    ui->labelDiverterDevName   ->setText(diverterInfo.deviceName);
+    ui->labelDiverterDevVersion->setText(diverterInfo.deviceVersion);
+    ui->labelDiverterDevSerial ->setText(diverterInfo.deviceSerial);
+
+    ui->btnTestPhoneRingtone->setEnabled(diverterInfo.attached);
+}
+
+void MainWindow::command_DiverterChange(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() != Message::ExecStatus::Success)
+    {
+        QString msg = errorDescription(message);
+        QMessageBox::critical(this, qApp->applicationName(), msg);
+    }
+}
+
+void MainWindow::command_DiverterTest(const Message::Ptr& message)
+{
+
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -631,11 +761,72 @@ void MainWindow::on_btnRemoveFriend_clicked(bool)
     FriendWidget* fw =
         qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
 
+    QString msg = tr("You are sure that you want to remove the friend of %1?");
+    QMessageBox::StandardButton mboxResult =
+        QMessageBox::question(this, qApp->applicationName(),
+                              msg.arg(fw->properties().name),
+                              QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
+    if (mboxResult == QMessageBox::No)
+        return;
+
     data::RemoveFriend removeFriend;
-    removeFriend.name = fw->properties().name;
     removeFriend.publicKey = fw->properties().publicKey;
+    removeFriend.name = fw->properties().name;
 
     Message::Ptr m = createMessage(removeFriend);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnSaveFiendPhone_clicked(bool)
+{
+    if (!ui->listFriends->count())
+        return;
+
+    if (!ui->listFriends->currentItem())
+        return;
+
+    QListWidgetItem* lwi = ui->listFriends->currentItem();
+    FriendWidget* fw =
+        qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+
+    data::PhoneFriendInfo phoneFriendInfo;
+    phoneFriendInfo.publicKey = fw->properties().publicKey;
+    phoneFriendInfo.number = fw->properties().number;
+    phoneFriendInfo.name = fw->properties().name;
+    phoneFriendInfo.nameAlias = ui->lineToxNameAlias->text();
+
+    bool toint;
+    phoneFriendInfo.phoneNumber = ui->linePhoneNumber->text().toInt(&toint);
+    if (!toint)
+        phoneFriendInfo.phoneNumber = 0;
+
+    bool duplicateFound = false;
+    if (phoneFriendInfo.phoneNumber != 0)
+        for (int i = 0; i < ui->listFriends->count(); ++i)
+        {
+            lwi = ui->listFriends->item(i);
+            fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+            if (fw->properties().phoneNumber == phoneFriendInfo.phoneNumber
+                && fw->properties().number != phoneFriendInfo.number)
+            {
+                duplicateFound = true;
+                break;
+            }
+        }
+
+    if (duplicateFound)
+    {
+        QString msg = tr("The phone number %1 already assigned to friend %2."
+                         "\nYou are sure that you want to rewrite phone number?");
+        QMessageBox::StandardButton mboxResult =
+                QMessageBox::question(this, qApp->applicationName(),
+                                      msg.arg(fw->properties().phoneNumber)
+                                      .arg(fw->properties().name),
+                                      QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
+        if (mboxResult == QMessageBox::No)
+            return;
+    }
+    Message::Ptr m = createMessage(phoneFriendInfo);
     _socket->send(m);
 }
 
@@ -686,7 +877,7 @@ void MainWindow::on_btnCall_clicked(bool)
 
     // Принять входящий вызов
     else if (_callState.direction == data::ToxCallState::Direction::Incoming
-             && _callState.state == data::ToxCallState::State::WaitingAnswer)
+             && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
         toxCallAction.action = data::ToxCallAction::Action::Accept;
         toxCallAction.friendNumber = _callState.friendNumber;
@@ -712,7 +903,7 @@ void MainWindow::on_btnEndCall_clicked(bool)
 
     // Завершить входящий вызов
     else if (_callState.direction == data::ToxCallState::Direction::Incoming
-             && _callState.state == data::ToxCallState::State::InProgress)
+             && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
         toxCallAction.action = data::ToxCallAction::Action::End;
         toxCallAction.friendNumber = _callState.friendNumber;
@@ -720,7 +911,7 @@ void MainWindow::on_btnEndCall_clicked(bool)
 
     // Отклонить входящий вызов
     else if (_callState.direction == data::ToxCallState::Direction::Incoming
-             && _callState.state == data::ToxCallState::State::WaitingAnswer)
+             && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
         toxCallAction.action = data::ToxCallAction::Action::Reject;
         toxCallAction.friendNumber = _callState.friendNumber;
@@ -728,7 +919,31 @@ void MainWindow::on_btnEndCall_clicked(bool)
 
     Message::Ptr m = createMessage(toxCallAction);
     _socket->send(m);
+}
 
+void MainWindow::on_splitterFriends_splitterMoved(int pos, int index)
+{
+    // Сохранение данного параметра в функции saveGeometry() выполняется
+    // некорректно, поэтому сохраняем его здесь.
+    QVector<int> qv = ui->splitterFriends->sizes().toVector();
+    config::state().setValue("windows.main_window.friends_splitter", qv);
+}
+
+void MainWindow::on_listFriends_itemClicked(QListWidgetItem* item)
+{
+    FriendWidget* fw =
+        qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(item));
+
+    ui->lineToxName->setText(fw->properties().name);
+    ui->lineToxStatus->setText(fw->properties().statusMessage);
+    ui->linefToxId->setText(fw->properties().publicKey);
+    //ui->linefToxId->setCursorPosition(0);
+
+    ui->lineToxNameAlias->setText(fw->properties().nameAlias);
+    if (fw->properties().phoneNumber != 0)
+        ui->linePhoneNumber->setText(QString::number(fw->properties().phoneNumber));
+    else
+        ui->linePhoneNumber->clear();
 }
 
 void MainWindow::on_cboxAudioPlayback_currentIndexChanged(int index)
@@ -831,4 +1046,73 @@ void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
     slider->setMinimum(base);
     slider->setMaximum(max);
     slider->setValue(current);
+}
+
+void MainWindow::on_cboxUseDiverter_stateChanged(int state)
+{
+    data::DiverterChange diverterChange;
+    diverterChange.active = (state != Qt::Unchecked);
+    diverterChange.changeFlag = data::DiverterChange::ChangeFlag::Active;
+
+    Message::Ptr m = createMessage(diverterChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_rbtnDiverterPSTN_clicked(bool)
+{
+    data::DiverterChange diverterChange;
+    diverterChange.defaultMode = data::DiverterDefaultMode::Pstn;
+    diverterChange.changeFlag = data::DiverterChange::ChangeFlag::DefaultMode;
+
+    Message::Ptr m = createMessage(diverterChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_rbtnDiverterUSB_clicked(bool)
+{
+    data::DiverterChange diverterChange;
+    diverterChange.defaultMode = data::DiverterDefaultMode::Usb;
+    diverterChange.changeFlag = data::DiverterChange::ChangeFlag::DefaultMode;
+
+    Message::Ptr m = createMessage(diverterChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnSavePhoneRingtone_clicked(bool)
+{
+    data::DiverterChange diverterChange;
+    diverterChange.ringTone = ui->linePhoneRingtone->text().trimmed();
+    diverterChange.changeFlag = data::DiverterChange::ChangeFlag::RingTone;
+
+    Message::Ptr m = createMessage(diverterChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnTestPhoneRingtone_clicked(bool)
+{
+    data::DiverterTest diverterTest;
+    diverterTest.begin = ui->btnTestPhoneRingtone->isChecked();
+    diverterTest.ringTone = true;
+
+    Message::Ptr m = createMessage(diverterTest);
+    _socket->send(m);
+}
+
+QString MainWindow::friendCalling(quint32 friendNumber)
+{
+    QString result;
+    for (int i = 0; i < ui->listFriends->count(); ++i)
+    {
+        QListWidgetItem* lwi = ui->listFriends->item(i);
+        FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+        if (fw->properties().number == friendNumber)
+        {
+            result = (fw->properties().nameAlias.isEmpty())
+                     ? fw->properties().name
+                     : QString("%1 (%2)").arg(fw->properties().nameAlias)
+                                         .arg(fw->properties().name);
+            break;
+        }
+    }
+    return result;
 }

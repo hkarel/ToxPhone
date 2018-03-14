@@ -7,6 +7,7 @@
 
 #include <QLabel>
 #include <QSlider>
+#include <QListWidget>
 #include <QMainWindow>
 
 using namespace std;
@@ -46,8 +47,12 @@ private slots:
     void on_btnFriendAccept_clicked(bool);
     void on_btnFriendReject_clicked(bool);
     void on_btnRemoveFriend_clicked(bool);
+    void on_btnSaveFiendPhone_clicked(bool);
     void on_btnCall_clicked(bool);
     void on_btnEndCall_clicked(bool);
+
+    void on_splitterFriends_splitterMoved(int pos, int index);
+    void on_listFriends_itemClicked(QListWidgetItem* item);
 
     void on_btnPlaybackTest_clicked(bool);
     void on_btnRecordTest_clicked(bool);
@@ -61,6 +66,13 @@ private slots:
     void on_sliderAudioPlayback_sliderReleased();
     void on_sliderAudioRecord_sliderReleased();
 
+    void on_cboxUseDiverter_stateChanged(int state);
+
+    void on_rbtnDiverterPSTN_clicked(bool);
+    void on_rbtnDiverterUSB_clicked(bool);
+    void on_btnSavePhoneRingtone_clicked(bool);
+    void on_btnTestPhoneRingtone_clicked(bool);
+
 private:
     void closeEvent(QCloseEvent*) override;
 
@@ -71,6 +83,8 @@ private:
     void command_FriendRequests(const Message::Ptr&);
     void command_FriendItem(const Message::Ptr&);
     void command_FriendList(const Message::Ptr&);
+    void command_RemoveFriend(const Message::Ptr&);
+    void command_PhoneFriendInfo(const Message::Ptr&);
     void command_DhtConnectStatus(const Message::Ptr&);
     void command_AudioDevInfo(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);
@@ -78,9 +92,13 @@ private:
     void command_AudioRecordLevel(const Message::Ptr&);
     void command_ToxCallAction(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
+    void command_DiverterInfo(const Message::Ptr&);
+    void command_DiverterChange(const Message::Ptr&);
+    void command_DiverterTest(const Message::Ptr&);
 
     void friendRequestAccept(bool accept);
     void setSliderLevel(QSlider* slider, int base, int current, int max);
+    QString friendCalling(quint32 friendNumber);
 
 private:
     Ui::MainWindow *ui;
@@ -90,6 +108,7 @@ private:
     tcp::Socket::Ptr _socket;
 
     data::ToxCallState _callState;
+    QUuidEx _callStateMessageId;
 
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;

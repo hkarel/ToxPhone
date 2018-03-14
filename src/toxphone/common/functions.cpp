@@ -9,6 +9,13 @@ bool configConnected(bool* val)
     return connected;
 }
 
+bool diverterIsActive(bool* val)
+{
+    static std::atomic_bool active {false};
+    if (val)
+        active = *val;
+    return active;
+}
 
 QString getFilePath(const QString& fileName)
 {

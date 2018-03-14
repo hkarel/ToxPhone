@@ -48,6 +48,8 @@ Product {
         "shared/qt/communication/message.h",
         "shared/qt/communication/transport/base.cpp",
         "shared/qt/communication/transport/base.h",
+        "shared/qt/communication/transport/local.cpp",
+        "shared/qt/communication/transport/local.h",
         "shared/qt/communication/transport/tcp.cpp",
         "shared/qt/communication/transport/tcp.h",
         "shared/qt/communication/transport/udp.cpp",

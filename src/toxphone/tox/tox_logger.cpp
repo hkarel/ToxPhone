@@ -1,4 +1,5 @@
 #include "tox_logger.h"
+#include "tox_func.h"
 
 #include "shared/qt/logger/logger_operators.h"
 #include "toxcore/logger.h"
@@ -18,11 +19,16 @@ struct Logger {
 // Заперт на mangling для имен функций
 Logger *logger_new(void) asm ("logger_new");
 void logger_kill(Logger *log) asm ("logger_kill");
-void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
-                         asm ("logger_callback_log");
-void logger_write(Logger* log, LOGGER_LEVEL level,
-                  const char* file, int line, const char* func, const char* format, ...)
-                  asm ("logger_write");
+void logger_callback_log(Logger *log,
+                         logger_cb *function,
+                         void *context,
+                         void *userdata) asm ("logger_callback_log");
+void logger_write(Logger* log,
+                  LOGGER_LEVEL level,
+                  const char* file,
+                  int line,
+                  const char* func,
+                  const char* format, ...) asm ("logger_write");
 
 Logger *logger_new(void)
 {
@@ -34,7 +40,10 @@ void logger_kill(Logger *log)
     (void) log;
 }
 
-void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
+void logger_callback_log(Logger *log,
+                         logger_cb *function,
+                         void *context,
+                         void *userdata)
 {
     (void) log;
     (void) function;
@@ -42,8 +51,12 @@ void logger_callback_log(Logger *log, logger_cb *function, void *context, void *
     (void) userdata;
 }
 
-void logger_write(Logger* log, LOGGER_LEVEL level,
-                  const char* file, int line, const char* func, const char* format, ...)
+void logger_write(Logger* log,
+                  LOGGER_LEVEL level,
+                  const char* file,
+                  int line,
+                  const char* func,
+                  const char* format, ...)
 {
     (void) log;
     if (!enable_toxcore_log)
@@ -107,14 +120,19 @@ Line& operator<< (Line& line, const ToxFriendLog& tfl)
             return line;
 
         QByteArray name;
-        size_t size = tox_friend_get_name_size(tfl.tox, tfl.friendNumber, 0);
-        name.resize(size);
-        tox_friend_get_name(tfl.tox, tfl.friendNumber, (uint8_t*)name.constData(), 0);
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            size_t size = tox_friend_get_name_size(tfl.tox, tfl.friendNumber, 0);
+            name.resize(size);
+            tox_friend_get_name(tfl.tox, tfl.friendNumber, (uint8_t*)name.constData(), 0);
+        }
 
         if (!tfl.withoutKey)
         {
             QByteArray friendPk;
             friendPk.resize(TOX_PUBLIC_KEY_SIZE);
+
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
             if (!tox_friend_get_public_key(tfl.tox, tfl.friendNumber, (uint8_t*)friendPk.constData(), 0))
                 friendPk.clear();
 
@@ -134,14 +152,19 @@ Line operator<< (Line&& line, const ToxFriendLog& tfl)
             return std::move(line);
 
         QByteArray name;
-        size_t size = tox_friend_get_name_size(tfl.tox, tfl.friendNumber, 0);
-        name.resize(size);
-        tox_friend_get_name(tfl.tox, tfl.friendNumber, (uint8_t*)name.constData(), 0);
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            size_t size = tox_friend_get_name_size(tfl.tox, tfl.friendNumber, 0);
+            name.resize(size);
+            tox_friend_get_name(tfl.tox, tfl.friendNumber, (uint8_t*)name.constData(), 0);
+        }
 
         if (!tfl.withoutKey)
         {
             QByteArray friendPk;
             friendPk.resize(TOX_PUBLIC_KEY_SIZE);
+
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
             if (!tox_friend_get_public_key(tfl.tox, tfl.friendNumber, (uint8_t*)friendPk.constData(), 0))
                 friendPk.clear();
 

@@ -9,6 +9,7 @@
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
+#include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
 
@@ -51,6 +52,7 @@ ToxNet::ToxNet() : QThreadEx(0)
     FUNC_REGISTRATION(RequestFriendship)
     FUNC_REGISTRATION(FriendRequest)
     FUNC_REGISTRATION(RemoveFriend)
+    FUNC_REGISTRATION(PhoneFriendInfo)
     FUNC_REGISTRATION(ToxMessage)
     _funcInvoker.sort();
 
@@ -339,15 +341,18 @@ void ToxNet::run()
             updateBootstrapCounter = 0;
         }
 
-        tox_iterate(_tox, this);
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            tox_iterate(_tox, this);
+        }
 
         // Параметр iterationSleepTime вычисляется с учетом времени потраченного
         // на выполнение tox_iterate()
         iterationSleepTime = int(tox_iteration_interval(_tox));
         iterationTimer.reset();
 
-        { //Block for SpinLocker
-            lock_guard<mutex> locker(_threadLock); (void) locker;
+        { //Block for QMutexLocker
+            QMutexLocker locker(&_threadLock); (void) locker;
             if (!_messages.empty())
             {
                 for (int i = 0; i < _messages.count(); ++i)
@@ -368,13 +373,10 @@ void ToxNet::run()
         iterationSleepTime -= iterationTimer.elapsed();
         if (iterationSleepTime > 0)
         {
-            unique_lock<mutex> locker(_threadLock); (void) locker;
+            QMutexLocker locker(&_threadLock); (void) locker;
             if (!_messages.empty())
                 continue;
-
-            _threadSleep = true;
-            _threadCond.wait_for(locker, chrono::milliseconds(iterationSleepTime));
-            _threadSleep = false;
+            _threadCond.wait(&_threadLock, iterationSleepTime);
         }
     } // while (true)
 
@@ -392,14 +394,13 @@ void ToxNet::message(const communication::Message::Ptr& message)
 
     if (_funcInvoker.containsCommand(message->command()))
     {
-        if (message->command() != command::IncomingConfigConnection)
+        if (!commandsPool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
 
         message->add_ref();
-        lock_guard<mutex> locker(_threadLock); (void) locker;
+        QMutexLocker locker(&_threadLock); (void) locker;
         _messages.add(message.get());
-        if (_threadSleep)
-            _threadCond.notify_all();
+        _threadCond.wakeAll();
     }
 }
 
@@ -528,8 +529,9 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         }
 
         QByteArray toxPk = friendIdBin.left(TOX_PUBLIC_KEY_SIZE);
-        uint32_t friendNum = tox_friend_by_public_key(_tox, (uint8_t*) toxPk.constData(), 0);
-        if (friendNum != std::numeric_limits<uint32_t>::max())
+        //uint32_t friendNum = tox_friend_by_public_key(_tox, (uint8_t*) toxPk.constData(), 0);
+        uint32_t friendNum = getToxFriendNum(_tox, toxPk);
+        if (friendNum != UINT32_MAX)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Friend is already added");
             log_error_m << err;
@@ -543,10 +545,13 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
     if (error.code == 0)
     {
         QByteArray msg = friendMessage.toUtf8();
-        uint32_t friendNum =
-            tox_friend_add(_tox, (uint8_t*)friendIdBin.constData(),
-                           (uint8_t*)msg.constData(), msg.length(), 0);
-        if (friendNum == std::numeric_limits<uint32_t>::max())
+        uint32_t friendNum;
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            friendNum = tox_friend_add(_tox, (uint8_t*)friendIdBin.constData(),
+                                       (uint8_t*)msg.constData(), msg.length(), 0);
+        }
+        if (friendNum == UINT32_MAX)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed to request friendship. Friend id: %1");
             log_error_m << QString(err).arg(friendId);
@@ -581,8 +586,9 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
     if (friendRequest.accept == 1)
     {
         QByteArray pubKey = QByteArray::fromHex(publicKey);
-        uint32_t friendNum = tox_friend_add_norequest(_tox, (uint8_t*)pubKey.constData(), 0);
-        if (friendNum != std::numeric_limits<uint32_t>::max())
+        //uint32_t friendNum = tox_friend_add_norequest(_tox, (uint8_t*)pubKey.constData(), 0);
+        uint32_t friendNum = getToxFriendNum(_tox, pubKey);
+        if (friendNum != UINT32_MAX)
         {
             if (saveState())
             {
@@ -603,15 +609,8 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
             error.code = 1;
         }
     }
-    config::state().reRead();
+    //config::state().reRead();
     config::state().remove("friend_requests." + string(publicKey));
-
-    // Костыль: если нода friend_requests не содержит элементов, то удаляем
-    // саму ноду friend_requests. Если этого не делать, то при добавлении
-    // новых элементов будет некорректное форматирование.
-    //if (!config::state().getValue("friend_requests", [](YAML::Node& node, bool) {return node.size();}))
-    //    config::state().remove("friend_requests");
-
     config::state().save();
 
     Message::Ptr answer = message->cloneForAnswer();
@@ -633,16 +632,22 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
     const char* err;
     data::MessageError error;
     QByteArray publicKey = QByteArray::fromHex(removeFriend.publicKey);
-
-    uint32_t friendNum =
-        tox_friend_by_public_key(_tox, (uint8_t*)publicKey.constData(), 0);
-    if (friendNum != std::numeric_limits<uint32_t>::max())
+    uint32_t friendNum = getToxFriendNum(_tox, publicKey);
+    if (friendNum != UINT32_MAX)
     {
         QString fiendName = getToxFriendName(_tox, friendNum);
-        if (tox_friend_delete(_tox, friendNum, 0))
+        bool result;
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            result = tox_friend_delete(_tox, friendNum, 0);
+        }
+        if (result)
         {
             if (saveState())
             {
+                config::state().remove("phones." + string(removeFriend.publicKey));
+                config::state().save();
+
                 log_verbose_m << "Friend was successfully removed"
                               << ". Friend name/number/key: "
                               << fiendName << "/" << friendNum << "/"
@@ -676,6 +681,80 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
 
     tcp::listener().send(answer);
     updateFriendList();
+}
+
+void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
+{
+    data::PhoneFriendInfo phoneFriendInfo;
+    readFromMessage(message, phoneFriendInfo);
+
+    QByteArray removePubKey;
+    quint32 phoneNumber = quint32(-1);
+    YAML::Node phones = config::state().getNode("phones");
+    for(auto  it = phones.begin(); it != phones.end(); ++it)
+    {
+        QByteArray publicKey = it->first.as<string>("").c_str();
+        if (publicKey.isEmpty())
+            continue;
+
+        YAML::Node val = it->second;
+        phoneNumber = val["number"].as<int>(0);
+        if (phoneNumber == phoneFriendInfo.phoneNumber
+            && publicKey != phoneFriendInfo.publicKey)
+        {
+            removePubKey = publicKey;
+            break;
+        }
+    }
+    if (!removePubKey.isEmpty())
+    {
+        config::state().remove("phones." + string(removePubKey) + ".number");
+        config::state().save();
+        QByteArray removePk = QByteArray::fromHex(removePubKey);
+        quint32 removeFirendNum = getToxFriendNum(_tox, removePk);
+
+        log_verbose_m << "Remove duplicate phone number " << phoneNumber
+                      << " for "<< ToxFriendLog(_tox, removeFirendNum);
+
+        data::FriendItem friendItem;
+        if (fillFriendItem(friendItem, removeFirendNum))
+        {
+            Message::Ptr m = createMessage(friendItem, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+    }
+
+    YamlConfig::Func saveFunc = [&phoneFriendInfo](YAML::Node& node, bool)
+    {
+        node["name"] = phoneFriendInfo.name.toUtf8().constData();
+        if (!phoneFriendInfo.nameAlias.trimmed().isEmpty())
+            node["alias"] = phoneFriendInfo.nameAlias.trimmed().toUtf8().constData();
+        else
+            node.remove("alias");
+
+        if (phoneFriendInfo.phoneNumber != 0)
+            node["number"] = phoneFriendInfo.phoneNumber;
+        else
+            node.remove("number");
+
+        return true;
+    };
+    config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
+    config::state().save();
+
+    log_verbose_m << "Phone number " << phoneFriendInfo.phoneNumber
+                  << " assigned to "<< ToxFriendLog(_tox, phoneFriendInfo.number);
+
+    Message::Ptr answer = message->cloneForAnswer();
+    writeToMessage(phoneFriendInfo, answer);
+    tcp::listener().send(answer);
+
+    data::FriendItem friendItem;
+    if (!fillFriendItem(friendItem, phoneFriendInfo.number))
+        return;
+
+    Message::Ptr m = createMessage(friendItem, Message::Type::Event);
+    tcp::listener().send(m);
 }
 
 void ToxNet::command_ToxMessage(const Message::Ptr& message)
@@ -789,10 +868,20 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
 
     item.statusMessage = getToxFriendStatusMsg(_tox, friendNumber);
 
-    TOX_CONNECTION connection_status =
-        tox_friend_get_connection_status(_tox, friendNumber, 0);
-    item.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
-
+    { //Block for ToxGlobalLock
+        ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+        TOX_CONNECTION connection_status =
+            tox_friend_get_connection_status(_tox, friendNumber, 0);
+        item.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
+    }
+    YamlConfig::Func loadFunc = [&item](YAML::Node& node, bool)
+    {
+        string s = node["alias"].as<string>("");
+        item.nameAlias = QString::fromUtf8(s.c_str()).trimmed();
+        item.phoneNumber = node["number"].as<int>(0);
+        return true;
+    };
+    config::state().getValue("phones." + string(item.publicKey), loadFunc);
     return true;
 }
 
@@ -919,7 +1008,6 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
         tcp::listener().send(m);
     }
 }
-
 
 #undef log_error_m
 #undef log_warn_m

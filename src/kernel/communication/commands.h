@@ -115,6 +115,27 @@ extern const QUuidEx ToxCallState;
 */
 extern const QUuidEx ToxMessage;
 
+/**
+  Информация по телефонному дивертеру
+*/
+extern const QUuidEx DiverterInfo;
+
+/**
+  Информация по изменению состояния телефонного дивертера
+*/
+extern const QUuidEx DiverterChange;
+
+/**
+  Команда для запуска/остановки тестов для дивертера
+*/
+extern const QUuidEx DiverterTest;
+
+
+/**
+  Расширенная информация по другу. Используется при сохранении настроек
+  из конфигуратора и связывает идентификатор друга и номер телефона
+*/
+extern const QUuidEx PhoneFriendInfo;
 
 
 } // namespace command
@@ -202,11 +223,15 @@ struct FriendItem : Data<&command::FriendItem,
     };
 
     ChangeFlag changeFlag = {ChangeFlag::None};
-    QByteArray publicKey;     // Идентификатор друга
-    quint32    number;        // Числовой идентификатор друга
-    QString    name;          // Имя друга
-    QString    statusMessage; // Статус-сообщение
-    bool       isConnecnted;  // Признак подключения к сети
+    QByteArray publicKey;      // Идентификатор друга
+    quint32    number;         // Числовой идентификатор друга
+    QString    name;           // Имя друга
+    QString    statusMessage;  // Статус-сообщение
+    bool       isConnecnted;   // Признак подключения к сети
+
+    /** Дополнительные параметры для ToxPhone **/
+    QString nameAlias;         // Альтернативное имя друга
+    quint32 phoneNumber = {0}; // Число (0-99) для вызова друга с телефона
 
     DECLARE_B_SERIALIZE_FUNC
 };
@@ -261,8 +286,13 @@ struct AudioDevInfo : Data<&command::AudioDevInfo,
     qint32       volumeSteps; // Количество шагов уровня громкости
     bool         isCurrent  = {false}; // Признак текущего устройства (для ToxPhone)
     bool         isDefault  = {false}; // Признак устройства по умолчанию (для ToxPhone)
-    bool         isRingtone = {false}; // Признак, что устройство используется
-                                       // для проигрывания звонка вызова
+
+    // Признаки для обозначения устройства для проигрывания звонка вызова.
+    // Пока эти параметры ремим, попробуем на их основе реализовать версию
+    // структуры №2 для AudioDevInfo
+    //bool isRingtoneCurrent = {false};
+    //bool isRingtoneDefault = {false};
+
     struct Find
     {
         int operator() (const char*       devName,  const AudioDevInfo* item2, void*) const;
@@ -295,18 +325,15 @@ struct AudioDevChange: Data<&command::AudioDevChange,
     AudioDevType type;      // Тип устройства
     quint32      index;     // Индекс устройства
     qint64       value;     // Зачение изменяемого параметра
-    bool         isRingtone = {false}; // Признак, что измененный параметр относится
-                                       // к устройству для  проигрывания звонка вызова
+
+    // Признак, что измененный параметр относится к устройству для проигрывания
+    // звонка вызова.
+    // Пока эти параметры ремим, см. описаний для параметров isRingtoneCurrent,
+    // isRingtoneDefault в AudioDevInfo.
+    //bool isRingtone = {false};
+
     DECLARE_B_SERIALIZE_FUNC
 };
-
-//struct AudioDevList : Data<&command::AudioDevList,
-//                            Message::Type::Event>
-//{
-//    AudioDevType type;
-//    QVector<AudioDev> list;
-//    DECLARE_B_SERIALIZE_FUNC
-//};
 
 struct AudioTest : Data<&command::AudioTest,
                          Message::Type::Command,
@@ -338,14 +365,16 @@ struct ToxCallAction : Data<&command::ToxCallAction,
     // Выполняемые действия
     enum class Action : quint32
     {
-        None   = 0,
-        Accept = 1, // Принять входящий вызов
-        Reject = 2, // Отклонить входящий вызов
-        Call   = 3, // Сделать вызов
-        End    = 4  // Завершить звонок
+        None      = 0,
+        Accept    = 1, // Принять входящий вызов
+        Reject    = 2, // Отклонить входящий вызов
+        HandsetOn = 3, // Отклонить входящий вызов по причине того, что
+                       // телефонная трубка поднята/не положена
+        Call      = 4, // Сделать вызов
+        End       = 5  // Завершить звонок
     };
 
-    Action  action       = {Action::None};
+    Action  action = {Action::None};
     quint32 friendNumber = quint32(-1); // Числовой идентификатор друга
 
     DECLARE_B_SERIALIZE_FUNC
@@ -363,15 +392,32 @@ struct ToxCallState : Data<&command::ToxCallState,
     };
 
     // Состояние соединения
-    enum class State : quint32
+    enum class CallState : quint32
     {
         Undefined     = 0,
         WaitingAnswer = 1, // Процесс установки соединения
         InProgress    = 2, // Соединение установлено
     };
 
+    // Состояние завершения соединения. Сейчас предполагается, что состояние
+    // завершения соединения будет использоваться для проигрывания различных
+    // звуков при завершении или прерывании звонка, что позволит пользователю
+    // понимать причину неудачи.
+    enum class CallEnd : quint32
+    {
+        Undefined    = 0,
+        SelfEnd      = 1,  // Звонок удачно завершен пользователем
+        FriendEnd    = 2,  // Звонок удачно завершен другом
+        NotConnected = 3,  // Друг не подключен
+        FriendInCall = 4,  // Друг находиться в состоянии звонка, то есть линия
+                           // занята.
+        Reject       = 5,  // Пользователь отклонил входящий вызов
+        Error        = 10  // В процессе звонка произошла какая-то ошибка
+    };
+
     Direction direction    = {Direction::Undefined};
-    State     state        = {State::Undefined};
+    CallState callState    = {CallState::Undefined};
+    CallEnd   callEnd      = {CallEnd::Undefined};
     quint32   friendNumber = quint32(-1);  // Числовой идентификатор друга
 
     DECLARE_B_SERIALIZE_FUNC
@@ -383,6 +429,94 @@ struct ToxMessage : Data<&command::ToxMessage,
 {
     quint32 friendNumber; // Числовой идентификатор друга
     QByteArray text;
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+// Режим дивертера по умолчанию
+enum class DiverterDefaultMode : quint32
+{
+    Pstn = 0,
+    Usb  = 1
+};
+
+struct DiverterInfo : Data<&command::DiverterInfo,
+                            Message::Type::Command,
+                            Message::Type::Answer,
+                            Message::Type::Event>
+{
+    // Признак активности механизма дивертера
+    bool active = {true};
+
+    // Признак подключенного устройства
+    bool attached = {false};
+
+    // Режим дивертера по умолчанию
+    DiverterDefaultMode defaultMode = {DiverterDefaultMode::Pstn};
+
+    // Тональность звонка для телефона
+    QString ringTone;
+
+    // Информация по устройству
+    QString deviceUsbBus  = {"Undefined"};
+    QString deviceName    = {"Undefined"};
+    QString deviceVersion = {"Undefined"};
+    QString deviceSerial  = {"Undefined"};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct DiverterChange : Data<&command::DiverterChange,
+                              Message::Type::Command,
+                              Message::Type::Answer>
+{
+    enum class ChangeFlag : quint32
+    {
+        None        = 0,
+        Active      = 1, // Изменен признак активности дивертера
+        DefaultMode = 2, // Изменен признак режима по умолчанию для дивертера
+        RingTone    = 3, // Изменено значение для RingTone
+    };
+
+    ChangeFlag  changeFlag = {ChangeFlag::None};
+
+    // Признак активности механизма дивертера
+    bool active = {true};
+
+    // Режим дивертера по умолчанию
+    DiverterDefaultMode defaultMode = {DiverterDefaultMode::Pstn};
+
+    // Тональность звонка для телефона
+    QString ringTone;
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+
+struct DiverterTest : Data<&command::DiverterTest,
+                            Message::Type::Command,
+                            Message::Type::Answer,
+                            Message::Type::Event>
+{
+    bool begin = {false};
+    bool end() const {return !begin;}
+
+    // Тест тональности звонка для телефона
+    bool ringTone = {false};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+
+struct PhoneFriendInfo : Data<&command::PhoneFriendInfo,
+                               Message::Type::Command,
+                               Message::Type::Answer>
+{
+    QByteArray publicKey;  // Tox- Идентификатор друга
+    quint32    number;     // Tox- Числовой идентификатор друга
+    QString    name;       // Tox- Имя друга
+    QString    nameAlias;  // Альтернативное имя друга
+    quint32    phoneNumber = {0}; // Число (0-99) для вызова друга с телефона
 
     DECLARE_B_SERIALIZE_FUNC
 };

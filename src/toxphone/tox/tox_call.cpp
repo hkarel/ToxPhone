@@ -1,15 +1,17 @@
 #include "tox_call.h"
 #include "tox_net.h"
+#include "tox_func.h"
 #include "tox_error.h"
 #include "tox_logger.h"
 #include "common/defines.h"
 #include "common/functions.h"
 
 #include "shared/break_point.h"
-#include "shared/spin_locker.h"
+#include "shared/steady_timer.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
+#include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include <chrono>
@@ -111,8 +113,8 @@ void ToxCall::run()
 
         iterateVoiceFrame();
 
-        { //Block for SpinLocker
-            lock_guard<mutex> locker(_threadLock); (void) locker;
+        { //Block for QMutexLocker
+            QMutexLocker locker(&_threadLock); (void) locker;
             if (!_messages.empty())
             {
                 for (int i = 0; i < _messages.count(); ++i)
@@ -133,13 +135,10 @@ void ToxCall::run()
         iterationSleepTime -= iterationTimer.elapsed();
         if (iterationSleepTime > 0)
         {
-            unique_lock<mutex> locker(_threadLock); (void) locker;
+            QMutexLocker locker(&_threadLock); (void) locker;
             if (!_messages.empty())
                 continue;
-
-            _threadSleep = true;
-            _threadCond.wait_for(locker, chrono::milliseconds(iterationSleepTime));
-            _threadSleep = false;
+            _threadCond.wait(&_threadLock, iterationSleepTime);
         }
     } // while (true)
 
@@ -156,14 +155,13 @@ void ToxCall::message(const communication::Message::Ptr& message)
 
     if (_funcInvoker.containsCommand(message->command()))
     {
-        if (message->command() != command::IncomingConfigConnection)
+        if (!commandsPool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
 
         message->add_ref();
-        lock_guard<mutex> locker(_threadLock); (void) locker;
+        QMutexLocker locker(&_threadLock); (void) locker;
         _messages.add(message.get());
-        if (_threadSleep)
-            _threadCond.notify_all();
+        _threadCond.wakeAll();
     }
 }
 
@@ -186,29 +184,48 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         _sendVoiceFriendNumber = quint32(-1);
 
         _callState.direction = data::ToxCallState::Direction::Outgoing;
-        _callState.state = data::ToxCallState::State::WaitingAnswer;
+        _callState.callState = data::ToxCallState::CallState::WaitingAnswer;
+        _callState.callEnd = data::ToxCallState::CallEnd::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
 
         TOXAV_ERR_CALL err;
-        toxav_call(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
-
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            toxav_call(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
+        }
         if (err != TOXAV_ERR_CALL_OK)
         {
             log_error_m << "Failed toxav_call: " << toxError(err);
 
-            data::MessageError error;
-            error.description = tr(toxError(err));
-            error.code = 1;
+            if (configConnected())
+            {
+                data::MessageError error;
+                error.description = tr(toxError(err));
+                error.code = 1;
 
-            Message::Ptr answer = message->cloneForAnswer();
-            writeToMessage(error, answer);
-            tcp::listener().send(answer);
-
-            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
-
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                tcp::listener().send(answer);
+            }
+            { //Block for ToxGlobalLock
+                ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+                toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
+            }
             _callState.direction = data::ToxCallState::Direction::Undefined;
-            _callState.state = data::ToxCallState::State::Undefined;
+            _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+
+            if (err == TOXAV_ERR_CALL_FRIEND_NOT_FOUND
+                || err == TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::NotConnected;
+            }
+            else if (err == TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::FriendInCall;
+            }
+            else
+                _callState.callEnd = data::ToxCallState::CallEnd::Error;
         }
         sendCallState();
     }
@@ -221,37 +238,49 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
 
         _skipFirstFrames = 0;
         _callState.direction = data::ToxCallState::Direction::Incoming;
-        _callState.state = data::ToxCallState::State::InProgress;
+        _callState.callState = data::ToxCallState::CallState::InProgress;
+        _callState.callEnd = data::ToxCallState::CallEnd::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
 
         TOXAV_ERR_ANSWER err;
-        toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
-
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
+        }
         if (err == TOXAV_ERR_ANSWER_OK)
         {
             _recordBytes = 0;
             _sendVoiceFriendNumber = toxCallAction.friendNumber;
-
-            //emit stopRingtone();
-            //emit startRecordVoice();
         }
         else
         {
             log_error_m << "Failed toxav_answer: " << toxError(err);
 
-            data::MessageError error;
-            error.description = tr(toxError(err));
-            error.code = 1;
+            if (configConnected())
+            {
+                data::MessageError error;
+                error.description = tr(toxError(err));
+                error.code = 1;
 
-            Message::Ptr answer = message->cloneForAnswer();
-            writeToMessage(error, answer);
-            tcp::listener().send(answer);
-
-            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
-
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                tcp::listener().send(answer);
+            }
+            { //Block for ToxGlobalLock
+                ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+                toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
+            }
             _callState.direction = data::ToxCallState::Direction::Undefined;
-            _callState.state = data::ToxCallState::State::Undefined;
+            _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+
+            if (err == TOXAV_ERR_ANSWER_FRIEND_NOT_FOUND
+                || err == TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::NotConnected;
+            }
+            else
+                _callState.callEnd = data::ToxCallState::CallEnd::Error;
         }
         sendCallState();
     }
@@ -277,23 +306,33 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         endCalling();
 
         _callState.direction = data::ToxCallState::Direction::Undefined;
-        _callState.state = data::ToxCallState::State::Undefined;
+        _callState.callState = data::ToxCallState::CallState::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
 
-        TOXAV_ERR_CALL_CONTROL err;
-        toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, &err);
+        if (toxCallAction.action == data::ToxCallAction::Action::Reject)
+            _callState.callEnd = data::ToxCallState::CallEnd::Reject;
+        else
+            _callState.callEnd = data::ToxCallState::CallEnd::SelfEnd;
 
+        TOXAV_ERR_CALL_CONTROL err;
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, &err);
+        }
         if (err != TOXAV_ERR_CALL_CONTROL_OK)
         {
             log_error_m << "Failed toxav_call_control: " << toxError(err);
 
-            data::MessageError error;
-            error.description = tr(toxError(err));
-            error.code = 1;
+            if (configConnected())
+            {
+                data::MessageError error;
+                error.description = tr(toxError(err));
+                error.code = 1;
 
-            Message::Ptr answer = message->cloneForAnswer();
-            writeToMessage(error, answer);
-            tcp::listener().send(answer);
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                tcp::listener().send(answer);
+            }
         }
         sendCallState();
     }
@@ -304,7 +343,7 @@ void ToxCall::iterateVoiceFrame()
     if (_sendVoiceFriendNumber == quint32(-1))
         return;
 
-    VoiceFrameInfo::Ptr voiceFrameInfo = recordVoiceFrameInfo();
+    VoiceFrameInfo::Ptr voiceFrameInfo = getRecordFrameInfo();
     if (voiceFrameInfo.empty())
         return;
 
@@ -314,7 +353,7 @@ void ToxCall::iterateVoiceFrame()
     char data[4000];
     quint32 dataSize = voiceFrameInfo->bufferSize;
 
-    if (filterVoiceRBuff().read(data, dataSize))
+    if (filterRingBuff().read(data, dataSize))
     {
         _recordBytes += dataSize;
 
@@ -322,6 +361,7 @@ void ToxCall::iterateVoiceFrame()
         TOXAV_ERR_SEND_FRAME err;
         while (retries++ < 5)
         {
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
             toxav_audio_send_frame(_toxav, _sendVoiceFriendNumber,
                                    (int16_t*)data,
                                    voiceFrameInfo->sampleCount,
@@ -348,20 +388,34 @@ void ToxCall::iterateVoiceFrame()
 
 void ToxCall::endCalling()
 {
-//    emit stopRingtone();
-//    emit stopPlaybackVoice();
-//    emit stopRecordVoice();
     _sendVoiceFriendNumber = quint32(-1);
 
     log_debug_m << "Record bytes (read): " << _recordBytes;
     log_debug_m << "Playback bytes (write): " << _playbackBytes;
+
+    _recordBytes = 0;
+    _playbackBytes = 0;
 }
 
 void ToxCall::sendCallState()
 {
+    //log_debug_m << "Call sendCallState()";
+
     Message::Ptr m = createMessage(_callState, Message::Type::Event);
     emit internalMessage(m);
-    tcp::listener().send(m);
+
+    if (configConnected())
+    {
+        tcp::listener().send(m);
+        // Костыль: отправка повторно сообщения. Если отправлять одно сообщение,
+        // то оно иногда не приходит из сокета на стороне клиента. Проблема
+        // замечена только для Incoming/WaitingAnswer сообщений.
+        if (_callState.direction == data::ToxCallState::Direction::Incoming
+            && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+        {
+            tcp::listener().send(m);
+        }
+    }
 }
 
 //----------------------------- Tox callback ---------------------------------
@@ -382,8 +436,10 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
                    << ToxFriendLog(toxav_get_tox(av), friend_number);
 
         TOXAV_ERR_CALL_CONTROL err;
-        toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
-
+        { //Block for ToxGlobalLock
+            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+            toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
+        }
         if (err != TOXAV_ERR_CALL_CONTROL_OK)
             log_error_m << "Failed toxav_call_control: " << toxError(err);
 
@@ -395,12 +451,12 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
         toxNet().message(m);
         return;
     }
-
     log_verbose_m << "Begin incoming call (state: WaitingAnswer). "
                   << ToxFriendLog(toxav_get_tox(av), friend_number);
 
     tc->_callState.direction = data::ToxCallState::Direction::Incoming;
-    tc->_callState.state = data::ToxCallState::State::WaitingAnswer;
+    tc->_callState.callState = data::ToxCallState::CallState::WaitingAnswer;
+    tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
     tc->_callState.friendNumber = friend_number;
 
     //emit tc->startRingtone();
@@ -428,11 +484,11 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
 
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
-
         tc->endCalling();
 
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-        tc->_callState.state = data::ToxCallState::State::Undefined;
+        tc->_callState.callState = data::ToxCallState::CallState::Undefined;
+        tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
         tc->_callState.friendNumber = quint32(-1);
 
         tc->sendCallState();
@@ -451,11 +507,11 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
 
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
-
         tc->endCalling();
 
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-        tc->_callState.state = data::ToxCallState::State::Undefined;
+        tc->_callState.callState = data::ToxCallState::CallState::Undefined;
+        tc->_callState.callEnd = data::ToxCallState::CallEnd::FriendEnd;
         tc->_callState.friendNumber = quint32(-1);
 
         tc->sendCallState();
@@ -467,10 +523,11 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
 
         // Используем данное событие как факт того, что друг принял наш вызов
         if (tc->_callState.direction == data::ToxCallState::Direction::Outgoing
-            && tc->_callState.state == data::ToxCallState::State::WaitingAnswer)
+            && tc->_callState.callState == data::ToxCallState::CallState::WaitingAnswer)
         {
             tc->_skipFirstFrames = 0;
-            tc->_callState.state = data::ToxCallState::State::InProgress;
+            tc->_callState.callState = data::ToxCallState::CallState::InProgress;
+            tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
 
             //emit tc->stopRingtone();
 
@@ -484,13 +541,16 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
                             << "; Expected -> " <<  ToxFriendLog(toxav_get_tox(av), tc->_callState.friendNumber);
 
                 TOXAV_ERR_CALL_CONTROL err;
-                toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
-
+                { //Block for ToxGlobalLock
+                    ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+                    toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
+                }
                 if (err != TOXAV_ERR_CALL_CONTROL_OK)
                     log_error_m << "Failed toxav_call_control: " << toxError(err);
 
                 tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-                tc->_callState.state = data::ToxCallState::State::Undefined;
+                tc->_callState.callState = data::ToxCallState::CallState::Undefined;
+                tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
                 //_callState.friendNumber = toxCallAction.friendNumber;
             }
             tc->sendCallState();
@@ -581,11 +641,11 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
         VoiceFrameInfo voiceFrameInfo {latency, channels, sampleSize,
                                        quint32(sample_count), sampling_rate, bufferSize};
 
-        emit tc->startPlaybackVoice(VoiceFrameInfo::Ptr::create_ptr(voiceFrameInfo));
+        emit tc->startVoice(VoiceFrameInfo::Ptr::create_ptr(voiceFrameInfo));
         return;
     }
 
-    if (playbackVoiceRBuff().write((char*)pcm, bufferSize))
+    if (voiceRingBuff().write((char*)pcm, bufferSize))
         tc->_playbackBytes += bufferSize;
 }
 

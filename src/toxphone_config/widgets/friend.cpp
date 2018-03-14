@@ -16,8 +16,24 @@ FriendWidget::~FriendWidget()
 void FriendWidget::setProperties(const data::FriendItem& val)
 {
     _properties = val;
-    ui->labelFriendName->setText(_properties.name);
-    ui->labelFriendStatus->setText(_properties.statusMessage);
+
+    QString msg;
+    if (!_properties.nameAlias.isEmpty())
+        msg = QString("%1 (%2)").arg(_properties.nameAlias)
+                                .arg(_properties.name);
+    else
+        msg = _properties.name;
+
+    ui->labelFriendName->setText(msg);
+
+    msg = _properties.statusMessage.trimmed();
+    ui->labelFriendStatus->setText(msg);
+    ui->labelFriendStatus->setVisible(!msg.isEmpty());
+
+    if (_properties.phoneNumber != 0)
+        ui->labelPhoneNumber->setText(QString("*%1#").arg(_properties.phoneNumber));
+    else
+        ui->labelPhoneNumber->clear();
 
 //    switch (_properties.changeFlag)
 //    {

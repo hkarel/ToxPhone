@@ -33,9 +33,9 @@ struct VoiceFrameInfo
                                       // channels и от sampleSize)
 };
 
-VoiceFrameInfo::Ptr recordVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
-RingBuffer& recordVoiceRBuff();
-RingBuffer& filterVoiceRBuff();
+VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
+RingBuffer& recordRingBuff();
+RingBuffer& filterRingBuff();
 
-VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
-RingBuffer& playbackVoiceRBuff();
+VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
+RingBuffer& voiceRingBuff();

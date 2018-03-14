@@ -19,7 +19,7 @@ VoiceFrameInfo::VoiceFrameInfo(quint32 latency,
 {}
 
 
-VoiceFrameInfo::Ptr recordVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
+VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* vfi, bool reset)
 {
     static VoiceFrameInfo::Ptr voiceFrameInfo;
     static std::atomic_flag voiceFrameInfoLock {ATOMIC_FLAG_INIT};
@@ -33,17 +33,17 @@ VoiceFrameInfo::Ptr recordVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
     return voiceFrameInfo;
 }
 
-RingBuffer& recordVoiceRBuff()
+RingBuffer& recordRingBuff()
 {
     return ::safe_singleton<RingBuffer, 0>();
 }
 
-RingBuffer& filterVoiceRBuff()
+RingBuffer& filterRingBuff()
 {
     return ::safe_singleton<RingBuffer, 1>();
 }
 
-VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
+VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
 {
     static VoiceFrameInfo::Ptr voiceFrameInfo;
     static std::atomic_flag voiceFrameInfoLock {ATOMIC_FLAG_INIT};
@@ -57,7 +57,7 @@ VoiceFrameInfo::Ptr playbackVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset
     return voiceFrameInfo;
 }
 
-RingBuffer& playbackVoiceRBuff()
+RingBuffer& voiceRingBuff()
 {
     return ::safe_singleton<RingBuffer, 2>();
 }
