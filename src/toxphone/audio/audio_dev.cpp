@@ -174,6 +174,11 @@ void AudioDev::startRingtone()
     startPlayback("sound/ringtone.wav", std::numeric_limits<int>::max());
 }
 
+void AudioDev::startOutgoingCall()
+{
+    startPlayback("sound/outgoing_call.wav", std::numeric_limits<int>::max());
+}
+
 void AudioDev::startPlayback(const QString& fileName, int cycleCount)
 {
     QMutexLocker locker(&_streamLock); (void) locker;
@@ -788,6 +793,11 @@ void AudioDev::command_ToxCallState(const Message::Ptr& message)
     {
         stopPlayback();
         startRecord();
+    }
+    if (_callState.direction == data::ToxCallState::Direction::Outgoing
+        && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+    {
+        startOutgoingCall();
     }
     if (_callState.direction == data::ToxCallState::Direction::Outgoing
         && _callState.callState == data::ToxCallState::CallState::InProgress)

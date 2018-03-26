@@ -41,6 +41,9 @@ public slots:
     // Старт проигрывания звука звонка
     void startRingtone();
 
+    // Старт проигрывания звука исходящего вызова
+    void startOutgoingCall();
+
     // Старт/стоп воспроизведения звуков
     void startPlayback(const QString& fileName, int cycleCount = 1);
     void stopPlayback();
