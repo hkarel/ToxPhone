@@ -11,9 +11,9 @@ extern bool enable_toxcore_log;
   Небольшой хак: переопределяем реализацию функций из ядра toxcore
 */
 struct Logger {
-    logger_cb *callback;
-    void *context;
-    void *userdata;
+    logger_cb *callback = {0};
+    void *context  = {0};
+    void *userdata = {0};
 };
 
 // Заперт на mangling для имен функций
@@ -32,7 +32,7 @@ void logger_write(Logger* log,
 
 Logger *logger_new(void)
 {
-    return 0;
+    return (Logger *)calloc(1, sizeof(Logger));
 }
 
 void logger_kill(Logger *log)
