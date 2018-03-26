@@ -192,6 +192,9 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
 
             if (!phoneDiverter().isRinging())
                 phoneDiverter().startRing();
+
+            if (phoneDiverter().dialTone())
+                phoneDiverter().stopDialTone();
         }
         else //handset() == PhoneDiverter::Handset::On
         {
@@ -209,6 +212,8 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
     {
         if (phoneDiverter().isRinging())
             phoneDiverter().stopRing();
+
+        phoneDiverter().stopDialTone();
     }
     if (_callState.direction == data::ToxCallState::Direction::Outgoing
         && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
@@ -221,8 +226,7 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
     if (_callState.direction == data::ToxCallState::Direction::Outgoing
         && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
-        //stopPlayback();
-        //startRecord();
+        phoneDiverter().stopDialTone();
     }
     if (_callState.direction == data::ToxCallState::Direction:: Undefined
         && _callState.callState == data::ToxCallState::CallState::Undefined)
@@ -230,10 +234,17 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
         if (phoneDiverter().isRinging())
             phoneDiverter().stopRing();
 
-        if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
-            phoneDiverter().startDialTone();
-
         phoneDiverter().setMode(_diverterDefaultMode);
+
+        if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+        {
+            phoneDiverter().startDialTone();
+        }
+        else // handset() == PhoneDiverter::Handset::Off
+        {
+            if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
+                phoneDiverter().stopDialTone();
+        }
     }
 }
 
@@ -561,6 +572,9 @@ void ToxPhoneApplication::phoneDiverterHandset(PhoneDiverter::Handset handset)
             Message::Ptr m = createMessage(toxCallAction);
             emit internalMessage(m);
         }
+
+        if (_diverterDefaultMode == PhoneDiverter::Mode::Usb)
+            phoneDiverter().stopDialTone();
     }
 
     else if (handset == PhoneDiverter::Handset::On)

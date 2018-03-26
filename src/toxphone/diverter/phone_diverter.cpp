@@ -255,12 +255,18 @@ void PhoneDiverter::run()
                 if (_dialTone)
                 {
                     if (USB_ON == usbb2k_tone(_deviceHandle, USB_ON))
+                    {
                         dialtone = true;
+                        log_debug2_m << "Change dialtone to ON";
+                    }
                 }
                 else
                 {
                     if (USB_OFF == usbb2k_tone(_deviceHandle, USB_OFF))
+                    {
                         dialtone = false;
+                        log_debug2_m << "Change dialtone to OFF";
+                    }
                 }
             }
             usleep(25000);
