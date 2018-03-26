@@ -444,7 +444,7 @@ void ToxPhoneApplication::phoneDiverterAttached()
             */
 
             YAML::Node val = it->second;
-            quint32 phoneNumber = val["number"].as<int>(0);
+            quint32 phoneNumber = val["phone_number"].as<int>(0);
             _phonesHash[phoneNumber] = publicKey;
         }
         return true;

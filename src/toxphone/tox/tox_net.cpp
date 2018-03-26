@@ -698,7 +698,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
             continue;
 
         YAML::Node val = it->second;
-        phoneNumber = val["number"].as<int>(0);
+        phoneNumber = val["phone_number"].as<int>(0);
         if (phoneNumber == phoneFriendInfo.phoneNumber
             && publicKey != phoneFriendInfo.publicKey)
         {
@@ -708,7 +708,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
     }
     if (!removePubKey.isEmpty())
     {
-        config::state().remove("phones." + string(removePubKey) + ".number");
+        config::state().remove("phones." + string(removePubKey) + ".phone_number");
         config::state().save();
         QByteArray removePk = QByteArray::fromHex(removePubKey);
         quint32 removeFirendNum = getToxFriendNum(_tox, removePk);
@@ -726,20 +726,25 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
 
     YamlConfig::Func saveFunc = [&phoneFriendInfo](YAML::Node& node, bool)
     {
-        node["name"] = phoneFriendInfo.name.toUtf8().constData();
+        node["friend_name"] = phoneFriendInfo.name.toUtf8().constData();
         if (!phoneFriendInfo.nameAlias.trimmed().isEmpty())
-            node["alias"] = phoneFriendInfo.nameAlias.trimmed().toUtf8().constData();
+            node["friend_alias"] = phoneFriendInfo.nameAlias.trimmed().toUtf8().constData();
         else
-            node.remove("alias");
+            node.remove("friend_alias");
 
         if (phoneFriendInfo.phoneNumber != 0)
-            node["number"] = phoneFriendInfo.phoneNumber;
+            node["phone_number"] = phoneFriendInfo.phoneNumber;
         else
-            node.remove("number");
+            node.remove("phone_number");
 
         return true;
     };
-    config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
+    if (phoneFriendInfo.phoneNumber == 0
+        && phoneFriendInfo.nameAlias.trimmed().isEmpty())
+        config::state().remove  ("phones." + string(phoneFriendInfo.publicKey));
+    else
+        config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
+
     config::state().save();
 
     log_verbose_m << "Phone number " << phoneFriendInfo.phoneNumber
@@ -876,9 +881,9 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
     }
     YamlConfig::Func loadFunc = [&item](YAML::Node& node, bool)
     {
-        string s = node["alias"].as<string>("");
+        string s = node["friend_alias"].as<string>("");
         item.nameAlias = QString::fromUtf8(s.c_str()).trimmed();
-        item.phoneNumber = node["number"].as<int>(0);
+        item.phoneNumber = node["phone_number"].as<int>(0);
         return true;
     };
     config::state().getValue("phones." + string(item.publicKey), loadFunc);
