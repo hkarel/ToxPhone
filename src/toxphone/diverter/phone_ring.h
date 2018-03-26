@@ -28,8 +28,8 @@ class PhoneDiverter;
 class PhoneRing : public QThreadEx
 {
 public:
+    ~PhoneRing();
     bool mode() const {return _mode;}
-    //void setMode(bool val) {_mode = val;}
 
     QString tone() const;
     void setTone(const QString&);

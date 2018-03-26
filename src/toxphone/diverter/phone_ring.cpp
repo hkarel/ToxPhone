@@ -34,6 +34,10 @@ PhoneRing::PhoneRing() : QThreadEx(0)
 {
 }
 
+PhoneRing::~PhoneRing()
+{
+}
+
 QString PhoneRing::tone() const
 {
     SpinLocker locker(_toneLock); (void) locker;

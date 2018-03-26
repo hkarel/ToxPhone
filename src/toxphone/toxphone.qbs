@@ -32,23 +32,17 @@ Product {
         configure: {
             lib.sodium.probe();
             compilerLibraryPath = GccUtl.compilerLibraryPath(cpp.compilerPath);
-//            if (printPackegeBuildInfo) {
-//                var file = new TextFile(projectBuildDirectory + "/package_build_info", TextFile.WriteOnly);
-//                try {
-//                    var libOpencv = lib.opencv.dynamicLibraries;
-//                    for (var i in libOpencv)
-//                        file.writeLine(lib.opencv.libraryPath + "/lib" + libOpencv[i] + ".so*");
-//                    if (lib.pylon.enabled) {
-//                        var libPylon = lib.pylon.dynamicLibraries;
-//                        for (var i in libPylon)
-//                            file.writeLine(lib.pylon.libraryPath + "/lib" + libPylon[i] + ".so*");
-//                    }
-//                    file.writeLine(lib.caffe.libraryPath + "/lib*.so*");
-//                }
-//                finally {
-//                    file.close();
-//                }
-//            }
+            if (printPackegeBuildInfo) {
+                var file = new TextFile(projectBuildDirectory + "/package_build_info", TextFile.WriteOnly);
+                try {
+                    var libSodium = lib.sodium.dynamicLibraries;
+                    for (var i in libSodium)
+                        file.writeLine(lib.sodium.libraryPath + "/lib" + libSodium[i] + ".so*");
+                }
+                finally {
+                    file.close();
+                }
+            }
         }
     }
 
@@ -108,11 +102,6 @@ Product {
         }
         return libs;
     }
-
-//    Group {
-//        name: "resources"
-//        files: ["27fretaild.qrc",]
-//    }
 
     files: [
         "audio/audio_dev.cpp",
