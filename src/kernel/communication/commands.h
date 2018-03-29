@@ -91,6 +91,11 @@ extern const QUuidEx AudioDevInfo;
 extern const QUuidEx AudioDevChange;
 
 /**
+  Информация по изменению состояния потока воспроизведения
+*/
+extern const QUuidEx AudioStreamInfo;
+
+/**
   Команда для запуска/остановки аудио-тестов
 */
 extern const QUuidEx AudioTest;
@@ -281,9 +286,9 @@ struct AudioDevInfo : Data<&command::AudioDevInfo,
     QByteArray   name;        // Наименование устройства
     QString      description; // Описание устройства
     quint8       channels;    // Количество каналов
-    qint32       baseVolume;  // Базовый уровень громкости
-    qint32       volume;      // Текущий уровень громкости (для первого канала)
-    qint32       volumeSteps; // Количество шагов уровня громкости
+    quint32      baseVolume;  // Базовый уровень громкости
+    quint32      volume;      // Текущий уровень громкости (для первого канала)
+    quint32      volumeSteps; // Количество шагов уровня громкости
     bool         isCurrent  = {false}; // Признак текущего устройства (для ToxPhone)
     bool         isDefault  = {false}; // Признак устройства по умолчанию (для ToxPhone)
 
@@ -334,6 +339,46 @@ struct AudioDevChange: Data<&command::AudioDevChange,
 
     DECLARE_B_SERIALIZE_FUNC
 };
+struct AudioStreamInfo: Data<&command::AudioStreamInfo,
+                              Message::Type::Command,
+                              Message::Type::Answer,
+                              Message::Type::Event>
+{
+    // Типы потоков
+    enum class Type : quint32
+    {
+        Undefined  = 0,
+        Playback   = 1,
+        Voice      = 2,
+        Record     = 3
+    };
+
+    // Состояния потоков
+    enum class State : quint32
+    {
+        Created    = 0,  // Поток был создан
+        Changed    = 1,  // Параметры потока изменились
+        Terminated = 2   // Поток был уничтожен
+    };
+
+    Type    type  = {Type::Undefined};
+    State   state = {State::Terminated};
+    quint32 devIndex = (-1); // Индекс устройства
+    quint32 index = (-1);    // Индекс потока
+    QString name;            // Имя потока
+    bool    hasVolume = {true}; // Признак, что поток имеет уровень громкости
+    bool    volumeWritable = {true}; // Признак, что у потока можно изменять
+                                     // уровень громкости
+    quint8  channels = {2};    // Количество каналов
+    quint32 volume = {0};      // Текущий уровень громкости (для первого канала)
+    quint32 volumeSteps = {0}; // Количество шагов уровня громкости
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+
+
+
 
 struct AudioTest : Data<&command::AudioTest,
                          Message::Type::Command,

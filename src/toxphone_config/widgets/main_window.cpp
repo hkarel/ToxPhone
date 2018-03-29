@@ -55,6 +55,7 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(DhtConnectStatus)
     FUNC_REGISTRATION(AudioDevInfo)
     FUNC_REGISTRATION(AudioDevChange)
+    FUNC_REGISTRATION(AudioStreamInfo)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(AudioRecordLevel)
     FUNC_REGISTRATION(ToxCallAction)
@@ -512,7 +513,73 @@ void MainWindow::command_AudioDevChange(const Message::Ptr& message)
                 btdDefault->setDisabled(true);
         }
     }
+}
 
+void MainWindow::command_AudioStreamInfo(const Message::Ptr& message)
+{
+    data::AudioStreamInfo audioStreamInfo;
+    readFromMessage(message, audioStreamInfo);
+
+    QLabel* label = 0;
+    QSlider* slider = 0;
+    if (audioStreamInfo.type == data::AudioStreamInfo::Type::Playback)
+    {
+        label = ui->labelStreamPlayback;
+        slider = ui->sliderStreamPlayback;
+    }
+    else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
+    {
+        label = ui->labelStreamVoice;
+        slider = ui->sliderStreamVoice;
+    }
+    else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
+    {
+        label = ui->labelStreamRecord;
+        slider = ui->sliderStreamRecord;
+    }
+    if (!slider)
+        return;
+
+    if (audioStreamInfo.state == data::AudioStreamInfo::State::Created)
+    {
+        if (!audioStreamInfo.hasVolume)
+        {
+            label->setDisabled(true);
+            slider->setDisabled(true);
+            slider->setValue(0);
+            return;
+        }
+        if (!audioStreamInfo.volumeWritable)
+        {
+            label->setDisabled(true);
+            slider->setDisabled(true);
+            slider->setValue(0);
+            return;
+        }
+        if (audioStreamInfo.volumeSteps == 0)
+        {
+            label->setDisabled(true);
+            slider->setDisabled(true);
+            slider->setValue(0);
+            return;
+        }
+        label->setEnabled(true);
+        slider->setEnabled(true);
+        setSliderLevel(slider, 0, audioStreamInfo.volume, audioStreamInfo.volumeSteps);
+    }
+    else if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    {
+        if (audioStreamInfo.volumeSteps == 0)
+            return;
+
+        setSliderLevel(slider, 0, audioStreamInfo.volume, audioStreamInfo.volumeSteps);
+    }
+    else if (audioStreamInfo.state == data::AudioStreamInfo::State::Terminated)
+    {
+        label->setDisabled(true);
+        slider->setDisabled(true);
+        slider->setValue(0);
+    }
 }
 
 void MainWindow::command_AudioTest(const Message::Ptr& message)
@@ -1038,6 +1105,39 @@ void MainWindow::on_sliderAudioRecord_sliderReleased()
     audioDevChange.value = ui->sliderAudioRecord->value();
 
     Message::Ptr m = createMessage(audioDevChange);
+    _socket->send(m);
+}
+
+void MainWindow::on_sliderStreamPlayback_sliderReleased()
+{
+    data::AudioStreamInfo audioStreamInfo;
+    audioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
+    audioStreamInfo.state = data::AudioStreamInfo::State::Changed;
+    audioStreamInfo.volume = ui->sliderStreamPlayback->value();
+
+    Message::Ptr m = createMessage(audioStreamInfo);
+    _socket->send(m);
+}
+
+void MainWindow::on_sliderStreamVoice_sliderReleased()
+{
+    data::AudioStreamInfo audioStreamInfo;
+    audioStreamInfo.type = data::AudioStreamInfo::Type::Voice;
+    audioStreamInfo.state = data::AudioStreamInfo::State::Changed;
+    audioStreamInfo.volume = ui->sliderStreamVoice->value();
+
+    Message::Ptr m = createMessage(audioStreamInfo);
+    _socket->send(m);
+}
+
+void MainWindow::on_sliderStreamRecord_sliderReleased()
+{
+    data::AudioStreamInfo audioStreamInfo;
+    audioStreamInfo.type = data::AudioStreamInfo::Type::Record;
+    audioStreamInfo.state = data::AudioStreamInfo::State::Changed;
+    audioStreamInfo.volume = ui->sliderStreamRecord->value();
+
+    Message::Ptr m = createMessage(audioStreamInfo);
     _socket->send(m);
 }
 

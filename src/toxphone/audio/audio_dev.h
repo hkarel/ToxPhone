@@ -74,6 +74,7 @@ private:
     //--- Обработчики команд ---
     void command_IncomingConfigConnection(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);
+    void command_AudioStreamInfo(const Message::Ptr&);
     void command_AudioTest(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
 
@@ -85,6 +86,9 @@ private:
 
     template<typename InfoType>
     data::AudioDevInfo* updateAudioDevInfo(const InfoType*, data::AudioDevInfo::List& devices);
+
+    void fillAudioStreamInfo(const pa_sink_input_info*, data::AudioStreamInfo&);
+    void fillAudioStreamInfo(const pa_source_output_info*, data::AudioStreamInfo&);
 
     data::AudioDevInfo::List* getDevices(data::AudioDevType);
     data::AudioDevInfo* currentDevice(const data::AudioDevInfo::List&);
@@ -105,14 +109,22 @@ private:
                                    int eol, void* userdata);
     static void sink_change       (pa_context* context, const pa_sink_info* info,
                                    int eol, void* userdata);
-    static void sink_input_info   (pa_context* context, const pa_sink_input_info* info,
-                                   int eol, void* userdata);
     static void source_info       (pa_context* context, const pa_source_info* info,
                                    int eol, void* userdata);
     static void source_change     (pa_context* context, const pa_source_info* info,
                                    int eol, void* userdata);
-    static void source_output_info(pa_context* context, const pa_source_output_info* info,
-                                   int eol, void* userdata);
+
+    static void playback_stream_create(pa_context* context, const pa_sink_input_info* info,
+                                       int eol, void* userdata);
+    static void voice_stream_create   (pa_context* context, const pa_sink_input_info* info,
+                                       int eol, void* userdata);
+    static void record_stream_create  (pa_context* context, const pa_source_output_info* info,
+                                       int eol, void* userdata);
+    static void sink_stream_info      (pa_context* context, const pa_sink_input_info* info,
+                                       int eol, void* userdata);
+    static void source_stream_info    (pa_context* context, const pa_source_output_info* info,
+                                       int eol, void* userdata);
+
 
     static void playback_stream_state    (pa_stream*, void* userdata);
     static void playback_stream_started  (pa_stream*, void* userdata);
@@ -153,6 +165,10 @@ private:
     pa_stream* _voiceStream = {0};    // Поток для воспроизведения голоса
     pa_stream* _recordStream = {0};   // Поток для записи голоса
     mutable QMutex _streamLock;
+
+    data::AudioStreamInfo _palybackAudioStreamInfo;
+    data::AudioStreamInfo _voiceAudioStreamInfo;
+    data::AudioStreamInfo _recordAudioStreamInfo;
 
     atomic_bool _playbackActive = {false};
     atomic_bool _voiceActive = {false};

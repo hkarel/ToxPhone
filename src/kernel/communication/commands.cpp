@@ -23,6 +23,7 @@ REGISTRY_COMMAND_SINGLPROC(RemoveFriend,             "e6935f6b-3064-4bdb-91e8-37
 REGISTRY_COMMAND_SINGLPROC(DhtConnectStatus,         "b17a2b17-fbae-4be6-a28e-1693aff51eb8")
 REGISTRY_COMMAND_SINGLPROC(AudioDevInfo,             "1560a37b-529c-4233-8596-5f4e5076a359")
 REGISTRY_COMMAND_SINGLPROC(AudioDevChange,           "f305679b-ba1d-47d6-9769-f16c30dec6bf")
+REGISTRY_COMMAND_SINGLPROC(AudioStreamInfo,          "e8a04218-3d9e-4bd1-b25f-0543829d85f0")
 REGISTRY_COMMAND_SINGLPROC(AudioTest,                "eadfcffd-c78e-4320-bd6b-8e3fcd300edb")
 REGISTRY_COMMAND_SINGLPROC(AudioRecordLevel,         "5accc4e1-e489-42aa-b016-2532e3cbd471")
 REGISTRY_COMMAND_SINGLPROC(ToxCallAction,            "d29c17b2-ff6d-4ea9-bc5c-dcfb0ee55162")
@@ -294,6 +295,38 @@ void AudioDevChange::fromRaw(const bserial::RawVector& vect)
     stream >> index;
     stream >> value;
     //stream >> isRingtone;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector AudioStreamInfo::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << type;
+    stream << state;
+    stream << devIndex;
+    stream << index;
+    stream << name;
+    stream << hasVolume;
+    stream << volumeWritable;
+    stream << channels;
+    stream << volume;
+    stream << volumeSteps;
+    B_SERIALIZE_RETURN
+}
+
+void AudioStreamInfo::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> type;
+    stream >> state;
+    stream >> devIndex;
+    stream >> index;
+    stream >> name;
+    stream >> hasVolume;
+    stream >> volumeWritable;
+    stream >> channels;
+    stream >> volume;
+    stream >> volumeSteps;
     B_DESERIALIZE_END
 }
 

@@ -66,6 +66,10 @@ private slots:
     void on_sliderAudioPlayback_sliderReleased();
     void on_sliderAudioRecord_sliderReleased();
 
+    void on_sliderStreamPlayback_sliderReleased();
+    void on_sliderStreamVoice_sliderReleased();
+    void on_sliderStreamRecord_sliderReleased();
+
     void on_cboxUseDiverter_stateChanged(int state);
 
     void on_rbtnDiverterPSTN_clicked(bool);
@@ -88,6 +92,7 @@ private:
     void command_DhtConnectStatus(const Message::Ptr&);
     void command_AudioDevInfo(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);
+    void command_AudioStreamInfo(const Message::Ptr&);
     void command_AudioTest(const Message::Ptr&);
     void command_AudioRecordLevel(const Message::Ptr&);
     void command_ToxCallAction(const Message::Ptr&);

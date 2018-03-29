@@ -46,6 +46,13 @@ static string paStrError(pa_stream* stream)
     return string("; Error: ") + pa_strerror(pa_context_errno(pa_stream_get_context(stream)));
 }
 
+static void initChannelsVolune(const data::AudioStreamInfo& asi, pa_cvolume& volume)
+{
+    volume.channels = asi.channels;
+    for (quint8 i = 0; i < volume.channels; ++i)
+        volume.values[i] = asi.volume;
+}
+
 template<typename T> struct pa_operation_deleter
 {
     static void destroy(T* x) {if (x) pa_operation_unref(x);}
@@ -83,12 +90,16 @@ AudioDev::AudioDev()
     chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
                   this, SLOT(message(communication::Message::Ptr)))
 
+    _palybackAudioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
+    _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
+    _recordAudioStreamInfo.type   = data::AudioStreamInfo::Type::Record;
+
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &AudioDev::command_##COMMAND, this);
 
     FUNC_REGISTRATION(IncomingConfigConnection)
-    //FUNC_REGISTRATION(AudioDev)
     FUNC_REGISTRATION(AudioDevChange)
+    FUNC_REGISTRATION(AudioStreamInfo)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
@@ -323,7 +334,7 @@ void AudioDev::startVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     paSampleSpec.channels = voiceFrameInfo->channels;
     paSampleSpec.rate = voiceFrameInfo->samplingRate;
 
-    _voiceStream = pa_stream_new(_paContext, "Playback", &paSampleSpec, 0);
+    _voiceStream = pa_stream_new(_paContext, "Voice", &paSampleSpec, 0);
     if (!_voiceStream)
     {
         log_error_m << "Failed call pa_stream_new()" << paStrError(_paContext);
@@ -369,7 +380,7 @@ void AudioDev::startVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
         return;
     }
     _voiceActive = true;
-    log_debug_m << "Voice playback stream start";
+    log_debug_m << "Voice stream start";
 }
 
 void AudioDev::stopVoice()
@@ -398,8 +409,8 @@ void AudioDev::stopVoice()
     voiceRingBuff().reset();
     getVoiceFrameInfo(0, true);
 
-    log_debug_m << "Voice playback bytes: " << _voiceBytes;
-    log_debug_m << "Voice playback stream stopped";
+    log_debug_m << "Voice bytes: " << _voiceBytes;
+    log_debug_m << "Voice stream stopped";
 
     _voiceBytes = 0;
     _voiceActive = false;
@@ -436,7 +447,7 @@ void AudioDev::startRecord()
     //paSampleSpec.channels = 1;
     paSampleSpec.rate = 48000;
 
-    _recordStream = pa_stream_new(_paContext, "Recording", &paSampleSpec, 0);
+    _recordStream = pa_stream_new(_paContext, "Record", &paSampleSpec, 0);
     if (!_recordStream)
     {
         log_error_m << "Failed call pa_stream_new()" << paStrError(_paContext);
@@ -590,31 +601,75 @@ void AudioDev::message(const communication::Message::Ptr& message)
 
 void AudioDev::command_IncomingConfigConnection(const Message::Ptr& message)
 {
-    QMutexLocker locker(&_devicesLock); (void) locker;
+    Message::Ptr m;
 
-    for (int i = 0; i < _sinkDevices.count(); ++i)
-    {
-        Message::Ptr m = createMessage(_sinkDevices[i], Message::Type::Event);
-        tcp::listener().send(m);
+    { //Block for QMutexLocker
+        QMutexLocker locker(&_devicesLock); (void) locker;
+        for (int i = 0; i < _sinkDevices.count(); ++i)
+        {
+            m = createMessage(_sinkDevices[i], Message::Type::Event);
+            tcp::listener().send(m);
+        }
+        for (int i = 0; i < _sourceDevices.count(); ++i)
+        {
+            m = createMessage(_sourceDevices[i], Message::Type::Event);
+            tcp::listener().send(m);
+        }
     }
-    for (int i = 0; i < _sourceDevices.count(); ++i)
-    {
-        Message::Ptr m = createMessage(_sourceDevices[i], Message::Type::Event);
+
+    { //Block for MainloopLocker
+        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
+
+        // Отправляем фиктивные сообщения о создании потоков, чтобы правильно
+        // проинициализировать настройки конфигуратора
+        data::AudioStreamInfo audioStreamInfo;
+        if (_palybackAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+        {
+            audioStreamInfo = _palybackAudioStreamInfo;
+            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+            m = createMessage(audioStreamInfo, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+        if (_voiceAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+        {
+            audioStreamInfo = _voiceAudioStreamInfo;
+            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+            m = createMessage(audioStreamInfo, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+        if (_recordAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+        {
+            audioStreamInfo = _recordAudioStreamInfo;
+            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+            m = createMessage(audioStreamInfo, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+
+        m = createMessage(_palybackAudioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+
+        m = createMessage(_voiceAudioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+
+        m = createMessage(_recordAudioStreamInfo, Message::Type::Event);
         tcp::listener().send(m);
     }
 }
 
 void AudioDev::command_AudioDevChange(const Message::Ptr& message)
 {
-    QMutexLocker locker(&_devicesLock); (void) locker;
-
     data::AudioDevChange audioDevChange;
     readFromMessage(message, audioDevChange);
+
+    QMutexLocker locker(&_devicesLock); (void) locker;
+    data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
 
     // ChangeFlag::Volume
     if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Volume)
     {
-        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
         lst::FindResult fr = devices->findRef(audioDevChange.index);
         if (fr.failed())
         {
@@ -631,6 +686,8 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
         for (quint8 i = 0; i < volume.channels; ++i)
             volume.values[i] = audioDevInfo->volume;
 
+        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
+
         if (audioDevInfo->type == data::AudioDevType::Sink)
         {
             O_PTR_MSG(pa_context_set_sink_volume_by_index(_paContext, audioDevInfo->index, &volume, 0, 0),
@@ -646,7 +703,6 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
     // ChangeFlag::Current
     if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Current)
     {
-        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
         lst::FindResult fr = devices->findRef(audioDevChange.index);
         if (fr.failed())
         {
@@ -686,7 +742,6 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
     // ChangeFlag::Default
     if (audioDevChange.changeFlag == data::AudioDevChange::ChangeFlag::Default)
     {
-        data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
         lst::FindResult fr = devices->findRef(audioDevChange.index);
         if (fr.failed())
         {
@@ -730,6 +785,38 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
 
             Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
             tcp::listener().send(m);
+        }
+    }
+}
+
+void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
+{
+    data::AudioStreamInfo audioStreamInfo;
+    readFromMessage(message, audioStreamInfo);
+
+    MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
+
+    if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    {
+        pa_cvolume volume;
+        initChannelsVolune(audioStreamInfo, volume);
+        if (audioStreamInfo.type == data::AudioStreamInfo::Type::Playback)
+        {
+            _palybackAudioStreamInfo.volume = audioStreamInfo.volume;
+            O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0),
+                      "Failed call pa_context_set_sink_input_volume()", _paContext, {})
+        }
+        else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
+        {
+            _voiceAudioStreamInfo.volume = audioStreamInfo.volume;
+            O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0),
+                      "Failed call pa_context_set_sink_input_volume()", _paContext, {})
+        }
+        else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
+        {
+            _recordAudioStreamInfo.volume = audioStreamInfo.volume;
+            O_PTR_MSG(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0),
+                      "Failed call pa_context_set_source_output_volume()", _paContext, {})
         }
     }
 }
@@ -915,6 +1002,44 @@ data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::Aud
         tcp::listener().send(m);
     }
     return audioDevInfoPtr;
+}
+
+void AudioDev::fillAudioStreamInfo(const pa_sink_input_info* info,
+                                   data::AudioStreamInfo& audioStreamInfo)
+{
+    //audioStreamInfo.index = info->index;
+    audioStreamInfo.devIndex = info->sink;
+    audioStreamInfo.name = QString::fromUtf8(info->name);
+    audioStreamInfo.hasVolume = info->has_volume;
+    audioStreamInfo.volumeWritable = info->volume_writable;
+    audioStreamInfo.channels = info->channel_map.channels;
+    audioStreamInfo.volume = info->volume.values[0];
+
+    { //Block for QMutexLocker
+        QMutexLocker locker(&_devicesLock); (void) locker;
+        lst::FindResult fr = _sinkDevices.findRef(info->sink);
+        audioStreamInfo.volumeSteps =
+            (fr.success()) ? _sinkDevices[fr.index()].volumeSteps : 0;
+    }
+}
+
+void AudioDev::fillAudioStreamInfo(const pa_source_output_info* info,
+                                   data::AudioStreamInfo& audioStreamInfo)
+{
+    //audioStreamInfo.index = info->index;
+    audioStreamInfo.devIndex = info->source;
+    audioStreamInfo.name = QString::fromUtf8(info->name);
+    audioStreamInfo.hasVolume = info->has_volume;
+    audioStreamInfo.volumeWritable = info->volume_writable;
+    audioStreamInfo.channels = info->channel_map.channels;
+    audioStreamInfo.volume = info->volume.values[0];
+
+    { //Block for QMutexLocker
+        QMutexLocker locker(&_devicesLock); (void) locker;
+        lst::FindResult fr = _sourceDevices.findRef(info->source);
+        audioStreamInfo.volumeSteps =
+            (fr.success()) ? _sourceDevices[fr.index()].volumeSteps : 0;
+    }
 }
 
 data::AudioDevInfo::List* AudioDev::getDevices(data::AudioDevType type)
@@ -1104,6 +1229,7 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
             }
             break;
 
+        // Вывод информации по устройству воспроизведения
         case PA_SUBSCRIPTION_EVENT_SINK:
             if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
             {
@@ -1115,33 +1241,23 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
                 O_PTR_MSG(pa_context_get_sink_info_by_index(context, index, sink_change, ad),
                           "Failed call pa_context_get_sink_info_by_index()", context, {})
             }
-
             break;
 
-        /** Вывод информации по потоку воспроизведения **
+        /** Вывод информации по потоку воспроизведения **/
         case PA_SUBSCRIPTION_EVENT_SINK_INPUT:
-            //log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT";
-            if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_NEW)
+            if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
             {
-                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT new; index: " << index;
-
-                O_PTR_MSG(pa_context_get_sink_input_info(context, index, sink_input_info, ad),
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT CHANGE; index: " << index;
+                O_PTR_MSG(pa_context_get_sink_input_info(context, index, sink_stream_info, ad),
                           "Failed call pa_context_get_sink_info_by_index()", context, {})
             }
             else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
             {
-                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT remove; index: " << index;
-            }
-            else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
-            {
-                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT change; index: " << index;
-
-                O_PTR_MSG(pa_context_get_sink_input_info(context, index, sink_input_info, ad),
-                          "Failed call pa_context_get_sink_info_by_index()", context, {})
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SINK_INPUT REMOVE; index: " << index;
             }
             break;
-        */
 
+        // Вывод информации по устройству записи
         case PA_SUBSCRIPTION_EVENT_SOURCE:
             if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
             {
@@ -1155,9 +1271,18 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
             }
             break;
 
+        // Вывод информации по потоку записи
         case PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT:
-            // Вывод информации по потоку записи
-            //pa_context_get_source_output_info
+            if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_CHANGE)
+            {
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT CHANGE; index: " << index;
+                O_PTR_MSG(pa_context_get_source_output_info(context, index, source_stream_info, ad),
+                          "Failed call pa_context_get_source_output_info()", context, {})
+            }
+            else if ((type & PA_SUBSCRIPTION_EVENT_TYPE_MASK) == PA_SUBSCRIPTION_EVENT_REMOVE)
+            {
+                log_debug_m << "PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT REMOVE; index: " << index;
+            }
             break;
     }
 }
@@ -1252,21 +1377,6 @@ void AudioDev::sink_change(pa_context* context, const pa_sink_info* info,
     ad->updateAudioDevInfo(info, ad->_sinkDevices);
 }
 
-void AudioDev::sink_input_info(pa_context* context, const pa_sink_input_info* info,
-                               int eol, void* userdata)
-{
-    if (eol != 0)
-        return;
-
-    log_debug_m << "Sound sink input changed"
-                << "; index: " << info->index
-                << "; name: " << info->name
-                //<< "; (card: " << info->card << ")"
-                << "; has_volume: " << info->has_volume
-                << "; volume_writable: " << info->volume_writable
-                << "; volume: " << info->volume.values[0];
-}
-
 void AudioDev::source_info(pa_context* context, const pa_source_info* info,
                            int eol, void* userdata)
 {
@@ -1316,9 +1426,193 @@ void AudioDev::source_change(pa_context* context, const pa_source_info* info,
     ad->updateAudioDevInfo(info, ad->_sourceDevices);
 }
 
+void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_info* info,
+                                  int eol, void* userdata)
+{
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Playback stream info"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                << "; (sink: " << info->sink << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
+
+    ad->_palybackAudioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
+    ad->_palybackAudioStreamInfo.state = data::AudioStreamInfo::State::Created;
+    ad->_palybackAudioStreamInfo.index = info->index;
+    ad->fillAudioStreamInfo(info, ad->_palybackAudioStreamInfo);
+
+    if (configConnected())
+    {
+        Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+
+    // Восстанавливаем уровень громкости
+    config::state().getValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
+    pa_cvolume volume;
+    initChannelsVolune(ad->_palybackAudioStreamInfo, volume);
+    O_PTR_MSG(pa_context_set_sink_input_volume(ad->_paContext, ad->_palybackAudioStreamInfo.index, &volume, 0, 0),
+              "Failed call pa_context_set_sink_input_volume()", ad->_paContext, {})
+}
+
+void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info* info,
+                                  int eol, void* userdata)
+{
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Voice stream info"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                << "; (sink: " << info->sink << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
+
+    ad->_voiceAudioStreamInfo.type = data::AudioStreamInfo::Type::Voice;
+    ad->_voiceAudioStreamInfo.state = data::AudioStreamInfo::State::Created;
+    ad->_voiceAudioStreamInfo.index = info->index;
+    ad->fillAudioStreamInfo(info, ad->_voiceAudioStreamInfo);
+
+    if (configConnected())
+    {
+        Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+
+    // Восстанавливаем уровень громкости
+    config::state().getValue("audio.streams.voice_volume", ad->_voiceAudioStreamInfo.volume);
+    pa_cvolume volume;
+    initChannelsVolune(ad->_voiceAudioStreamInfo, volume);
+    O_PTR_MSG(pa_context_set_sink_input_volume(ad->_paContext, ad->_voiceAudioStreamInfo.index, &volume, 0, 0),
+              "Failed call pa_context_set_sink_input_volume()", ad->_paContext, {})
+}
+
+void AudioDev::record_stream_create(pa_context* context, const pa_source_output_info* info,
+                                    int eol, void* userdata)
+{
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Record stream info"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                << "; (source: " << info->source << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
+
+    ad->_recordAudioStreamInfo.type = data::AudioStreamInfo::Type::Record;
+    ad->_recordAudioStreamInfo.state = data::AudioStreamInfo::State::Created;
+    ad->_recordAudioStreamInfo.index = info->index;
+    ad->fillAudioStreamInfo(info, ad->_recordAudioStreamInfo);
+
+    if (configConnected())
+    {
+        Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+
+    // Восстанавливаем уровень громкости
+    config::state().getValue("audio.streams.record_volume", ad->_recordAudioStreamInfo.volume);
+    pa_cvolume volume;
+    initChannelsVolune(ad->_recordAudioStreamInfo, volume);
+    O_PTR_MSG(pa_context_set_source_output_volume(ad->_paContext, ad->_recordAudioStreamInfo.index, &volume, 0, 0),
+              "Failed call pa_context_set_source_output_volume()", ad->_paContext, {})
+}
+
+void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* info,
+                                int eol, void* userdata)
+{
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Sink stream changed"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                << "; (sink: " << info->sink << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
+
+    data::AudioStreamInfo* audioStreamInfo = 0;
+    if (ad->_palybackAudioStreamInfo.state != data::AudioStreamInfo::State::Terminated
+        && info->index == ad->_palybackAudioStreamInfo.index)
+    {
+        audioStreamInfo = &ad->_palybackAudioStreamInfo;
+    }
+    else if (ad->_voiceAudioStreamInfo.state != data::AudioStreamInfo::State::Terminated
+             && info->index == ad->_voiceAudioStreamInfo.index)
+    {
+        audioStreamInfo = &ad->_voiceAudioStreamInfo;
+    }
+    if (audioStreamInfo)
+    {
+        audioStreamInfo->state = data::AudioStreamInfo::State::Changed;
+        ad->fillAudioStreamInfo(info, *audioStreamInfo);
+
+        if (configConnected())
+        {
+            Message::Ptr m = createMessage(*audioStreamInfo, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+    }
+}
+
+void AudioDev::source_stream_info(pa_context* context, const pa_source_output_info* info,
+                                    int eol, void* userdata)
+{
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+
+    if (eol != 0)
+        return;
+
+    log_debug_m << "Source stream changed"
+                << "; index: " << info->index
+                << "; name: " << info->name
+                << "; (source: " << info->source << ")"
+                << "; has_volume: " << info->has_volume
+                << "; volume_writable: " << info->volume_writable
+                << "; volume: " << info->volume.values[0];
+
+    data::AudioStreamInfo* audioStreamInfo = 0;
+    if (ad->_voiceAudioStreamInfo.state != data::AudioStreamInfo::State::Terminated
+        && info->index == ad->_recordAudioStreamInfo.index)
+    {
+        audioStreamInfo = &ad->_recordAudioStreamInfo;
+    }
+    if (audioStreamInfo)
+    {
+        audioStreamInfo->state = data::AudioStreamInfo::State::Changed;
+        ad->fillAudioStreamInfo(info, *audioStreamInfo);
+
+        if (configConnected())
+        {
+            Message::Ptr m = createMessage(*audioStreamInfo, Message::Type::Event);
+            tcp::listener().send(m);
+        }
+    }
+}
+
 void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 {
     log_debug2_m << "playback_stream_state_cb()";
+
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+    pa_context* context;
+    uint32_t index;
 
     switch (pa_stream_get_state(stream))
     {
@@ -1328,11 +1622,28 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 
         case PA_STREAM_TERMINATED:
             log_debug2_m << "Playback stream event: PA_STREAM_TERMINATED";
+
+            ad->_palybackAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
+            ad->_palybackAudioStreamInfo.index = -1;
+
+            config::state().setValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
+            config::state().save();
+
+            if (configConnected())
+            {
+                Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
+                tcp::listener().send(m);
+            }
             break;
 
         case PA_STREAM_READY:
             log_debug2_m << "Playback stream event: PA_STREAM_READY";
             log_debug_m  << "Playback stream started";
+
+            context = pa_stream_get_context(stream);
+            index = pa_stream_get_index(stream);
+            O_PTR_MSG(pa_context_get_sink_input_info(context, index, playback_stream_create, ad),
+                      "Failed call pa_context_get_sink_info_by_index()", context, {})
             break;
 
         case PA_STREAM_FAILED:
@@ -1450,7 +1761,9 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
 {
     log_debug2_m << "voice_stream_state_cb()";
 
-    //AudioDev* ad = static_cast<AudioDev*>(userdata);
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+    pa_context* context;
+    uint32_t index;
     const pa_buffer_attr* attr = 0;
     char cmt[PA_CHANNEL_MAP_SNPRINT_MAX];
     char sst[PA_SAMPLE_SPEC_SNPRINT_MAX];
@@ -1463,11 +1776,28 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
 
         case PA_STREAM_TERMINATED:
             log_debug2_m << "Voice stream event: PA_STREAM_TERMINATED";
+
+            ad->_voiceAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
+            ad->_voiceAudioStreamInfo.index = -1;
+
+            config::state().setValue("audio.streams.voice_volume", ad->_voiceAudioStreamInfo.volume);
+            config::state().save();
+
+            if (configConnected())
+            {
+                Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
+                tcp::listener().send(m);
+            }
             break;
 
         case PA_STREAM_READY:
             log_debug2_m << "Voice stream event: PA_STREAM_READY";
-            log_debug_m  << "Voice playback stream started";
+            log_debug_m  << "Voice stream started";
+
+            context = pa_stream_get_context(stream);
+            index = pa_stream_get_index (stream);
+            O_PTR_MSG(pa_context_get_sink_input_info(context, index, voice_stream_create, ad),
+                      "Failed call pa_context_get_sink_info_by_index()", context, {})
 
             if (VoiceFrameInfo::Ptr voiceFrameInfo = getVoiceFrameInfo())
             {
@@ -1564,6 +1894,9 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 {
     log_debug2_m << "record_stream_state_cb()";
 
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
+    pa_context* context;
+    uint32_t index;
     const pa_buffer_attr* attr = 0;
     char cmt[PA_CHANNEL_MAP_SNPRINT_MAX];
     char sst[PA_SAMPLE_SPEC_SNPRINT_MAX];
@@ -1576,11 +1909,28 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 
         case PA_STREAM_TERMINATED:
             log_debug2_m << "Record stream event: PA_STREAM_TERMINATED";
+
+            ad->_recordAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
+            ad->_recordAudioStreamInfo.index = -1;
+
+            config::state().setValue("audio.streams.record_volume", ad->_recordAudioStreamInfo.volume);
+            config::state().save();
+
+            if (configConnected())
+            {
+                Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
+                tcp::listener().send(m);
+            }
             break;
 
         case PA_STREAM_READY:
             log_debug2_m << "Record stream event: PA_STREAM_READY";
             log_debug_m  << "Record stream started";
+
+            context = pa_stream_get_context(stream);
+            index = pa_stream_get_index (stream);
+            O_PTR_MSG(pa_context_get_source_output_info(context, index, record_stream_create, ad),
+                      "Failed call pa_context_get_source_output_info()", context, {})
 
             if (VoiceFrameInfo::Ptr voiceFrameInfo = getRecordFrameInfo())
             {
