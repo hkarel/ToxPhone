@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=ToxPhone
+GenericName=ToxPhone configurator
+Comment=Tox phone for communication
+TryExec=/opt/toxphone/toxphone-config
+Exec=/opt/toxphone/toxphone-config
+Icon=xorg
+Terminal=false
+Categories=Network;Telephony;Application;

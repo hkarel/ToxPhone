@@ -51,9 +51,9 @@ Project {
 
         if (qbs.targetOS.contains("windows")
             && qbs.toolchain && qbs.toolchain.contains("mingw"))
-            def.push("CONFIG_DIR=\".config/ToxPhone\"");
+            def.push("CONFIG_DIR=\".config/toxphone\"");
         else
-            def.push("CONFIG_DIR=\"ToxPhone\"");
+            def.push("CONFIG_DIR=\"toxphone\"");
 
         if (qbs.buildVariant === "release")
             def.push("NDEBUG");

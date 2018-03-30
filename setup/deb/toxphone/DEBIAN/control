@@ -1,0 +1,10 @@
+Package: toxphone
+Version: %VERSION%
+Architecture: %ARCHITECTURE%
+Maintainer: Pavel Karelin <hkarel@yandex.ru>
+Installed-Size: %INSTALLED_SIZE%
+Depends:  %DEPENDS%
+Section: net
+Priority: standard
+Homepage:
+Description: Phone client for tox network

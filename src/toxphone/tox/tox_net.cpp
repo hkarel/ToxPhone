@@ -38,7 +38,7 @@ ToxNet& toxNet()
 
 ToxNet::ToxNet() : QThreadEx(0)
 {
-    _configPath = "/var/opt/ToxPhone/state";
+    _configPath = "/var/opt/toxphone/state";
     _configFile = _configPath + "/toxphone.tox";
 
     chk_connect_d(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),

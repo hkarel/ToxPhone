@@ -200,7 +200,7 @@ void AudioDev::startPlayback(const QString& fileName, int cycleCount)
     QString filePath = getFilePath(fileName);
     if (filePath.isEmpty())
     {
-        log_error_m << "File " << filePath << " not found";
+        log_error_m << "File " << fileName << " not found";
         return;
     }
     if (_playbackFile.isOpen())
@@ -280,24 +280,10 @@ void AudioDev::stopPlayback()
 
     log_debug_m << "Playback stream stop";
 
-    { //Block for MainloopLocker
-        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
-        pa_stream_set_write_callback(_playbackStream, 0, 0);
-        O_PTR_MSG(pa_stream_drain(_playbackStream, playback_stream_drain, this),
-                  "Failed call pa_stream_drain()", _playbackStream, {})
-    }
-    int attempts = 100;
-    while (_playbackActive || (--attempts > 0))
-        this_thread::sleep_for(chrono::milliseconds(5));
+    MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
+    pa_stream_set_write_callback(_playbackStream, 0, 0);
+    playback_stream_drain(_playbackStream, false, this);
 
-    if (_playbackStream)
-    {
-        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
-        if (pa_stream_disconnect(_playbackStream) < 0)
-            log_error_m << "Failed call pa_stream_disconnect()"
-                        << paStrError(_playbackStream);
-        pa_stream_unref(_playbackStream);
-    }
     _playbackStream = 0;
     _playbackActive = false;
 }
@@ -796,7 +782,8 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
 
     MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
 
-    if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    if (audioStreamInfo.state == data::AudioStreamInfo::State::Created
+        || audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
     {
         pa_cvolume volume;
         initChannelsVolune(audioStreamInfo, volume);
@@ -1147,9 +1134,9 @@ bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardI
 
 void AudioDev::context_state(pa_context* context, void* userdata)
 {
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-    //pa_operation_ptr o;
+    log_debug2_m << "context_state()";
 
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
     switch (pa_context_get_state(context))
     {
         case PA_CONTEXT_UNCONNECTED:
@@ -1211,6 +1198,8 @@ void AudioDev::context_state(pa_context* context, void* userdata)
 void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type_t type,
                                  uint32_t index, void* userdata)
 {
+    log_debug2_m << "context_subscribe()";
+
     AudioDev* ad = static_cast<AudioDev*>(userdata);
     switch (type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK)
     {
@@ -1290,6 +1279,8 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
 void AudioDev::card_info(pa_context* context, const pa_card_info* card_info,
                          int eol, void* userdata)
 {
+    log_debug2_m << "card_info()";
+
     if (eol != 0)
         return;
 
@@ -1447,18 +1438,16 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
     ad->_palybackAudioStreamInfo.index = info->index;
     ad->fillAudioStreamInfo(info, ad->_palybackAudioStreamInfo);
 
-    if (configConnected())
-    {
-        Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
-    }
-
     // Восстанавливаем уровень громкости
     config::state().getValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
-    pa_cvolume volume;
-    initChannelsVolune(ad->_palybackAudioStreamInfo, volume);
-    O_PTR_MSG(pa_context_set_sink_input_volume(ad->_paContext, ad->_palybackAudioStreamInfo.index, &volume, 0, 0),
-              "Failed call pa_context_set_sink_input_volume()", ad->_paContext, {})
+
+    Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
+    if (configConnected())
+        tcp::listener().send(m);
+
+    // Обновляем уровень громкости
+    QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
+                              Q_ARG(communication::Message::Ptr, m));
 }
 
 void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info* info,
@@ -1482,18 +1471,16 @@ void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info
     ad->_voiceAudioStreamInfo.index = info->index;
     ad->fillAudioStreamInfo(info, ad->_voiceAudioStreamInfo);
 
-    if (configConnected())
-    {
-        Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
-    }
-
     // Восстанавливаем уровень громкости
     config::state().getValue("audio.streams.voice_volume", ad->_voiceAudioStreamInfo.volume);
-    pa_cvolume volume;
-    initChannelsVolune(ad->_voiceAudioStreamInfo, volume);
-    O_PTR_MSG(pa_context_set_sink_input_volume(ad->_paContext, ad->_voiceAudioStreamInfo.index, &volume, 0, 0),
-              "Failed call pa_context_set_sink_input_volume()", ad->_paContext, {})
+
+    Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
+    if (configConnected())
+        tcp::listener().send(m);
+
+    // Обновляем уровень громкости
+    QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
+                              Q_ARG(communication::Message::Ptr, m));
 }
 
 void AudioDev::record_stream_create(pa_context* context, const pa_source_output_info* info,
@@ -1517,18 +1504,16 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
     ad->_recordAudioStreamInfo.index = info->index;
     ad->fillAudioStreamInfo(info, ad->_recordAudioStreamInfo);
 
-    if (configConnected())
-    {
-        Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
-    }
-
     // Восстанавливаем уровень громкости
     config::state().getValue("audio.streams.record_volume", ad->_recordAudioStreamInfo.volume);
-    pa_cvolume volume;
-    initChannelsVolune(ad->_recordAudioStreamInfo, volume);
-    O_PTR_MSG(pa_context_set_source_output_volume(ad->_paContext, ad->_recordAudioStreamInfo.index, &volume, 0, 0),
-              "Failed call pa_context_set_source_output_volume()", ad->_paContext, {})
+
+    Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
+    if (configConnected())
+        tcp::listener().send(m);
+
+    // Обновляем уровень громкости
+    QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
+                              Q_ARG(communication::Message::Ptr, m));
 }
 
 void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* info,

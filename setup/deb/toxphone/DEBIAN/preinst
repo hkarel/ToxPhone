@@ -1,0 +1,8 @@
+#!/bin/bash
+
+res=$(systemctl list-unit-files | grep toxphone)
+if [ -n "$res" ]; then
+    systemctl stop toxphone
+fi
+
+exit 0

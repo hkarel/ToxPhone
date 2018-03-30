@@ -1,0 +1,126 @@
+#!/bin/bash
+
+#
+# Формирование deb-пакета для toxphone
+#
+package_dir=$script_dir/build/${build_subdir}/deb/toxphone
+echo -e "\npackage_dir: $package_dir"
+
+package_name="toxphone-${package_vers}-${package_date}git${gitrev}-${os_id}${os_ver}-${os_arch}.deb"
+echo "package_name_tox: $package_name"
+
+rm -rf $package_dir
+
+mkdir -p $package_dir/DEBIAN
+mkdir -p $package_dir/etc/toxphone
+mkdir -p $package_dir/etc/systemd/system
+mkdir -p $package_dir/opt/toxphone/lib
+mkdir -p $package_dir/opt/toxphone/sound
+mkdir -p $package_dir/var/opt/toxphone/log
+mkdir -p $package_dir/var/opt/toxphone/state
+mkdir -p $package_dir/lib/udev/rules.d
+
+cp $script_dir/setup/deb/toxphone/DEBIAN/*     $package_dir/DEBIAN
+cp $script_dir/config/bootstrap.nodes          $package_dir/etc/toxphone
+cp $script_dir/config/toxphone.conf            $package_dir/etc/toxphone
+cp $script_dir/config/toxphone.logger.conf     $package_dir/etc/toxphone
+cp $script_dir/systemd/toxphone.service        $package_dir/etc/systemd/system
+cp ${build_dir}/bin/toxphone                   $package_dir/opt/toxphone
+cp $script_dir/sound/*                         $package_dir/opt/toxphone/sound
+cp $script_dir/udev/99-toxphone-b2k-b3g.rules  $package_dir/lib/udev/rules.d
+
+for f in $(cat ${build_dir}/package_build_info); do
+    [ -n "$f" ] && cp -P $f $package_dir/opt/toxphone/lib
+done
+
+chmod -R go-w        $package_dir
+chmod    u=rwx,go=rx $package_dir/DEBIAN/post*
+chmod    u=rwx,go=rx $package_dir/DEBIAN/pre*
+chmod    u=rw,go=r   $package_dir/DEBIAN/conffiles
+chmod    u=rwX,go=rX $package_dir/etc/toxphone
+chmod -R u=rwX,go=rX $package_dir/opt/toxphone
+chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
+chmod    u=rw,go=r   $package_dir/opt/toxphone/lib/*
+chmod    u=rw,go=r   $package_dir/opt/toxphone/sound/*
+chmod -R u=rwX,go=rX $package_dir/lib/udev/rules.d
+
+if [ "$build_mode" = "release" ]; then
+    set +e
+    echo "Removing debug info ... "
+    for f in $(find $package_dir/opt/toxphone/lib -type f); do
+        strip --strip-debug --strip-unneeded $f
+    done
+    strip --strip-debug --strip-unneeded $package_dir/opt/toxphone/toxphone
+    set -e
+fi
+
+# Размер пакета
+installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
+echo "installed_size: $installed_size"
+
+packet_depends=$(cat << EOS
+    libc6, adduser, \
+    libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
+EOS
+)
+packet_depends1=
+if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
+    packet_depends1=$(cat << EOS
+        , libvpx3
+EOS
+)
+fi
+packet_depends="${packet_depends}${packet_depends1}"
+
+sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
+    -e "s/%ARCHITECTURE%/${os_arch}/" \
+    -e "s/%INSTALLED_SIZE%/${installed_size}/" \
+    -e "s/%DEPENDS%/${packet_depends}/" \
+    -i $package_dir/DEBIAN/control
+
+# Контрольные суммы файлов пакета
+cd $package_dir
+if [ "$os_id" = "ubuntu" -a "$os_ver" \> "15.10" ]; then
+    hashdeep -rl -o f etc >> DEBIAN/md5sums
+    hashdeep -rl -o f opt >> DEBIAN/md5sums
+    hashdeep -rl -o f lib >> DEBIAN/md5sums
+else
+    md5deep  -rl -o f etc >> DEBIAN/md5sums
+    md5deep  -rl -o f opt >> DEBIAN/md5sums
+    md5deep  -rl -o f lib >> DEBIAN/md5sums
+fi
+chmod  0644 DEBIAN/md5sums
+cd $script_dir
+
+# Создание deb-пакета
+fakeroot dpkg-deb --build $package_dir ${build_dir}/$package_name
+
+# Проверка deb-пакета
+echo "Start 'lintian'"
+set +e
+lintian --suppress-tags \
+hardening-no-relro,\
+binary-or-shlib-defines-rpath,\
+dir-or-file-in-opt,\
+bad-package-name,\
+package-not-lowercase,\
+systemd-service-file-outside-lib,\
+maintainer-script-calls-systemctl,\
+file-in-etc-not-marked-as-conffile,\
+maintainer-script-ignores-errors,\
+maintainer-script-empty \
+${build_dir}/$package_name
+set -e
+
+if [ "$build_deb_package" = "yes" ]; then
+    cd $script_dir
+    mkdir -p packages
+    echo "Copying the file $package_name to directory ./packages"
+    cp -f ${build_dir}/$package_name ./packages
+fi
+
+if [ "$install_toxphone" = "yes" ]; then
+    echo "Install ToxPhone..."
+    sudo dpkg -i ${build_dir}/$package_name
+    echo "ToxPhone installation is complete"
+fi

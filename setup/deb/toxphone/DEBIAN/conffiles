@@ -1,0 +1,3 @@
+/etc/toxphone/bootstrap.nodes
+/etc/toxphone/toxphone.conf
+/etc/toxphone/toxphone.logger.conf

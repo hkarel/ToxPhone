@@ -1,0 +1,91 @@
+#!/bin/bash
+
+#
+# Формирование deb-пакета для toxphone-config
+#
+package_dir=$script_dir/build/${build_subdir}/deb/toxphone-config
+echo -e "\npackage_dir: $package_dir"
+
+package_name="toxphone-config-${package_vers}-${package_date}git${gitrev}-${os_id}${os_ver}-${os_arch}.deb"
+echo "package_name_conf: $package_name"
+
+rm -rf $package_dir
+
+mkdir -p $package_dir/DEBIAN
+mkdir -p $package_dir/opt/toxphone
+mkdir -p $package_dir/usr/share/applications
+
+cp $script_dir/setup/deb/toxphone-config/DEBIAN/*  $package_dir/DEBIAN
+cp ${build_dir}/bin/toxphone-config                $package_dir/opt/toxphone
+cp $script_dir/setup/toxphone-config.desktop       $package_dir/usr/share/applications
+
+chmod -R go-w        $package_dir
+chmod    u=rwx,go=rx $package_dir/DEBIAN/post*
+chmod    u=rwx,go=rx $package_dir/DEBIAN/pre*
+chmod -R u=rwX,go=rX $package_dir/opt/toxphone
+chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone-config
+
+if [ "$build_mode" = "release" ]; then
+    echo "Removing debug info ... "
+    strip --strip-debug --strip-unneeded $package_dir/opt/toxphone/toxphone-config
+fi
+
+# Размер пакета
+installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
+echo "installed_size: $installed_size"
+
+packet_depends=$(cat << EOS
+    libc6, libqtcore4, libqt4-network, libqtgui4
+EOS
+)
+
+sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
+    -e "s/%ARCHITECTURE%/${os_arch}/" \
+    -e "s/%INSTALLED_SIZE%/${installed_size}/" \
+    -e "s/%DEPENDS%/${packet_depends}/" \
+    -i $package_dir/DEBIAN/control
+
+# Контрольные суммы файлов пакета
+cd $package_dir
+if [ "$os_id" = "ubuntu" -a "$os_ver" \> "15.10" ]; then
+    hashdeep -rl -o f opt >> DEBIAN/md5sums
+    hashdeep -rl -o f usr >> DEBIAN/md5sums
+else
+    md5deep  -rl -o f opt >> DEBIAN/md5sums
+    md5deep  -rl -o f usr >> DEBIAN/md5sums
+fi
+chmod  0644 DEBIAN/md5sums
+cd $script_dir
+
+# Создание deb-пакета
+fakeroot dpkg-deb --build $package_dir ${build_dir}/$package_name
+
+# Проверка deb-пакета
+echo "Start 'lintian'"
+set +e
+lintian --suppress-tags \
+hardening-no-relro,\
+binary-or-shlib-defines-rpath,\
+dir-or-file-in-opt,\
+bad-package-name,\
+package-not-lowercase,\
+systemd-service-file-outside-lib,\
+maintainer-script-calls-systemctl,\
+file-in-etc-not-marked-as-conffile,\
+maintainer-script-ignores-errors,\
+maintainer-script-empty \
+${build_dir}/$package_name
+set -e
+
+if [ "$build_deb_package" = "yes" ]; then
+    cd $script_dir
+    mkdir -p packages
+    echo "Copying the file $package_name to directory ./packages"
+    cp -f ${build_dir}/$package_name ./packages
+fi
+
+if [ "$install_toxphoneconf" = "yes" ]; then
+    echo "Install ToxPhone config..."
+    sudo dpkg -i ${build_dir}/$package_name
+    echo "ToxPhone config installation is complete"
+fi

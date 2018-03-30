@@ -116,12 +116,6 @@ void testRingBuffer();
 
 int main(int argc, char *argv[])
 {
-
-    //testRingBuffer();
-    //return 0;
-    //------------------------------
-
-
     // Устанавливаем в качестве разделителя целой и дробной части символ '.',
     // если этого не сделать - функции преобразования строк в числа (std::atof)
     // буду неправильно работать.
@@ -182,7 +176,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        QString configFile = "/etc/ToxPhone/toxphone.conf";
+        QString configFile = "/etc/toxphone/toxphone.conf";
         if (!QFile::exists(configFile))
         {
             log_error << "Config file " << configFile << " not exists";
@@ -198,7 +192,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        QString configFileS = "/var/opt/ToxPhone/state/toxphone.state";
+        QString configFileS = "/var/opt/toxphone/state/toxphone.state";
         config::state().read(configFileS.toStdString());
 
         QString logFile;

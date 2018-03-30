@@ -1,0 +1,17 @@
+[Unit]
+Description=ToxPhone service
+After=network.target default.target
+
+[Service]
+Type=simple
+User=%TARGET_USER%
+Group=toxphone
+ExecStart=/opt/toxphone/toxphone -n
+TimeoutSec=300
+KillMode=process
+Restart=on-failure
+LimitCORE=infinity
+
+[Install]
+#WantedBy=multi-user.target
+WantedBy=default.target

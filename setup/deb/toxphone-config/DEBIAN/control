@@ -1,0 +1,10 @@
+Package: toxphone-config
+Version: %VERSION%
+Architecture: %ARCHITECTURE%
+Maintainer: Pavel Karelin <hkarel@yandex.ru>
+Installed-Size: %INSTALLED_SIZE%
+Depends:  %DEPENDS%
+Section: net
+Priority: standard
+Homepage:
+Description: Configurator for toxphone client

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set +e
+need_reboot=no
+
+res=$(cat /etc/group | grep 'toxphone')
+if [ -z "$res" ]; then
+    addgroup toxphone
+fi
+
+res=$(groups $SUDO_USER | grep 'toxphone')
+if [ -z "$res" ]; then
+    adduser $SUDO_USER toxphone
+    need_reboot=yes
+fi
+
+if [ "$need_reboot" = "yes" ]; then
+    echo "The user $SUDO_USER added to the toxphone group. Need reboot computer"
+else
+    udevadm control --reload-rules
+fi
+
+chown -R root:toxphone /etc/toxphone
+chown -R root:toxphone /var/opt/toxphone
+
+sudo chmod -R ug=rwX,o=rX /var/opt/toxphone
+
+sed -e "s/%TARGET_USER%/$SUDO_USER/" \
+    -i /etc/systemd/system/toxphone.service
+    
+# sed -e "s/%TARGET_USER%/$SUDO_USER/" \
+#     -e "s/%TARGET_GROUP%/$(getent group $SUDO_GID | cut -d':' -f1)/" \
+#     -i /etc/systemd/system/toxphone.service
+
+systemctl unmask toxphone
+systemctl enable toxphone
+systemctl start  toxphone
+
+exit 0
