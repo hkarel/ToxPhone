@@ -97,9 +97,6 @@ void MainWindow::saveGeometry()
     QPoint p = pos();
     std::vector<int> v {p.x(), p.y(), width(), height()};
     config::state().setValue("windows.main_window.geometry", v);
-
-//    QList<int> splitterSizes = ui->splitter->sizes();
-//    config::state().setValue("windows.main_window.splitter_sizes", splitterSizes.toVector());
 }
 
 void MainWindow::loadGeometry()
@@ -118,10 +115,6 @@ void MainWindow::loadGeometry()
     }
     else
         ui->splitterFriends->setSizes(qv.toList());
-
-//    QVector<int> splitterSizes;
-//    if (config::state().getValue("windows.main_window.splitter_sizes", splitterSizes))
-//        ui->splitter->setSizes(splitterSizes.toList());
 }
 
 void MainWindow::saveSettings()

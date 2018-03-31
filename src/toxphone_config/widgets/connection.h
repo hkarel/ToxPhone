@@ -25,6 +25,9 @@ public:
     bool isPointToPoint() const {return _isPointToPoint;}
     void setPointToPoint(bool val) {_isPointToPoint = val;}
 
+    int configConnectCount() const {return _configConnectCount;}
+    void setConfigConnectCount(int val);
+
     const QUuidEx& applId() const {return _applId;}
     void setApplId(const QUuidEx& val) {_applId = val;}
 
@@ -34,11 +37,14 @@ public:
     void resetLifeTimer() {_lifeTimer.reset();}
     bool lifeTimeExpired() const;
 
+
+
 private:
     Ui::ConnectionWidget *ui;
 
     communication::HostPoint _hostPoint;
     bool _isPointToPoint;
+    int _configConnectCount = {0};
     QUuidEx _applId;
     int _lifeTimeInterval = {0};
     steady_timer _lifeTimer;

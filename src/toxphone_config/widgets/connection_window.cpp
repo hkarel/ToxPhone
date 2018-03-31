@@ -8,7 +8,6 @@
 #include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/config/config.h"
-#include "kernel/communication/commands.h"
 #include "kernel/network/interfaces.h"
 
 #include <QCloseEvent>
@@ -44,6 +43,7 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ConnectionWindow::command_##COMMAND, this);
 
+    FUNC_REGISTRATION(CloseConnection)
     FUNC_REGISTRATION(ToxPhoneInfo)
     FUNC_REGISTRATION(ApplShutdown)
     _funcInvoker.sort();
@@ -61,6 +61,13 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
 {
     _socket = socket;
 
+    chk_connect_q(_socket.get(), SIGNAL(message(communication::Message::Ptr)),
+                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(_socket.get(), SIGNAL(connected(communication::SocketDescriptor)),
+                  this, SLOT(socketConnected(communication::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
+                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+
     int port = 3609;
     if (!config::state().getValue("connection.port", port))
         config::state().setValue("connection.port", port);
@@ -72,11 +79,6 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
     udp::socket().waitBinding(3);
     if (!udp::socket().isBound())
         return false;
-
-    chk_connect_q(_socket.get(), SIGNAL(connected(communication::SocketDescriptor)),
-                  this, SLOT(socketConnected(communication::SocketDescriptor)))
-    chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
 
     return (_init = true);
 }
@@ -90,17 +92,16 @@ void ConnectionWindow::deinit()
 
 void ConnectionWindow::saveGeometry()
 {
-//    QPoint p = pos();
-//    std::vector<int> v {p.x(), p.y(), width(), height()};
-//    config::state().setValue("windows.main_window.geometry", v);
+    QPoint p = pos();
+    std::vector<int> v {p.x(), p.y()};
+    config::state().setValue("windows.connection_window.geometry", v);
 }
 
 void ConnectionWindow::loadGeometry()
 {
-//    std::vector<int> v {0, 0, 800, 600};
-//    config::state().getValue("windows.main_window.geometry", v);
-//    move(v[0], v[1]);
-//    resize(v[2], v[3]);
+    std::vector<int> v;
+    if (config::state().getValue("windows.connection_window.geometry", v))
+        move(v[0], v[1]);
 }
 
 void ConnectionWindow::message(const communication::Message::Ptr& message)
@@ -112,12 +113,23 @@ void ConnectionWindow::message(const communication::Message::Ptr& message)
 void ConnectionWindow::socketConnected(communication::SocketDescriptor)
 {
     hide();
+    saveGeometry();
 }
 
 void ConnectionWindow::socketDisconnected(communication::SocketDescriptor)
 {
     if (_init)
+    {
         show();
+        loadGeometry();
+
+        if (_discartConnect)
+        {
+            QString msg = tr("Connection is closed at the request of the client's Tox"
+                             ". Remote detail: ") + _closeConnection.description;
+            QMessageBox::information(this, qApp->applicationName(), msg);
+        }
+    }
 }
 
 void ConnectionWindow::on_btnConnect_clicked(bool checked)
@@ -140,6 +152,13 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
     ConnectionWidget* cw =
         qobject_cast<ConnectionWidget*>(ui->listPhones->itemWidget(lwi));
 
+    if (cw->configConnectCount() != 0)
+    {
+        msg = tr("Tox a configurator is already connected to this client");
+        QMessageBox::information(this, qApp->applicationName(), msg);
+        return;
+    }
+
     if (!_socket->init(cw->hostPoint()))
     {
         msg = tr("Failed initialize a communication system.\n"
@@ -156,17 +175,21 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
         qApp->processEvents();
     }
 
+    _discartConnect = false;
     _socket->connect();
 
     int sleepCount = 0;
-    while (sleepCount++ < 12)
+    while (sleepCount++ < 1200)
     {
-        usleep(500*1000);
+        usleep(5*1000);
         qApp->processEvents();
         if (_socket->isConnected())
             break;
+
+        if (_discartConnect)
+            break;
     }
-    if (!_socket->isConnected())
+    if (!_socket->isConnected() && !_discartConnect)
     {
         _socket->stop();
 
@@ -209,6 +232,15 @@ void ConnectionWindow::updatePhonesList()
     ui->btnConnect->setEnabled(ui->listPhones->count());
 }
 
+void ConnectionWindow::command_CloseConnection(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Command)
+    {
+        _discartConnect = true;
+        readFromMessage(message, _closeConnection);
+    }
+}
+
 void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
 {
     data::ToxPhoneInfo toxPhoneInfo;
@@ -223,6 +255,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         if (cw->applId() == toxPhoneInfo.applId)
         {
             cw->resetLifeTimer();
+            cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
             if (cw->isPointToPoint() && !toxPhoneInfo.isPointToPoint)
             {
                 cw->setHostPoint(message->sourcePoint());
@@ -240,6 +273,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setPointToPoint(toxPhoneInfo.isPointToPoint);
         cw->setApplId(toxPhoneInfo.applId);
         cw->setHostPoint(message->sourcePoint());
+        cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 2 + 5);
         cw->resetLifeTimer();
 

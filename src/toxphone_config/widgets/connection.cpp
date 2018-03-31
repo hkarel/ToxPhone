@@ -25,6 +25,15 @@ void ConnectionWidget::setHostPoint(const communication::HostPoint& val)
     ui->labelHostPoint->setText(s.arg(_hostPoint.address().toString()).arg(_hostPoint.port()));
 }
 
+void ConnectionWidget::setConfigConnectCount(int val)
+{
+    _configConnectCount = val;
+    if (_configConnectCount != 0)
+        ui->labelConnectCount->setText("X");
+    else
+        ui->labelConnectCount->clear();
+}
+
 bool ConnectionWidget::lifeTimeExpired() const
 {
     return (_lifeTimer.elapsed<std::chrono::seconds>() > _lifeTimeInterval);

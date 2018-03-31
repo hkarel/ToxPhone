@@ -24,8 +24,8 @@ namespace command {
 //----------------------------- Список команд --------------------------------
 
 /**
-  Команда используется для поиска экземпляров ToxPhone, отправляется как широко-
-  вещательное сообщение, так же она используется в качетсве ответа.
+  Команда используется для поиска экземпляров ToxPhone. Команда отправляется
+  как широковещательное сообщение, так же она используется в качестве ответа.
 */
 extern const QUuidEx ToxPhoneInfo;
 
@@ -35,7 +35,7 @@ extern const QUuidEx ToxPhoneInfo;
 extern const QUuidEx ApplShutdown;
 
 /**
-  Внутренняя команда, используется для уведомления потока ToxKernel о том,
+  Внутренняя команда, используется для уведомления модулей ToxPhone о том,
   что выполнено подключение конфигуратора.
 */
 extern const QUuidEx IncomingConfigConnection;
@@ -162,6 +162,9 @@ struct ToxPhoneInfo : Data<&command::ToxPhoneInfo,
     // Признак что интерфейс с которого пришло сообщение является poin-to-point.
     // Используется для отсечения poin-to-point интерфейсов в конфигураторе.
     bool isPointToPoint = {false};
+
+    // Количество подключенных конфигураторов
+    quint16 configConnectCount = {0};
 
     DECLARE_B_SERIALIZE_FUNC
 };

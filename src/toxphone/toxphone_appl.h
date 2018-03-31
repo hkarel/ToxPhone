@@ -66,6 +66,11 @@ private:
     static volatile bool _stop;
     static std::atomic_int _exitCode;
 
+    // Идентификатор сокета конфигуратора, используется для предотвращения
+    // подключения более чем одного конфигуратора
+    int _configConnectCount = {0};
+    SocketDescriptorSet _closeSocketDescriptors;
+
     // Индикатор состояния звонка
     data::ToxCallState _callState;
 

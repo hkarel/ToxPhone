@@ -62,7 +62,22 @@ void ToxPhoneApplication::timerEvent(QTimerEvent* event)
     if (event->timerId() == _stopTimerId)
     {
         if (_stop)
+        {
             exit(_exitCode);
+            return;
+        }
+        if (!_closeSocketDescriptors.isEmpty())
+        {
+            data::CloseConnection closeConnection;
+            closeConnection.description =
+                tr("Tox a configurator is already connected to this client");
+
+            Message::Ptr m = createMessage(closeConnection);
+            m->destinationSocketDescriptors() = _closeSocketDescriptors;
+            tcp::listener().send(m);
+
+            _closeSocketDescriptors.clear();
+        }
     }
 }
 
@@ -87,6 +102,13 @@ void ToxPhoneApplication::message(const Message::Ptr& message)
 
 void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
 {
+    if (++_configConnectCount > 1)
+    {
+        _closeSocketDescriptors.insert(socketDescriptor);
+        return;
+    }
+    sendToxPhoneInfo();
+
     bool connected = true;
     configConnected(&connected);
 
@@ -111,6 +133,9 @@ void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
 
 void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor*/)
 {
+    if (--_configConnectCount > 1)
+        return;
+
     bool connected = false;
     configConnected(&connected);
 
@@ -121,6 +146,8 @@ void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor
 
     Message::Ptr m = createMessage(audioTest);
     emit internalMessage(m);
+
+    sendToxPhoneInfo();
 }
 
 void ToxPhoneApplication::sendToxPhoneInfo()
@@ -141,6 +168,7 @@ void ToxPhoneApplication::sendToxPhoneInfo()
         toxPhoneInfo.info = info;
         toxPhoneInfo.applId = _applId;
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
+        toxPhoneInfo.configConnectCount = _configConnectCount;
 
         Message::Ptr m = createMessage(toxPhoneInfo);
         m->destinationPoints().insert({intf->broadcast, port - 1});
@@ -163,6 +191,7 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;
     toxPhoneInfo.applId = _applId;
+    toxPhoneInfo.configConnectCount = _configConnectCount;
     for (network::Interface* intf : _netInterfaces)
         if (message->sourcePoint().address().isInSubnet(intf->subnet, intf->subnetPrefixLength))
         {

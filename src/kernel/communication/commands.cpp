@@ -48,6 +48,7 @@ bserial::RawVector ToxPhoneInfo::toRaw() const
     stream << info;
     stream << applId;
     stream << isPointToPoint;
+    stream << configConnectCount;
     B_SERIALIZE_RETURN
 }
 
@@ -57,6 +58,7 @@ void ToxPhoneInfo::fromRaw(const bserial::RawVector& vect)
     stream >> info;
     stream >> applId;
     stream >> isPointToPoint;
+    stream >> configConnectCount;
     B_DESERIALIZE_END
 }
 

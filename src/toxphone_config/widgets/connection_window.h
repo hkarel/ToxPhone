@@ -1,5 +1,6 @@
 #pragma once
 
+#include "kernel/communication/commands.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/tcp.h"
@@ -44,6 +45,7 @@ private slots:
 
 private:
     //--- Обработчики команд ---
+    void command_CloseConnection(const Message::Ptr&);
     void command_ToxPhoneInfo(const Message::Ptr&);
     void command_ApplShutdown(const Message::Ptr&);
 
@@ -55,6 +57,9 @@ private:
     bool _init = {false};
     FunctionInvoker _funcInvoker;
     tcp::Socket::Ptr _socket;
+
+    bool _discartConnect = {false};
+    data::CloseConnection _closeConnection;
 
     QTimer _requestPhonesTimer;
     QTimer _updatePhonesTimer;
