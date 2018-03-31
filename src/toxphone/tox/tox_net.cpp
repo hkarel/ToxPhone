@@ -886,7 +886,7 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
         item.phoneNumber = node["phone_number"].as<int>(0);
         return true;
     };
-    config::state().getValue("phones." + string(item.publicKey), loadFunc);
+    config::state().getValue("phones." + string(item.publicKey), loadFunc, false);
     return true;
 }
 

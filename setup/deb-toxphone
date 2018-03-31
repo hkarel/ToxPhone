@@ -24,10 +24,16 @@ cp $script_dir/setup/deb/toxphone/DEBIAN/*     $package_dir/DEBIAN
 cp $script_dir/config/bootstrap.nodes          $package_dir/etc/toxphone
 cp $script_dir/config/toxphone.conf            $package_dir/etc/toxphone
 cp $script_dir/config/toxphone.logger.conf     $package_dir/etc/toxphone
-cp $script_dir/systemd/toxphone.service        $package_dir/etc/systemd/system
+
 cp ${build_dir}/bin/toxphone                   $package_dir/opt/toxphone
-cp $script_dir/sound/*                         $package_dir/opt/toxphone/sound
+cp $script_dir/sound/*.wav                     $package_dir/opt/toxphone/sound
 cp $script_dir/udev/99-toxphone-b2k-b3g.rules  $package_dir/lib/udev/rules.d
+
+if [ "$os_id" = "ubuntu" -a "$os_ver" = "14.04" ]; then
+    cp $script_dir/systemd/toxphone.service-ubuntu14 $package_dir/etc/systemd/system/toxphone.service
+else
+    cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
+fi
 
 for f in $(cat ${build_dir}/package_build_info); do
     [ -n "$f" ] && cp -P $f $package_dir/opt/toxphone/lib
@@ -80,15 +86,9 @@ sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
 
 # Контрольные суммы файлов пакета
 cd $package_dir
-if [ "$os_id" = "ubuntu" -a "$os_ver" \> "15.10" ]; then
-    hashdeep -rl -o f etc >> DEBIAN/md5sums
-    hashdeep -rl -o f opt >> DEBIAN/md5sums
-    hashdeep -rl -o f lib >> DEBIAN/md5sums
-else
-    md5deep  -rl -o f etc >> DEBIAN/md5sums
-    md5deep  -rl -o f opt >> DEBIAN/md5sums
-    md5deep  -rl -o f lib >> DEBIAN/md5sums
-fi
+md5deep -rl -o f etc >> DEBIAN/md5sums
+md5deep -rl -o f opt >> DEBIAN/md5sums
+md5deep -rl -o f lib >> DEBIAN/md5sums
 chmod  0644 DEBIAN/md5sums
 cd $script_dir
 

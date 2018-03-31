@@ -71,7 +71,8 @@ Product {
     cpp.rpaths: QbsUtl.concatPaths(
         productProbe.compilerLibraryPath,
         lib.sodium.libraryPath,
-        "$ORIGIN/../lib"
+        "/opt/toxphone/lib"
+        //"$ORIGIN/../lib"
     )
 
     cpp.libraryPaths: QbsUtl.concatPaths(

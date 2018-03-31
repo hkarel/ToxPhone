@@ -47,13 +47,8 @@ sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
 
 # Контрольные суммы файлов пакета
 cd $package_dir
-if [ "$os_id" = "ubuntu" -a "$os_ver" \> "15.10" ]; then
-    hashdeep -rl -o f opt >> DEBIAN/md5sums
-    hashdeep -rl -o f usr >> DEBIAN/md5sums
-else
-    md5deep  -rl -o f opt >> DEBIAN/md5sums
-    md5deep  -rl -o f usr >> DEBIAN/md5sums
-fi
+md5deep -rl -o f opt >> DEBIAN/md5sums
+md5deep -rl -o f usr >> DEBIAN/md5sums
 chmod  0644 DEBIAN/md5sums
 cd $script_dir
 

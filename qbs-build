@@ -177,6 +177,12 @@ if [ -n "$need_packages" ]; then
     exit 1
 fi
 
+if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
+    if [ ! -L /usr/local/bin/md5deep ]; then
+        ln -sf /usr/bin/hashdeep /usr/local/bin/md5deep
+    fi
+fi
+
 git_branch=$(git status -b -s | head -n1 | sed 's/\./ /' | cut -d' ' -f2)
 build_subdir=${build_mode}-${git_branch}
 build_dir=./build/$build_subdir
@@ -223,9 +229,14 @@ echo "gitrev: $gitrev"
 #
 # Формирование deb-пакета для toxphone
 #
-. $script_dir/setup/deb-toxphone
+
+if [ "$build_deb_package" = "yes" -o "$install_toxphone" = "yes" ]; then
+    . $script_dir/setup/deb-toxphone
+fi
 
 #
 # Формирование deb-пакета для toxphone-config
 #
-. $script_dir/setup/deb-toxphone-config
+if [ "$build_deb_package" = "yes" -o "$install_toxphoneconf" = "yes" ]; then
+    . $script_dir/setup/deb-toxphone-config
+fi

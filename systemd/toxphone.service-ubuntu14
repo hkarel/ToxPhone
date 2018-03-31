@@ -1,6 +1,6 @@
 [Unit]
 Description=ToxPhone service
-After=network.target default.target
+After=network.target multi-user.target
 
 [Service]
 Type=simple
@@ -13,4 +13,4 @@ Restart=on-failure
 LimitCORE=infinity
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
