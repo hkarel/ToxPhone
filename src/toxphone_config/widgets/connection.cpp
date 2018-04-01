@@ -13,6 +13,11 @@ ConnectionWidget::~ConnectionWidget()
     delete ui;
 }
 
+QString ConnectionWidget::info() const
+{
+    return ui->labelInfo->text();
+}
+
 void ConnectionWidget::setInfo(const QString& info)
 {
     ui->labelInfo->setText(info);

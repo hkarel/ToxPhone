@@ -17,6 +17,7 @@ public:
     explicit ConnectionWidget(QWidget *parent = 0);
     ~ConnectionWidget();
 
+    QString info() const;
     void setInfo(const QString& info);
 
     const communication::HostPoint& hostPoint() const {return _hostPoint;}

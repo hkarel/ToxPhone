@@ -12,6 +12,8 @@
 #include <QApplication>
 #include <QMessageBox>
 
+QString toxInfoString;
+
 namespace {
 
 void stopProgram()

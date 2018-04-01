@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #define PHONES_LIST_TIMEUPDATE 5
+extern QString toxInfoString;
 
 ConnectionWindow::ConnectionWindow(QWidget *parent) :
     QDialog(parent),
@@ -174,6 +175,8 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
         usleep(100*1000);
         qApp->processEvents();
     }
+
+    toxInfoString = cw->info();
 
     _discartConnect = false;
     _socket->connect();

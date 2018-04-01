@@ -14,7 +14,7 @@
 #include <limits>
 #include <unistd.h>
 
-//Q_DECLARE_METATYPE(communication::data::AudioDevInfo)
+extern QString toxInfoString;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -136,6 +136,8 @@ void MainWindow::socketConnected(communication::SocketDescriptor)
     QString msg = tr("Connected to %1 : %2");
     ui->labelConnectStatus->setText(msg.arg(_socket->peerPoint().address().toString())
                                        .arg(_socket->peerPoint().port()));
+
+    setWindowTitle(QString("%1 (%2)").arg(qApp->applicationName()).arg(toxInfoString));
     show();
 }
 
