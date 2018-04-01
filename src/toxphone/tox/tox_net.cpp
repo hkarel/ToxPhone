@@ -586,8 +586,7 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
     if (friendRequest.accept == 1)
     {
         QByteArray pubKey = QByteArray::fromHex(publicKey);
-        //uint32_t friendNum = tox_friend_add_norequest(_tox, (uint8_t*)pubKey.constData(), 0);
-        uint32_t friendNum = getToxFriendNum(_tox, pubKey);
+        uint32_t friendNum = tox_friend_add_norequest(_tox, (uint8_t*)pubKey.constData(), 0);
         if (friendNum != UINT32_MAX)
         {
             if (saveState())
