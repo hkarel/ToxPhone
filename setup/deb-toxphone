@@ -30,6 +30,8 @@ cp $script_dir/sound/*.wav                     $package_dir/opt/toxphone/sound
 cp $script_dir/udev/99-toxphone-b2k-b3g.rules  $package_dir/lib/udev/rules.d
 
 if [ "$os_id" = "ubuntu" -a "$os_ver" = "14.04" ]; then
+    mkdir -p $package_dir/etc/init
+    cp $script_dir/systemd/toxphone.conf             $package_dir/etc/init
     cp $script_dir/systemd/toxphone.service-ubuntu14 $package_dir/etc/systemd/system/toxphone.service
 else
     cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
@@ -65,7 +67,7 @@ installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
 echo "installed_size: $installed_size"
 
 packet_depends=$(cat << EOS
-    libc6, adduser, \
+    libc6, adduser, systemd,\
     libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
 EOS
 )

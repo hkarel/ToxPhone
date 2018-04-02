@@ -36,4 +36,8 @@ systemctl unmask toxphone
 systemctl enable toxphone
 systemctl start  toxphone
 
+if [ -e /etc/init/toxphone.conf ]; then
+    initctl reload-configuration
+fi
+
 exit 0

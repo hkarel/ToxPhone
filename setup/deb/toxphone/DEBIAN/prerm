@@ -7,4 +7,9 @@ if [ -n "$res" ]; then
     #systemctl mask toxphone
 fi
 
+if [ -e /etc/init/toxphone.conf ]; then
+    rm -f /etc/init/toxphone.conf
+    initctl reload-configuration
+fi
+
 exit 0
