@@ -154,6 +154,7 @@ check_need_package 'qt4-default'
 check_need_package 'libopus-dev'
 check_need_package 'libpulse-dev'
 check_need_package 'libusb-dev'
+check_need_package 'libconfig-dev'
 
 if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
     check_need_package 'libvpx-dev'
@@ -165,6 +166,7 @@ if [ "$build_deb_package" = "yes" \
      -o "$install_toxphoneconf" = "yes" ]
 then
     # Required packages
+    check_need_package 'fakeroot'
     check_need_package 'md5deep'
     check_need_package 'debconf'
     check_need_package 'debhelper'
@@ -179,7 +181,7 @@ fi
 
 if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
     if [ ! -L /usr/local/bin/md5deep ]; then
-        ln -sf /usr/bin/hashdeep /usr/local/bin/md5deep
+        sudo ln -sf /usr/bin/hashdeep /usr/local/bin/md5deep
     fi
 fi
 
