@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>805</width>
-    <height>668</height>
+    <width>703</width>
+    <height>560</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -36,7 +36,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tabProfile">
        <attribute name="title">
@@ -579,7 +579,7 @@
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
              <item row="0" column="0">
-              <widget class="QLabel" name="labelToxId">
+              <widget class="QLabel" name="label_16">
                <property name="text">
                 <string>Tox ID</string>
                </property>

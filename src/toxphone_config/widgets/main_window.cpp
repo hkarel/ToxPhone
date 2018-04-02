@@ -24,6 +24,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->labelConnectStatus->clear();
     setWindowTitle(qApp->applicationName());
 
+    ui->tabWidget->setCurrentIndex(0);
+
     for (int i = 0; i < ui->tabWidget->count(); ++i)
         if (ui->tabWidget->tabText(i).startsWith("Requests"))
         {
@@ -33,9 +35,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->labelCallState->clear();
     ui->widgetFriends->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-
-    //_labelConnectStatus = new QLabel(tr("Disconnected"), this);
-    //ui->statusBar->addWidget(_labelConnectStatus);
 
     ui->pbarAudioRecord->setMinimum(0);
     ui->pbarAudioRecord->setMaximum(std::numeric_limits<quint16>::max() / 2);
@@ -144,8 +143,20 @@ void MainWindow::socketConnected(communication::SocketDescriptor)
 void MainWindow::socketDisconnected(communication::SocketDescriptor)
 {
     hide();
-    //_labelConnectStatus->setText(tr("Disconnected"));
     ui->labelConnectStatus->clear();
+
+    for (int i = 0; i < ui->listFriends->count(); ++i)
+    {
+        QListWidgetItem* lwi = ui->listFriends->item(i);
+        ui->listFriends->removeItemWidget(lwi);
+        delete lwi;
+    }
+    ui->listFriends->clear();
+    ui->lineToxName->clear();
+    ui->lineToxStatus->clear();
+    ui->linefToxId->clear();
+    ui->lineToxNameAlias->clear();
+    ui->linePhoneNumber->clear();
 
     ui->cboxAudioPlayback->clear();
     ui->cboxAudioRecord->clear();
@@ -997,9 +1008,15 @@ void MainWindow::on_listFriends_itemClicked(QListWidgetItem* item)
         qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(item));
 
     ui->lineToxName->setText(fw->properties().name);
+
+    ui->lineToxStatus->clear(); // Предотвращает эффект перемотки текста вперед
+                                // когда вставляется длинная строка
     ui->lineToxStatus->setText(fw->properties().statusMessage);
+    ui->lineToxStatus->home(false);
+
+    ui->linefToxId->clear();
     ui->linefToxId->setText(fw->properties().publicKey);
-    //ui->linefToxId->setCursorPosition(0);
+    ui->linefToxId->home(false);
 
     ui->lineToxNameAlias->setText(fw->properties().nameAlias);
     if (fw->properties().phoneNumber != 0)
