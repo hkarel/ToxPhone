@@ -90,6 +90,7 @@ void stopProgram()
     STOP_THREAD(toxNet(),        "ToxNet",        15)
 
     log_info << "ToxPhone service is stopped";
+    alog::logger().flush();
     alog::logger().stop();
 
     trd::threadPool().stop();
@@ -237,20 +238,19 @@ int main(int argc, char *argv[])
 
         if (isDaemon)
         {
-#if !(defined(_MSC_VER) || defined(__MINGW32__))
             alog::logger().stop();
-            alog::logger().removeSaverStdOut();
-            alog::logger().removeSaverStdErr();
-
             if (daemon(1, 0) != 0)
                 return 0;
 
             alog::logger().start();
             log_verbose << "Demonization success";
-#endif
         }
-        alog::logger().removeSaverStdOut();
-        alog::logger().removeSaverStdErr();
+
+#ifdef NDEBUG
+        // Понижаем уровень логера для консоли что бы видеть только сообщения
+        // о возможных неисправностях
+        alog::logger().addSaverStdOut(alog::Level::Warning);
+#endif
 
         // Создаем дополнительные сэйверы для логгера
         QString logConf;
@@ -400,6 +400,9 @@ int main(int argc, char *argv[])
             stopProgram();
             return 0;
         }
+
+        alog::logger().removeSaverStdOut();
+        alog::logger().removeSaverStdErr();
 
         QMetaObject::invokeMethod(&appl, "sendToxPhoneInfo", Qt::QueuedConnection);
         appl.initPhoneDiverter();
