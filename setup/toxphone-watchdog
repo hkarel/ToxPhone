@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#
+# Performs the watchdog-function when ToxPhone is started in user mode
+#
+
+toxphone=/opt/toxphone/toxphone
+while true; do
+    res=$(ps axw -o command | grep -P "^/opt/toxphone/(toxphone\$|toxphone )" | grep -v 'grep')
+    if [ -z "$res" -a -x $toxphone ]; then
+        set -e
+        sleep 10
+        set +e
+        $toxphone &
+    fi
+    sleep 60
+
+    res=$(ps axw -o command | grep -P '^/bin/bash.+toxphone-watchdog$' | wc -l)
+    [ "$res" -gt 2 ] && exit 0
+done

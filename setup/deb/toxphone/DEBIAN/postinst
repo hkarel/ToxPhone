@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set +e
-need_reboot=no
+need_reboot=
 
 res=$(cat /etc/group | grep 'toxphone')
 if [ -z "$res" ]; then
@@ -16,28 +16,49 @@ fi
 
 if [ "$need_reboot" = "yes" ]; then
     echo "The user $SUDO_USER added to the toxphone group. Need reboot computer"
-else
-    udevadm control --reload-rules
 fi
 
 chown -R root:toxphone /etc/toxphone
 chown -R root:toxphone /var/opt/toxphone
+chmod -R ug=rwX,o=rX   /var/opt/toxphone
 
-sudo chmod -R ug=rwX,o=rX /var/opt/toxphone
+response=
+cat << EOF
+Select launch mode for ToxPhone client:
+1 - launch application in user space;
+2 - launch application as system service.
+If used GUI it is recommended to select the launch mode in user space (1)
+EOF
+read -r -p "Enter 1 (default) or 2: " response; response=${response:-'1'}
 
-sed -e "s/%TARGET_USER%/$SUDO_USER/" \
-    -i /etc/systemd/system/toxphone.service
-    
-# sed -e "s/%TARGET_USER%/$SUDO_USER/" \
-#     -e "s/%TARGET_GROUP%/$(getent group $SUDO_GID | cut -d':' -f1)/" \
-#     -i /etc/systemd/system/toxphone.service
+# 2 - As system service
+if [ "$response" -eq 2 ]; then
+    echo "Selected launch: as service"
 
-systemctl unmask toxphone
-systemctl enable toxphone
-systemctl start  toxphone
+    sed -e "s/%TARGET_USER%/$SUDO_USER/" \
+        -i /etc/systemd/system/toxphone.service
 
-if [ -e /etc/init/toxphone.conf ]; then
-    initctl reload-configuration
+    systemctl unmask toxphone
+    systemctl enable toxphone
+    systemctl start  toxphone
+
+    if [ -e /etc/init/toxphone.conf ]; then
+        initctl reload-configuration
+    fi
+
+# 1 - As application in user space
+else
+    echo "Selected launch: in user space"
+
+    systemctl stop    toxphone
+    systemctl disable toxphone
+
+    rm -f /etc/systemd/system/toxphone.service
+    systemctl daemon-reload
+
+    ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
+    su -c "XDG_RUNTIME_DIR=/run/user/$SUDO_UID /opt/toxphone/autorun/toxphone-autorun" $SUDO_USER
 fi
 
+udevadm control --reload-rules
 exit 0

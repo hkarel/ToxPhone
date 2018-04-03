@@ -1,0 +1,14 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=ToxPhoneAutorun
+Exec=/opt/toxphone/autorun/toxphone-autorun
+Terminal=false
+Hidden=false
+StartupNotify=false
+X-MATE-Autostart-enabled=true
+X-KDE-autostart-after=panel
+X-KDE-StartupNotify=false
+X-DBUS-StartupType=Unique
+X-KDE-UniqueApplet=true
+Comment=Autorun the ToxPhone client for user session

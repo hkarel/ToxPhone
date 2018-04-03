@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#
+# Start ToxPhone from user space
+#
+
+/opt/toxphone/autorun/toxphone-watchdog &> /dev/null &

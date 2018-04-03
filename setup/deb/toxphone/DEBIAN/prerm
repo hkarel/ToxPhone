@@ -1,11 +1,18 @@
 #!/bin/bash
 
-res=$(systemctl list-unit-files | grep toxphone)
-if [ -n "$res" ]; then
-    systemctl stop toxphone
-    systemctl disable toxphone
-    #systemctl mask toxphone
+if [ ! -e /etc/systemd/system/toxphone.service ]; then
+    killall toxphone-watchdog 2> /dev/null
+    sleep 1
+    killall toxphone 2> /dev/null
+else
+    res=$(systemctl list-unit-files | grep toxphone)
+    if [ -n "$res" ]; then
+        systemctl stop toxphone
+        systemctl disable toxphone
+        #systemctl mask toxphone
+    fi
 fi
+rm -f /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
 
 if [ -e /etc/init/toxphone.conf ]; then
     rm -f /etc/init/toxphone.conf

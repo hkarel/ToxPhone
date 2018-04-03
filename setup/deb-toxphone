@@ -14,20 +14,24 @@ rm -rf $package_dir
 mkdir -p $package_dir/DEBIAN
 mkdir -p $package_dir/etc/toxphone
 mkdir -p $package_dir/etc/systemd/system
+mkdir -p $package_dir/opt/toxphone/autorun
 mkdir -p $package_dir/opt/toxphone/lib
 mkdir -p $package_dir/opt/toxphone/sound
 mkdir -p $package_dir/var/opt/toxphone/log
 mkdir -p $package_dir/var/opt/toxphone/state
 mkdir -p $package_dir/lib/udev/rules.d
 
-cp $script_dir/setup/deb/toxphone/DEBIAN/*     $package_dir/DEBIAN
-cp $script_dir/config/bootstrap.nodes          $package_dir/etc/toxphone
-cp $script_dir/config/toxphone.conf            $package_dir/etc/toxphone
-cp $script_dir/config/toxphone.logger.conf     $package_dir/etc/toxphone
+cp $script_dir/setup/deb/toxphone/DEBIAN/*      $package_dir/DEBIAN
+cp $script_dir/config/bootstrap.nodes           $package_dir/etc/toxphone
+cp $script_dir/config/toxphone.conf             $package_dir/etc/toxphone
+cp $script_dir/config/toxphone.logger.conf      $package_dir/etc/toxphone
 
-cp ${build_dir}/bin/toxphone                   $package_dir/opt/toxphone
-cp $script_dir/sound/*.wav                     $package_dir/opt/toxphone/sound
-cp $script_dir/udev/99-toxphone-b2k-b3g.rules  $package_dir/lib/udev/rules.d
+cp $build_dir/bin/toxphone                      $package_dir/opt/toxphone
+cp $script_dir/setup/toxphone-autorun           $package_dir/opt/toxphone/autorun
+cp $script_dir/setup/toxphone-watchdog          $package_dir/opt/toxphone/autorun
+cp $script_dir/setup/toxphone-autorun.desktop   $package_dir/opt/toxphone/autorun
+cp $script_dir/sound/*.wav                      $package_dir/opt/toxphone/sound
+cp $script_dir/udev/99-toxphone-b2k-b3g.rules   $package_dir/lib/udev/rules.d
 
 if [ "$os_id" = "ubuntu" -a "$os_ver" = "14.04" ]; then
     mkdir -p $package_dir/etc/init
@@ -48,7 +52,11 @@ chmod    u=rw,go=r   $package_dir/DEBIAN/conffiles
 chmod    u=rwX,go=rX $package_dir/etc/toxphone
 chmod -R u=rwX,go=rX $package_dir/opt/toxphone
 chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
+chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
 chmod    u=rw,go=r   $package_dir/opt/toxphone/lib/*
+chmod    u=rw,go=r   $package_dir/opt/toxphone/autorun/*
+chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-autorun
+chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-watchdog
 chmod    u=rw,go=r   $package_dir/opt/toxphone/sound/*
 chmod -R u=rwX,go=rX $package_dir/lib/udev/rules.d
 
@@ -80,6 +88,7 @@ EOS
 fi
 packet_depends="${packet_depends}${packet_depends1}"
 
+[ "${os_arch:0:3}" = "arm" ] && os_arch=armhf
 sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
     -e "s/%ARCHITECTURE%/${os_arch}/" \
     -e "s/%INSTALLED_SIZE%/${installed_size}/" \

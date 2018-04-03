@@ -39,6 +39,7 @@ packet_depends=$(cat << EOS
 EOS
 )
 
+[ "${os_arch:0:3}" = "arm" ] && os_arch=armhf
 sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
     -e "s/%ARCHITECTURE%/${os_arch}/" \
     -e "s/%INSTALLED_SIZE%/${installed_size}/" \
