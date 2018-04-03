@@ -80,7 +80,7 @@ private:
     atomic<quint32> _sendVoiceFriendNumber = {quint32(-1)};
 
     size_t _recordBytes = {0};
-    size_t _playbackBytes = {0};
+    size_t _voiceBytes = {0};
 
     FunctionInvoker _funcInvoker;
 

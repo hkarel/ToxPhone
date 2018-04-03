@@ -395,7 +395,7 @@ void AudioDev::stopVoice()
     voiceRingBuff().reset();
     getVoiceFrameInfo(0, true);
 
-    log_debug_m << "Voice bytes: " << _voiceBytes;
+    log_debug_m << "Voice bytes (processed): " << _voiceBytes;
     log_debug_m << "Voice stream stopped";
 
     _voiceBytes = 0;
@@ -531,7 +531,7 @@ void AudioDev::stopRecord()
     recordRingBuff().reset();
     getRecordFrameInfo(0, true);
 
-    log_debug_m << "Record bytes: " << _recordBytes;
+    log_debug_m << "Record bytes (processed): " << _recordBytes;
     log_debug_m << "Record stream stopped";
 
     _recordBytes = 0;
@@ -1788,26 +1788,26 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
             {
                 size_t rbuffSize = 8 * voiceFrameInfo->bufferSize;
                 voiceRingBuff().init(rbuffSize);
-                log_debug_m  << "Initialization a voice playback ring buffer"
+                log_debug_m  << "Initialization a voice ring buffer"
                              << "; size: " << rbuffSize;
             }
             else
-                log_error_m << "Failed get VoiceFrameInfo for playback";
+                log_error_m << "Failed get VoiceFrameInfo for voice";
 
             if (alog::logger().level() >= alog::Level::Debug)
             {
                 if (!!(attr = pa_stream_get_buffer_attr(stream)))
                 {
-                    log_debug_m << "PA playback buffer metrics"
+                    log_debug_m << "PA voice buffer metrics"
                                 << "; maxlength: " << attr->maxlength
                                 << ", fragsize: " << attr->fragsize;
 
-                    log_debug_m << "PA playback using sample spec "
+                    log_debug_m << "PA voice using sample spec "
                                 << pa_sample_spec_snprint(sst, sizeof(sst), pa_stream_get_sample_spec(stream))
                                 << ", channel map "
                                 << pa_channel_map_snprint(cmt, sizeof(cmt), pa_stream_get_channel_map(stream));
 
-                    log_debug_m << "PA playback connected to device "
+                    log_debug_m << "PA voice connected to device "
                                 << pa_stream_get_device_name(stream)
                                 << " (" << pa_stream_get_device_index(stream)
                                 << ", "

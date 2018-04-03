@@ -390,11 +390,11 @@ void ToxCall::endCalling()
 {
     _sendVoiceFriendNumber = quint32(-1);
 
-    log_debug_m << "Record bytes (read): " << _recordBytes;
-    log_debug_m << "Playback bytes (write): " << _playbackBytes;
+    log_debug_m << "Record bytes (processed): " << _recordBytes;
+    log_debug_m << "Voice bytes (processed): " << _voiceBytes;
 
     _recordBytes = 0;
-    _playbackBytes = 0;
+    _voiceBytes = 0;
 }
 
 void ToxCall::sendCallState()
@@ -634,7 +634,7 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
     if (tc->_skipFirstFrames == 10)
     {
         ++tc->_skipFirstFrames;
-        tc->_playbackBytes = 0;
+        tc->_voiceBytes = 0;
 
         //quint32 latency = 20000;
         quint32 latency = (bufferSize * 1000000) / sampling_rate / sampleSize / channels;
@@ -646,7 +646,7 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
     }
 
     if (voiceRingBuff().write((char*)pcm, bufferSize))
-        tc->_playbackBytes += bufferSize;
+        tc->_voiceBytes += bufferSize;
 }
 
 void ToxCall::toxav_video_receive_frame(ToxAV* av, uint32_t friend_number,
