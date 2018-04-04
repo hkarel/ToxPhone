@@ -113,10 +113,10 @@ void helpInfo(/*const char * binary*/)
              << "; binary protocol version: "
              << BPROTOCOL_VERSION_LOW << "-" << BPROTOCOL_VERSION_HIGH
              << "; gitrev: " << GIT_REVISION << ")";
-    log_info << "Usage: ToxPhone [nh]";
+    log_info << "Usage: ToxPhone [nsh]";
     log_info << "  -n do not daemonize";
+    log_info << "  -s do sleep when start program (in seconds)";
     log_info << "  -h this help";
-    alog::logger().flush();
 }
 
 void testRingBuffer();
@@ -162,9 +162,11 @@ int main(int argc, char *argv[])
             return 1;
         }
 
+        QString startSleep;
         bool isDaemon = true;
+
         int c;
-        while ((c = getopt(argc, argv, "nhc:l:")) != EOF)
+        while ((c = getopt(argc, argv, "ns:hl:")) != EOF)
         {
             switch(c)
             {
@@ -172,6 +174,9 @@ int main(int argc, char *argv[])
                     helpInfo();
                     stopLog();
                     exit(0);
+                case 's':
+                    startSleep = optarg;
+                    break;
                 case 'n':
                     isDaemon = false;
                     break;
@@ -180,6 +185,21 @@ int main(int argc, char *argv[])
                     stopLog();
                     return 1;
             }
+        }
+
+        if (!startSleep.isEmpty())
+        {
+            bool ok;
+            int s = startSleep.toInt(&ok);
+            if (!ok)
+            {
+                log_error << "Failed convert the value (" << startSleep
+                          << ") for -s parameter to integer";
+                stopLog();
+                return 1;
+            }
+            if (s > 0)
+                sleep(s);
         }
 
         QString configFile = "/etc/toxphone/toxphone.conf";
