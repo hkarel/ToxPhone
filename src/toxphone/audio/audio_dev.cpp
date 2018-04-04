@@ -1418,7 +1418,7 @@ void AudioDev::source_change(pa_context* context, const pa_source_info* info,
 }
 
 void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_info* info,
-                                  int eol, void* userdata)
+                                      int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
 
@@ -1451,7 +1451,7 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
 }
 
 void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info* info,
-                                  int eol, void* userdata)
+                                   int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
 
@@ -1593,7 +1593,7 @@ void AudioDev::source_stream_info(pa_context* context, const pa_source_output_in
 
 void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "playback_stream_state_cb()";
+    log_debug2_m << "playback_stream_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
     pa_context* context;
@@ -1641,12 +1641,12 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 
 void AudioDev::playback_stream_started(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "playback_stream_started_cb()";
+    log_debug2_m << "playback_stream_started()";
 }
 
 void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* userdata)
 {
-    //log_debug2_m << "playback_stream_write_cb()";
+    //log_debug2_m << "playback_stream_write()";
     AudioDev* ad = static_cast<AudioDev*>(userdata);
 
     void* data;
@@ -1693,27 +1693,27 @@ void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* use
 
 void AudioDev::playback_stream_overflow(pa_stream*, void* userdata)
 {
-    log_debug2_m << "playback_stream_overflow_cb()";
+    log_debug2_m << "playback_stream_overflow()";
 }
 
 void AudioDev::playback_stream_underflow(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "playback_stream_underflow_cb()";
+    log_debug2_m << "playback_stream_underflow()";
 }
 
 void AudioDev::playback_stream_suspended(pa_stream*, void* userdata)
 {
-    log_debug2_m << "playback_stream_suspended_cb()";
+    log_debug2_m << "playback_stream_suspended()";
 }
 
 void AudioDev::playback_stream_moved(pa_stream*, void* userdata)
 {
-    log_debug2_m << "playback_stream_moved_cb()";
+    log_debug2_m << "playback_stream_moved()";
 }
 
 void AudioDev::playback_stream_drain(pa_stream* stream, int success, void *userdata)
 {
-    log_debug2_m << "playback_stream_drain_cb()";
+    log_debug2_m << "playback_stream_drain()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
     ad->_playbackFile.close();
@@ -1744,7 +1744,7 @@ void AudioDev::playback_stream_drain(pa_stream* stream, int success, void *userd
 
 void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "voice_stream_state_cb()";
+    log_debug2_m << "voice_stream_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
     pa_context* context;
@@ -1830,12 +1830,12 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
 
 void AudioDev::voice_stream_started(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "voice_stream_started_cb()";
+    log_debug2_m << "voice_stream_started()";
 }
 
 void AudioDev::voice_stream_write(pa_stream* stream, size_t nbytes, void* userdata)
 {
-    //log_debug2_m << "voice_stream_write_cb() nbytes: " << nbytes;
+    //log_debug2_m << "voice_stream_write() nbytes: " << nbytes;
 
     AudioDev* ad = static_cast<AudioDev*>(userdata); (void) ad;
 
@@ -1857,27 +1857,27 @@ void AudioDev::voice_stream_write(pa_stream* stream, size_t nbytes, void* userda
 
 void AudioDev::voice_stream_overflow(pa_stream*, void* userdata)
 {
-    log_debug2_m << "voice_stream_overflow_cb()";
+    log_debug2_m << "voice_stream_overflow()";
 }
 
 void AudioDev::voice_stream_underflow(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "voice_stream_underflow_cb()";
+    log_debug2_m << "voice_stream_underflow()";
 }
 
 void AudioDev::voice_stream_suspended(pa_stream*, void* userdata)
 {
-    log_debug2_m << "voice_stream_suspended_cb()";
+    log_debug2_m << "voice_stream_suspended()";
 }
 
 void AudioDev::voice_stream_moved(pa_stream*, void* userdata)
 {
-    log_debug2_m << "voice_stream_moved_cb()";
+    log_debug2_m << "voice_stream_moved()";
 }
 
 void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 {
-    log_debug2_m << "record_stream_state_cb()";
+    log_debug2_m << "record_stream_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
     pa_context* context;
@@ -1962,13 +1962,13 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 
 void AudioDev::record_stream_started(pa_stream*, void* userdata)
 {
-    log_debug2_m << "record_stream_started_cb()";
+    log_debug2_m << "record_stream_started()";
 
 }
 
 void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userdata)
 {
-    //log_debug2_m << "record_stream_read_cb()";
+    //log_debug2_m << "record_stream_read()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata); (void) ad;
     const void* data;
@@ -2000,22 +2000,22 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
 
 void AudioDev::record_stream_overflow(pa_stream*, void* userdata)
 {
-    log_debug2_m << "record_stream_overflow_cb()";
+    log_debug2_m << "record_stream_overflow()";
 }
 
 void AudioDev::record_stream_underflow(pa_stream*, void* userdata)
 {
-    log_debug2_m << "record_stream_underflow_cb()";
+    log_debug2_m << "record_stream_underflow()";
 }
 
 void AudioDev::record_stream_suspended(pa_stream*, void* userdata)
 {
-    log_debug2_m << "record_stream_suspended_cb()";
+    log_debug2_m << "record_stream_suspended()";
 }
 
 void AudioDev::record_stream_moved(pa_stream*, void* userdata)
 {
-    log_debug2_m << "record_stream_moved_cb()";
+    log_debug2_m << "record_stream_moved()";
 }
 
 #undef log_error_m
