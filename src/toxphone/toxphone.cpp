@@ -74,6 +74,13 @@ void stopProgramHandler(int sig)
 }
 #endif // #if defined(__MINGW32__)
 
+void stopLog()
+{
+    alog::logger().flush();
+    alog::logger().waitingFlush();
+    alog::logger().stop();
+}
+
 void stopProgram()
 {
     #define STOP_THREAD(THREAD_FUNC, NAME, TIMEOUT) \
@@ -90,8 +97,7 @@ void stopProgram()
     STOP_THREAD(toxNet(),        "ToxNet",        15)
 
     log_info << "ToxPhone service is stopped";
-    alog::logger().flush();
-    alog::logger().stop();
+    stopLog();
 
     trd::threadPool().stop();
     #undef STOP_THREAD
@@ -140,8 +146,7 @@ int main(int argc, char *argv[])
         if (!SetConsoleCtrlHandler(stopProgramHandler, TRUE))
         {
             log_error << "Could not set control handler";
-            alog::logger().flush();
-            alog::logger().stop();
+            stopLog();
             return 1;
         }
 #else
@@ -153,7 +158,7 @@ int main(int argc, char *argv[])
         if (!homeDir.exists())
         {
             log_error << "Home dir " << homeDir.path() << " not exists";
-            alog::logger().stop();
+            stopLog();
             return 1;
         }
 
@@ -165,14 +170,14 @@ int main(int argc, char *argv[])
             {
                 case 'h':
                     helpInfo();
-                    alog::logger().stop();
+                    stopLog();
                     exit(0);
                 case 'n':
                     isDaemon = false;
                     break;
-              case '?':
+                case '?':
                     log_error << "Invalid option";
-                    alog::logger().stop();
+                    stopLog();
                     return 1;
             }
         }
@@ -181,7 +186,7 @@ int main(int argc, char *argv[])
         if (!QFile::exists(configFile))
         {
             log_error << "Config file " << configFile << " not exists";
-            alog::logger().stop();
+            stopLog();
             return 1;
         }
 
@@ -210,7 +215,7 @@ int main(int argc, char *argv[])
             if (!QDir().mkpath(logFileDir))
             {
                 log_error << "Failed create log directory: " << logFileDir;
-                alog::logger().stop();
+                stopLog();
                 return 1;
             }
 
