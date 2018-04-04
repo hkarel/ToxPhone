@@ -789,18 +789,27 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
         initChannelsVolune(audioStreamInfo, volume);
         if (audioStreamInfo.type == data::AudioStreamInfo::Type::Playback)
         {
+            log_debug2_m << "Set playback stream volume: " << audioStreamInfo.volume
+                         << "; index: " << _palybackAudioStreamInfo.index;
+
             _palybackAudioStreamInfo.volume = audioStreamInfo.volume;
             O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_sink_input_volume()", _paContext, {})
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
         {
+            log_debug2_m << "Set voice stream volume: " << audioStreamInfo.volume
+                         << "; index: " << _voiceAudioStreamInfo.index;
+
             _voiceAudioStreamInfo.volume = audioStreamInfo.volume;
             O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_sink_input_volume()", _paContext, {})
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
         {
+            log_debug2_m << "Set record stream volume: " << audioStreamInfo.volume
+                         << "; index: " << _recordAudioStreamInfo.index;
+
             _recordAudioStreamInfo.volume = audioStreamInfo.volume;
             O_PTR_MSG(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_source_output_volume()", _paContext, {})
