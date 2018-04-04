@@ -1559,6 +1559,8 @@ void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* i
 void AudioDev::source_stream_info(pa_context* context, const pa_source_output_info* info,
                                     int eol, void* userdata)
 {
+    log_debug2_m << "source_stream_info()";
+
     AudioDev* ad = static_cast<AudioDev*>(userdata);
 
     if (eol != 0)
@@ -1573,7 +1575,7 @@ void AudioDev::source_stream_info(pa_context* context, const pa_source_output_in
                 << "; volume: " << info->volume.values[0];
 
     data::AudioStreamInfo* audioStreamInfo = 0;
-    if (ad->_voiceAudioStreamInfo.state != data::AudioStreamInfo::State::Terminated
+    if (ad->_recordAudioStreamInfo.state != data::AudioStreamInfo::State::Terminated
         && info->index == ad->_recordAudioStreamInfo.index)
     {
         audioStreamInfo = &ad->_recordAudioStreamInfo;
