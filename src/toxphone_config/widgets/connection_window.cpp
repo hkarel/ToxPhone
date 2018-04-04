@@ -33,7 +33,7 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
 
     chk_connect_q(&_requestPhonesTimer, SIGNAL(timeout()),
                   this, SLOT(requestPhonesList()))
-    _requestPhonesTimer.start(PHONES_LIST_TIMEUPDATE * 2 * 1000);
+    _requestPhonesTimer.start(PHONES_LIST_TIMEUPDATE * 1000);
 
     chk_connect_q(&_updatePhonesTimer, SIGNAL(timeout()),
                   this, SLOT(updatePhonesList()))
@@ -277,7 +277,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setApplId(toxPhoneInfo.applId);
         cw->setHostPoint(message->sourcePoint());
         cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
-        cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 2 + 5);
+        cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
 
         QListWidgetItem* lwi = new QListWidgetItem();
