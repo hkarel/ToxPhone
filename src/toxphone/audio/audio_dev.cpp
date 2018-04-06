@@ -786,31 +786,33 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
         || audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
     {
         pa_cvolume volume;
-        initChannelsVolune(audioStreamInfo, volume);
         if (audioStreamInfo.type == data::AudioStreamInfo::Type::Playback)
         {
-            log_debug2_m << "Set playback stream volume: " << audioStreamInfo.volume
+            _palybackAudioStreamInfo.volume = audioStreamInfo.volume;
+            log_debug2_m << "Set playback stream volume: " << _palybackAudioStreamInfo.volume
                          << "; index: " << _palybackAudioStreamInfo.index;
 
-            _palybackAudioStreamInfo.volume = audioStreamInfo.volume;
+            initChannelsVolune(_palybackAudioStreamInfo, volume);
             O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_sink_input_volume()", _paContext, {})
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
         {
-            log_debug2_m << "Set voice stream volume: " << audioStreamInfo.volume
+            _voiceAudioStreamInfo.volume = audioStreamInfo.volume;
+            log_debug2_m << "Set voice stream volume: " << _voiceAudioStreamInfo.volume
                          << "; index: " << _voiceAudioStreamInfo.index;
 
-            _voiceAudioStreamInfo.volume = audioStreamInfo.volume;
+            initChannelsVolune(_voiceAudioStreamInfo, volume);
             O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_sink_input_volume()", _paContext, {})
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
         {
-            log_debug2_m << "Set record stream volume: " << audioStreamInfo.volume
+            _recordAudioStreamInfo.volume = audioStreamInfo.volume;
+            log_debug2_m << "Set record stream volume: " << _recordAudioStreamInfo.volume
                          << "; index: " << _recordAudioStreamInfo.index;
 
-            _recordAudioStreamInfo.volume = audioStreamInfo.volume;
+            initChannelsVolune(_recordAudioStreamInfo, volume);
             O_PTR_MSG(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0),
                       "Failed call pa_context_set_source_output_volume()", _paContext, {})
         }
