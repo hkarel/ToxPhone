@@ -30,6 +30,11 @@ namespace command {
 extern const QUuidEx ToxPhoneInfo;
 
 /**
+  Информация о приложении
+*/
+extern const QUuidEx ToxPhoneAbout;
+
+/**
   Команда завершения работы приложения
 */
 extern const QUuidEx ApplShutdown;
@@ -165,6 +170,18 @@ struct ToxPhoneInfo : Data<&command::ToxPhoneInfo,
 
     // Количество подключенных конфигураторов
     quint16 configConnectCount = {0};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ToxPhoneAbout : Data<&command::ToxPhoneAbout,
+                             Message::Type::Command,
+                             Message::Type::Answer>
+{
+    quint32 version; // Версия ToxPhone клиента
+    quint32 toxcore; // Версия ядра Tox-библиотеки
+    QString gitrev;  // Хэш git-коммита
+    QString qtvers;  // Версия Qt
 
     DECLARE_B_SERIALIZE_FUNC
 };

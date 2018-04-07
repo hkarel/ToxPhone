@@ -77,10 +77,13 @@ private slots:
     void on_btnSavePhoneRingtone_clicked(bool);
     void on_btnTestPhoneRingtone_clicked(bool);
 
+    void on_labelCopyright_linkActivated(const QString& link);
+
 private:
     void closeEvent(QCloseEvent*) override;
 
     //--- Обработчики команд ---
+    void command_ToxPhoneAbout(const Message::Ptr&);
     void command_ToxProfile(const Message::Ptr&);
     void command_RequestFriendship(const Message::Ptr&);
     void command_FriendRequest(const Message::Ptr&);
@@ -104,6 +107,8 @@ private:
     void friendRequestAccept(bool accept);
     void setSliderLevel(QSlider* slider, int base, int current, int max);
     QString friendCalling(quint32 friendNumber);
+
+    void aboutClear();
 
 private:
     Ui::MainWindow *ui;

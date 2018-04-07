@@ -11,6 +11,7 @@
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include "shared/qt/communication/transport/udp.h"
+#include "shared/qt/version/version_number.h"
 
 #define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
@@ -128,6 +129,17 @@ void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
         diverterInfo.ringTone = phoneDiverter().ringTone();
     }
     m = createMessage(diverterInfo, Message::Type::Event);
+    tcp::listener().send(m);
+
+    data::ToxPhoneAbout toxPhoneAbout;
+    toxPhoneAbout.version = productVersion().vers;
+    toxPhoneAbout.toxcore = VersionNumber(tox_version_major(),
+                                          tox_version_minor(),
+                                          tox_version_patch()).vers;
+    toxPhoneAbout.gitrev = GIT_REVISION;
+    toxPhoneAbout.qtvers = QT_VERSION_STR;
+    m = createMessage(toxPhoneAbout);
+    m->destinationSocketDescriptors().insert(socketDescriptor);
     tcp::listener().send(m);
 }
 

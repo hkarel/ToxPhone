@@ -7,10 +7,12 @@
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/version/version_number.h"
 #include "shared/qt/config/config.h"
 
 #include <QCloseEvent>
 #include <QMessageBox>
+#include <QDesktopServices>
 #include <limits>
 #include <unistd.h>
 
@@ -40,9 +42,18 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->pbarAudioRecord->setMaximum(std::numeric_limits<quint16>::max() / 2);
     ui->pbarAudioRecord->setValue(0);
 
+    aboutClear();
+    ui->labelToxPhoneConfVers->setText(productVersion().toString());
+    ui->labelGitrevConf->setText(GIT_REVISION);
+    ui->labelBprotocolConfVers->setText(QString("%1-%2").arg(BPROTOCOL_VERSION_LOW)
+                                                        .arg(BPROTOCOL_VERSION_HIGH));
+    ui->labelQtVersionConf->setText(QT_VERSION_STR);
+    ui->labelCopyright->setTextInteractionFlags(Qt::TextBrowserInteraction);
+
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &MainWindow::command_##COMMAND, this);
 
+    FUNC_REGISTRATION(ToxPhoneAbout)
     FUNC_REGISTRATION(ToxProfile)
     FUNC_REGISTRATION(RequestFriendship)
     FUNC_REGISTRATION(FriendRequest)
@@ -170,6 +181,21 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     ui->btnRecordTest->setChecked(false);
 
     ui->pbarAudioRecord->setValue(0);
+
+    aboutClear();
+}
+
+void MainWindow::command_ToxPhoneAbout(const Message::Ptr& message)
+{
+    data::ToxPhoneAbout toxPhoneAbout;
+    readFromMessage(message, toxPhoneAbout);
+
+    ui->labelToxPhoneVers->setText(VersionNumber(toxPhoneAbout.version).toString());
+    ui->labelToxcoreVers->setText(VersionNumber(toxPhoneAbout.toxcore).toString());
+    ui->labelGitrev->setText(toxPhoneAbout.gitrev);
+    ui->labelQtVersion->setText(toxPhoneAbout.qtvers);
+    ui->labelBprotocolVers->setText(QString("%1-%2").arg(message->protocolVersionLow())
+                                                    .arg(message->protocolVersionHigh()));
 }
 
 void MainWindow::command_ToxProfile(const Message::Ptr& message)
@@ -1227,4 +1253,18 @@ QString MainWindow::friendCalling(quint32 friendNumber)
         }
     }
     return result;
+}
+
+void MainWindow::aboutClear()
+{
+    ui->labelToxPhoneVers->clear();
+    ui->labelToxcoreVers->clear();
+    ui->labelGitrev->clear();
+    ui->labelBprotocolVers->clear();
+    ui->labelQtVersion->clear();
+}
+
+void MainWindow::on_labelCopyright_linkActivated(const QString& link)
+{
+     QDesktopServices::openUrl(QUrl(link));
 }

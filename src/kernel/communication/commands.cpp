@@ -12,6 +12,7 @@ namespace command {
     const QUuidEx COMMAND = CommandsPool::Registry{UUID, #COMMAND, true};
 
 REGISTRY_COMMAND_SINGLPROC(ToxPhoneInfo,             "936920c9-f5eb-43f5-8b4b-b00ed260f9d6")
+REGISTRY_COMMAND_SINGLPROC(ToxPhoneAbout,            "fbf1ff18-54d8-4fd4-9374-5d6d50767bdc")
 REGISTRY_COMMAND_SINGLPROC(ApplShutdown,             "ade7ce1a-564f-4436-940d-c0899adac616")
 REGISTRY_COMMAND_SINGLPROC(ToxProfile,               "400c2df2-fba2-4dc7-a80b-78cbcec61ac4")
 REGISTRY_COMMAND_SINGLPROC(RequestFriendship,        "836aeccc-8ec5-44ff-93f5-3dcb92e87a04")
@@ -59,6 +60,26 @@ void ToxPhoneInfo::fromRaw(const bserial::RawVector& vect)
     stream >> applId;
     stream >> isPointToPoint;
     stream >> configConnectCount;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector ToxPhoneAbout::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << version;
+    stream << toxcore;
+    stream << gitrev;
+    stream << qtvers;
+    B_SERIALIZE_RETURN
+}
+
+void ToxPhoneAbout::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> version;
+    stream >> toxcore;
+    stream >> gitrev;
+    stream >> qtvers;
     B_DESERIALIZE_END
 }
 
