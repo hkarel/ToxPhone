@@ -993,8 +993,20 @@ void ToxNet::tox_self_connection_status(Tox* tox, TOX_CONNECTION connection_stat
 void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
                                           TOX_CONNECTION connection_status, void* user_data)
 {
-    const char* stat = (connection_status != TOX_CONNECTION_NONE)
-                       ? "connected. " : "disonnected. ";
+    const char* stat;
+    switch (connection_status)
+    {
+        case TOX_CONNECTION_TCP:
+            stat = "TCP connection. ";
+            break;
+
+        case TOX_CONNECTION_UDP:
+            stat = "UPD connection. ";
+            break;
+
+        default:
+            stat = "disonnected. ";
+    }
     log_debug_m << "ToxEvent: friend " << stat
                 << ToxFriendLog(tox, friend_number);
 
