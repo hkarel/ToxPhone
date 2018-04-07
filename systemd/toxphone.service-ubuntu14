@@ -8,7 +8,7 @@ User=%TARGET_USER%
 Group=toxphone
 ExecStart=/opt/toxphone/toxphone -n
 TimeoutSec=300
-KillMode=process
+KillMode=mixed
 Restart=on-failure
 LimitCORE=infinity
 
