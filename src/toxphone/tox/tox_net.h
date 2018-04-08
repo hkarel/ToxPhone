@@ -96,6 +96,8 @@ private:
     QString _configPath;
     QString _configFile;
     bool _dhtConnected = {false};
+    int _updateBootstrapCounter = 30;
+
 
     FunctionInvoker _funcInvoker;
 

@@ -36,7 +36,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>5</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tabProfile">
        <attribute name="title">
@@ -180,7 +180,7 @@
           <item row="0" column="1">
            <widget class="QLabel" name="labelDhtConnecntStatus">
             <property name="text">
-             <string>Inactive</string>
+             <string>Undefined</string>
             </property>
            </widget>
           </item>
@@ -549,7 +549,7 @@
       </widget>
       <widget class="QWidget" name="tabRequests">
        <attribute name="title">
-        <string>Requests ()</string>
+        <string>Requests (0)</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <property name="topMargin">

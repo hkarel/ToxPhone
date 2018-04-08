@@ -156,6 +156,11 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     hide();
     ui->labelConnectStatus->clear();
 
+    ui->lineSelfToxName->clear();
+    ui->lineSelfToxStatus->clear();
+    ui->lineSelfToxId->clear();
+    ui->labelDhtConnecntStatus->setText("Undefined");
+
     for (int i = 0; i < ui->listFriends->count(); ++i)
     {
         QListWidgetItem* lwi = ui->listFriends->item(i);

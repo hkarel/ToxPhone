@@ -174,10 +174,17 @@ bool ToxNet::init()
         }
         _savedState = file.readAll();
         file.close();
+
+
     }
-    _toxOptions.savedata_type = (_savedState.isEmpty())
-                                ? TOX_SAVEDATA_TYPE_NONE
-                                : TOX_SAVEDATA_TYPE_TOX_SAVE;
+    if (!_savedState.isEmpty())
+    {
+        _toxOptions.savedata_type = TOX_SAVEDATA_TYPE_TOX_SAVE;
+        _updateBootstrapCounter = -200;
+    }
+    else
+        _toxOptions.savedata_type = TOX_SAVEDATA_TYPE_NONE;
+
     _toxOptions.savedata_data = (const uint8_t*)_savedState.constData();
     _toxOptions.savedata_length = _savedState.length();
 
@@ -326,19 +333,18 @@ void ToxNet::run()
     Message::List messages;
     steady_timer iterationTimer;
     int iterationSleepTime;
-    int updateBootstrapCounter = 30;
 
     while (true)
     {
         CHECK_THREAD_STOP
 
         if (tox_self_get_connection_status(_tox) == TOX_CONNECTION_NONE)
-            ++updateBootstrapCounter;
+            ++_updateBootstrapCounter;
 
-        if (updateBootstrapCounter > 30)
+        if (_updateBootstrapCounter > 30)
         {
             updateBootstrap();
-            updateBootstrapCounter = 0;
+            _updateBootstrapCounter = 0;
         }
 
         { //Block for ToxGlobalLock
@@ -429,9 +435,9 @@ void ToxNet::command_IncomingConfigConnection(const Message::Ptr& message)
         m->destinationSocketDescriptors().insert(socketDescr);
         tcp::listener().send(m);
     }
+    updateDhtStatus();
     updateFriendList();
     updateFriendRequests();
-    updateDhtStatus();
 }
 
 void ToxNet::command_ToxProfile(const Message::Ptr& message)
@@ -980,12 +986,18 @@ void ToxNet::tox_friend_message(Tox* tox, uint32_t friend_number, TOX_MESSAGE_TY
 void ToxNet::tox_self_connection_status(Tox* tox, TOX_CONNECTION connection_status,
                                         void* user_data)
 {
-    if (connection_status != TOX_CONNECTION_NONE)
-        log_verbose_m << "Connected to the DHT";
-    else
-        log_verbose_m << "Disconnected from the DHT";
-
     ToxNet* tn = static_cast<ToxNet*>(user_data);
+
+    if (connection_status == TOX_CONNECTION_TCP)
+        log_verbose_m << "Connected to DHT through TCP";
+    else if (connection_status == TOX_CONNECTION_UDP)
+        log_verbose_m << "Connected to DHT through UDP";
+    else
+        log_verbose_m << "Disconnected from DHT";
+
+    if (connection_status != TOX_CONNECTION_NONE)
+        log_debug_m << "Update bootstrap counter: " << tn->_updateBootstrapCounter;
+
     tn->setDhtConnectStatus(connection_status != TOX_CONNECTION_NONE);
     tn->updateDhtStatus();
 }
