@@ -96,7 +96,7 @@ void stopProgram()
     STOP_THREAD(toxCall(),       "ToxCall",       15)
     STOP_THREAD(toxNet(),        "ToxNet",        15)
 
-    log_info << "ToxPhone service is stopped";
+    log_info << "ToxPhone client is stopped";
     stopLog();
 
     trd::threadPool().stop();
@@ -108,11 +108,14 @@ void helpInfo(/*const char * binary*/)
     alog::logger().clearSavers();
     alog::logger().addSaverStdOut(alog::Level::Info, true);
 
-    log_info << "ToxPhone service"
+    log_info << "ToxPhone client"
              << " (version: " << productVersion().toString()
              << "; binary protocol version: "
              << BPROTOCOL_VERSION_LOW << "-" << BPROTOCOL_VERSION_HIGH
              << "; gitrev: " << GIT_REVISION << ")";
+    log_info << "Copyright (c) 2018 Pavel Karelin <hkarel@yandex.ru>";
+    log_info << "ToxPhone is used and distributed under the terms of the GNU General Public License Version 3"
+             << " (https://www.gnu.org/licenses/gpl-3.0.html)";
     log_info << "Usage: ToxPhone [nsh]";
     log_info << "  -n do not daemonize";
     log_info << "  -s do sleep when start program (in seconds)";
@@ -257,7 +260,7 @@ int main(int argc, char *argv[])
                                                       logContinue)};
             alog::logger().addSaver(saver);
         }
-        log_info << "ToxPhone service is running"
+        log_info << "ToxPhone client is running"
                  << " (version " << productVersion().toString() << ")";
         alog::logger().flush();
 

@@ -20,11 +20,13 @@ mkdir -p $package_dir/opt/toxphone/sound
 mkdir -p $package_dir/var/opt/toxphone/log
 mkdir -p $package_dir/var/opt/toxphone/state
 mkdir -p $package_dir/lib/udev/rules.d
+mkdir -p $package_dir/usr/share/doc/toxphone
 
 cp $script_dir/setup/deb/toxphone/DEBIAN/*      $package_dir/DEBIAN
 cp $script_dir/config/bootstrap.nodes           $package_dir/etc/toxphone
 cp $script_dir/config/toxphone.conf             $package_dir/etc/toxphone
 cp $script_dir/config/toxphone.logger.conf      $package_dir/etc/toxphone
+cp $script_dir/COPYRIGHT                        $package_dir/usr/share/doc/toxphone/copyright
 
 cp $build_dir/bin/toxphone                      $package_dir/opt/toxphone
 cp $script_dir/setup/toxphone-autorun           $package_dir/opt/toxphone/autorun
@@ -59,6 +61,7 @@ chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-autorun
 chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-watchdog
 chmod    u=rw,go=r   $package_dir/opt/toxphone/sound/*
 chmod -R u=rwX,go=rX $package_dir/lib/udev/rules.d
+chmod -R u=rwX,go=rX $package_dir/usr/share/doc/toxphone
 
 if [ "$build_mode" = "release" ]; then
     set +e
@@ -100,6 +103,7 @@ cd $package_dir
 md5deep -rl -o f etc >> DEBIAN/md5sums
 md5deep -rl -o f opt >> DEBIAN/md5sums
 md5deep -rl -o f lib >> DEBIAN/md5sums
+md5deep -rl -o f usr >> DEBIAN/md5sums
 chmod  0644 DEBIAN/md5sums
 cd $script_dir
 
