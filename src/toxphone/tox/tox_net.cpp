@@ -435,9 +435,9 @@ void ToxNet::command_IncomingConfigConnection(const Message::Ptr& message)
         m->destinationSocketDescriptors().insert(socketDescr);
         tcp::listener().send(m);
     }
-    updateDhtStatus();
     updateFriendList();
     updateFriendRequests();
+    updateDhtStatus();
 }
 
 void ToxNet::command_ToxProfile(const Message::Ptr& message)
