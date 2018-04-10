@@ -118,7 +118,6 @@ private:
     tcp::Socket::Ptr _socket;
 
     data::ToxCallState _callState;
-    QUuidEx _callStateMessageId;
 
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;

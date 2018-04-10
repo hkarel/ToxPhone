@@ -670,12 +670,6 @@ void MainWindow::command_ToxCallAction(const Message::Ptr& message)
 
 void MainWindow::command_ToxCallState(const Message::Ptr& message)
 {
-    // Отбрасываем повторно переданное сообщение
-    if (_callStateMessageId == message->id())
-        return;
-
-    _callStateMessageId = message->id();
-
     const char* CALL    = QT_TRANSLATE_NOOP("MainWindow", "Call");
     const char* ENDCALL = QT_TRANSLATE_NOOP("MainWindow", "End call");
     const char* ACCEPT  = QT_TRANSLATE_NOOP("MainWindow", "Accept");

@@ -405,17 +405,7 @@ void ToxCall::sendCallState()
     emit internalMessage(m);
 
     if (configConnected())
-    {
         tcp::listener().send(m);
-        // Костыль: отправка повторно сообщения. Если отправлять одно сообщение,
-        // то оно иногда не приходит из сокета на стороне клиента. Проблема
-        // замечена только для Incoming/WaitingAnswer сообщений.
-        if (_callState.direction == data::ToxCallState::Direction::Incoming
-            && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
-        {
-            tcp::listener().send(m);
-        }
-    }
 }
 
 //----------------------------- Tox callback ---------------------------------
