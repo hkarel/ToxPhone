@@ -523,13 +523,11 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     {
         // Нажата '*'
         if (_diverterPhoneNumber.isEmpty())
-        {
-            phoneDiverter().switchToUsb();
             phoneDiverter().startDialTone();
-        }
     }
     else if (val == 0x0c)
     {
+        // Нажата '#'
         phoneDiverter().stopDialTone();
 
         // Удаляем ведущий символ '*'
