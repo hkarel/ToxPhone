@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
         config::base().setSaveDisabled(true);
         if (!config::base().read(configFile.toStdString()))
         {
-            alog::logger().stop();
+            stopLog();
             return 1;
         }
 
@@ -225,11 +225,7 @@ int main(int argc, char *argv[])
         config::state().read(configFileS.toStdString());
 
         QString logFile;
-#if defined(__MINGW32__)
-            config::base().getValue("logger.file_win", logFile);
-#else
-            config::base().getValue("logger.file", logFile);
-#endif
+        config::base().getValue("logger.file", logFile);
         config::homeDirExpansion(logFile);
 
         QFileInfo logFileInfo {logFile};
