@@ -119,14 +119,6 @@ void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
 
     data::DiverterInfo diverterInfo;
     fillPhoneDiverter(diverterInfo);
-    if (phoneDiverter().isAttached())
-    {
-        diverterInfo.currentMode =
-            (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
-            ? "PSTN" : "USB";
-
-        diverterInfo.ringTone = phoneDiverter().ringTone();
-    }
     m = createMessage(diverterInfo, Message::Type::Event);
     tcp::listener().send(m);
 
@@ -286,6 +278,14 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
                 phoneDiverter().stopDialTone();
         }
     }
+
+    if (configConnected())
+    {
+        data::DiverterInfo diverterInfo;
+        fillPhoneDiverter(diverterInfo);
+        Message::Ptr m = createMessage(diverterInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
 }
 
 void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
@@ -294,80 +294,76 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
     readFromMessage(message, diverterChange);
 
     data::MessageError error;
+    static const char* failed_save_diverter_state =
+        QT_TRANSLATE_NOOP("ToxPhoneApplication", "Failed save a diverter state");
+
     if (_callState.direction == data::ToxCallState::Direction::Undefined)
     {
         if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::Active)
         {
-            bool active = diverterChange.active && phoneDiverter().isAttached();
-            diverterIsActive(&active);
             config::state().setValue("diverter.active", diverterChange.active);
-        }
-        else if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::DefaultMode)
-        {
-            if (diverterChange.defaultMode == data::DiverterDefaultMode::Pstn)
+            if (!config::state().save())
             {
-                if (phoneDiverter().switchToPstn())
-                {
-                    config::state().setValue("diverter.default_mode", string("PSTN"));
-                }
-                else
+                error.code = 1;
+                error.description = tr(failed_save_diverter_state);
+                config::state().reRead();
+            }
+            log_verbose_m << "Change diverter active state to "
+                          << (diverterChange.active ? "TRUE" : "FALSE");
+        }
+        else if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+        {
+            error.code = 3;
+            error.description = tr("Impossible to change settings of a diverter "
+                                   "\nwhen handset is on");
+        }
+        else
+        {
+            if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::DefaultMode)
+            {
+                QString defaultMode =
+                        (diverterChange.defaultMode == data::DiverterDefaultMode::Pstn)
+                        ? "PSTN" : "USB";
+                config::state().setValue("diverter.default_mode", defaultMode);
+                if (!config::state().save())
                 {
                     error.code = 1;
-                    error.description = tr("Failed switch a diverter to PSTN default mode.");
-                    if (!phoneDiverter().isAttached())
-                        error.description += tr("\nDevice not attached");
+                    error.description = tr(failed_save_diverter_state);
+                    config::state().reRead();
                 }
+                log_verbose_m << "Change diverter default mode to " << defaultMode;
             }
-            else
+            else if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::RingTone)
             {
-                if (phoneDiverter().switchToUsb())
-                {
-                    config::state().setValue("diverter.default_mode", string("USB"));
-                }
-                else
+                config::state().setValue("diverter.ring_tone", diverterChange.ringTone);
+                if (!config::state().save())
                 {
                     error.code = 1;
-                    error.description = tr("Failed switch a diverter to USB default mode.");
-                    if (!phoneDiverter().isAttached())
-                        error.description += tr("\nDevice not attached");
+                    error.description = tr(failed_save_diverter_state);
+                    config::state().reRead();
                 }
+                log_verbose_m << "Change diverter ringtone to " << diverterChange.ringTone;
             }
-        }
-        else if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::RingTone)
-        {
-            phoneDiverter().setRingTone(diverterChange.ringTone);
-            config::state().setValue("diverter.ring_tone", diverterChange.ringTone);
-        }
-
-        if (error.code == 0
-            && !config::state().save())
-        {
-            error.code = 1;
-            error.description = tr("Failed save a diverter state");
         }
     }
     else
     {
         error.code = 2;
-        error.description =
-            tr("It is impossible to change settings of a diverter during a call");
+        error.description = tr("Impossible to change settings of a diverter "
+                               "\nduring a call");
     }
     if (error.code != 0)
     {
         Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(error, answer);
         tcp::listener().send(answer);
-    }
-    if (error.code == 2)
-    {
+
         data::DiverterInfo diverterInfo;
         fillPhoneDiverter(diverterInfo);
-
         Message::Ptr m = createMessage(diverterInfo, Message::Type::Event);
         tcp::listener().send(m);
         return;
     }
-
     initPhoneDiverter();
 }
 
@@ -379,7 +375,20 @@ void ToxPhoneApplication::command_DiverterTest(const Message::Ptr& message)
     if (diverterTest.ringTone)
     {
         if (diverterTest.begin)
+        {
+            if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+            {
+                data::MessageError error;
+                error.code = 1;
+                error.description = tr("Ringtone test is impossible when handset is on");
+
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                tcp::listener().send(answer);
+                return;
+            }
             phoneDiverter().startRing();
+        }
         else
             phoneDiverter().stopRing();
     }
@@ -413,6 +422,7 @@ void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
     };
     config::state().getValue("diverter", loadFunc);
 
+    diverterInfo.currentMode = "Undefined";
     diverterInfo.attached = phoneDiverter().isAttached();
     if (phoneDiverter().isAttached())
     {
@@ -420,6 +430,10 @@ void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
                                 diverterInfo.deviceName,
                                 diverterInfo.deviceVersion,
                                 diverterInfo.deviceSerial);
+        diverterInfo.currentMode =
+            (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
+            ? "PSTN" : "USB";
+        diverterInfo.ringTone = phoneDiverter().ringTone();
     }
 }
 
@@ -446,7 +460,6 @@ void ToxPhoneApplication::initPhoneDiverter()
         diverterInfo.currentMode =
             (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
             ? "PSTN" : "USB";
-
         phoneDiverter().setRingTone(diverterInfo.ringTone);
     }
 

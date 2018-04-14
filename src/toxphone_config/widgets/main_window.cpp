@@ -786,7 +786,13 @@ void MainWindow::command_DiverterChange(const Message::Ptr& message)
 
 void MainWindow::command_DiverterTest(const Message::Ptr& message)
 {
-
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() != Message::ExecStatus::Success)
+    {
+        ui->btnTestPhoneRingtone->setChecked(false);
+        QString msg = errorDescription(message);
+        QMessageBox::critical(this, qApp->applicationName(), msg);
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
