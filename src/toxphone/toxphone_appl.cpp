@@ -121,10 +121,9 @@ void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
     fillPhoneDiverter(diverterInfo);
     if (phoneDiverter().isAttached())
     {
-        if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
-            diverterInfo.defaultMode = data::DiverterDefaultMode::Pstn;
-        else
-            diverterInfo.defaultMode = data::DiverterDefaultMode::Usb;
+        diverterInfo.currentMode =
+            (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
+            ? "PSTN" : "USB";
 
         diverterInfo.ringTone = phoneDiverter().ringTone();
     }
@@ -435,20 +434,19 @@ void ToxPhoneApplication::initPhoneDiverter()
     if (phoneDiverter().isAttached())
     {
         if (diverterInfo.defaultMode == data::DiverterDefaultMode::Pstn)
-            phoneDiverter().switchToPstn();
-        else
-            phoneDiverter().switchToUsb();
-
-        if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
         {
-            diverterInfo.defaultMode = data::DiverterDefaultMode::Pstn;
             _diverterDefaultMode = PhoneDiverter::Mode::Pstn;
+            phoneDiverter().switchToPstn();
         }
         else
         {
-            diverterInfo.defaultMode = data::DiverterDefaultMode::Usb;
             _diverterDefaultMode = PhoneDiverter::Mode::Usb;
+            phoneDiverter().switchToUsb();
         }
+        diverterInfo.currentMode =
+            (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
+            ? "PSTN" : "USB";
+
         phoneDiverter().setRingTone(diverterInfo.ringTone);
     }
 

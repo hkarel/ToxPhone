@@ -186,6 +186,7 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     ui->btnRecordTest->setChecked(false);
 
     ui->pbarAudioRecord->setValue(0);
+    ui->labelDeviceCurentMode->setText("Undefined");
 
     aboutClear();
 }
@@ -757,11 +758,13 @@ void MainWindow::command_DiverterInfo(const Message::Ptr& message)
     ui->cboxUseDiverter->setChecked(diverterInfo.active);
     ui->cboxUseDiverter->blockSignals(false);
 
-    ui->linePhoneRingtone->setText(diverterInfo.ringTone.trimmed());
     if (diverterInfo.defaultMode == data::DiverterDefaultMode::Pstn)
         ui->rbtnDiverterPSTN->setChecked(true);
     else
         ui->rbtnDiverterUSB->setChecked(true);
+
+    ui->labelDeviceCurentMode->setText(diverterInfo.currentMode);
+    ui->linePhoneRingtone->setText(diverterInfo.ringTone.trimmed());
 
     ui->labelDiverterDevUsbBus ->setText(diverterInfo.deviceUsbBus);
     ui->labelDiverterDevName   ->setText(diverterInfo.deviceName);

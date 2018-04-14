@@ -450,6 +450,8 @@ bserial::RawVector DiverterInfo::toRaw() const
     stream << deviceName;
     stream << deviceVersion;
     stream << deviceSerial;
+    B_SERIALIZE_V2(stream)
+    stream << currentMode;
     B_SERIALIZE_RETURN
 }
 
@@ -464,6 +466,8 @@ void DiverterInfo::fromRaw(const bserial::RawVector& vect)
     stream >> deviceName;
     stream >> deviceVersion;
     stream >> deviceSerial;
+    B_DESERIALIZE_V2(vect, stream)
+    stream >> currentMode;
     B_DESERIALIZE_END
 }
 

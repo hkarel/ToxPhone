@@ -396,10 +396,6 @@ struct AudioStreamInfo: Data<&command::AudioStreamInfo,
     DECLARE_B_SERIALIZE_FUNC
 };
 
-
-
-
-
 struct AudioTest : Data<&command::AudioTest,
                          Message::Type::Command,
                          Message::Type::Answer,
@@ -518,6 +514,9 @@ struct DiverterInfo : Data<&command::DiverterInfo,
 
     // Режим дивертера по умолчанию
     DiverterDefaultMode defaultMode = {DiverterDefaultMode::Pstn};
+
+    // Текущий режим дивертера
+    QString currentMode = {"Undefined"};
 
     // Тональность звонка для телефона
     QString ringTone;
