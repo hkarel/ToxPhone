@@ -308,8 +308,8 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
                 error.description = tr(failed_save_diverter_state);
                 config::state().reRead();
             }
-            log_verbose_m << "Change diverter active state to "
-                          << (diverterChange.active ? "TRUE" : "FALSE");
+            log_verbose_m << "Diverter use state is changed to "
+                          << (diverterChange.active ? "ON" : "OFF");
         }
         else if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
         {
@@ -331,7 +331,7 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
                     error.description = tr(failed_save_diverter_state);
                     config::state().reRead();
                 }
-                log_verbose_m << "Change diverter default mode to " << defaultMode;
+                log_verbose_m << "Diverter default mode is changed to " << defaultMode;
             }
             else if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::RingTone)
             {
@@ -342,7 +342,7 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
                     error.description = tr(failed_save_diverter_state);
                     config::state().reRead();
                 }
-                log_verbose_m << "Change diverter ringtone to " << diverterChange.ringTone;
+                log_verbose_m << "Diverter ringtone is changed to " << diverterChange.ringTone;
             }
         }
     }
@@ -519,6 +519,17 @@ void ToxPhoneApplication::phoneDiverterPstnRing()
 
 void ToxPhoneApplication::phoneDiverterKey(int val)
 {
+    { //Block for alog::Line
+        alog::Line logLine = log_debug_m << "Phone key is pressed: ";
+        if (val == 0x0b)
+            logLine << "*";
+        else if (val == 0x0c)
+            logLine << "#";
+        else
+            logLine << val;
+        logLine << ". Diverter use state: "
+                << (diverterIsActive() ? "ON" : "OFF");
+    }
     if (!diverterIsActive())
         return;
 
