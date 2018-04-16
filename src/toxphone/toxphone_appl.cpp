@@ -225,10 +225,9 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
             if (!phoneDiverter().isRinging())
                 phoneDiverter().startRing();
 
-            if (phoneDiverter().dialTone())
-                phoneDiverter().stopDialTone();
+            phoneDiverter().stopDialTone();
         }
-        else //handset() == PhoneDiverter::Handset::On
+        else // PhoneDiverter::Handset::On
         {
             // Отклонить входящий вызов
             data::ToxCallAction toxCallAction;
@@ -260,19 +259,18 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
     {
         phoneDiverter().stopDialTone();
     }
-    if (_callState.direction == data::ToxCallState::Direction:: Undefined
+    if (_callState.direction == data::ToxCallState::Direction::Undefined
         && _callState.callState == data::ToxCallState::CallState::Undefined)
     {
         if (phoneDiverter().isRinging())
             phoneDiverter().stopRing();
 
         phoneDiverter().setMode(_diverterDefaultMode);
-
         if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
         {
             phoneDiverter().startDialTone();
         }
-        else // handset() == PhoneDiverter::Handset::Off
+        else // PhoneDiverter::Handset::Off
         {
             if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
                 phoneDiverter().stopDialTone();
@@ -533,9 +531,9 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     if (!diverterIsActive())
         return;
 
-    if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
-        if (_diverterPhoneNumber.isEmpty())
-            phoneDiverter().stopDialTone();
+    if (!(_callState.direction == data::ToxCallState::Direction::Undefined
+          && _callState.callState == data::ToxCallState::CallState::Undefined))
+        return;
 
     if (val >= 0x00 && val < 0x0a)
     {
