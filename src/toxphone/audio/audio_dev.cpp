@@ -1290,8 +1290,9 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
 void AudioDev::card_info(pa_context* context, const pa_card_info* card_info,
                          int eol, void* userdata)
 {
-    log_debug2_m << "card_info()";
+    log_debug2_m << "card_info(); eol: " << eol;
 
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
     if (eol != 0)
         return;
 
@@ -1321,8 +1322,6 @@ void AudioDev::card_info(pa_context* context, const pa_card_info* card_info,
     }
     */
 
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     O_PTR_MSG(pa_context_get_sink_info_list(context, sink_info, ad),
               "Failed call pa_context_get_sink_info_list()", context, {})
 
@@ -1334,7 +1333,6 @@ void AudioDev::sink_info(pa_context* context, const pa_sink_info* info,
                          int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1358,7 +1356,6 @@ void AudioDev::sink_change(pa_context* context, const pa_sink_info* info,
                            int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1383,7 +1380,6 @@ void AudioDev::source_info(pa_context* context, const pa_source_info* info,
                            int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1407,7 +1403,6 @@ void AudioDev::source_change(pa_context* context, const pa_source_info* info,
                              int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1432,7 +1427,6 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
                                       int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1465,7 +1459,6 @@ void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info
                                    int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1498,7 +1491,6 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
                                     int eol, void* userdata)
 {
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
@@ -1530,8 +1522,9 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
 void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* info,
                                 int eol, void* userdata)
 {
-    AudioDev* ad = static_cast<AudioDev*>(userdata);
+    log_debug2_m << "sink_stream_info(); eol: " << eol;
 
+    AudioDev* ad = static_cast<AudioDev*>(userdata);
     if (eol != 0)
         return;
 
@@ -1570,10 +1563,9 @@ void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* i
 void AudioDev::source_stream_info(pa_context* context, const pa_source_output_info* info,
                                     int eol, void* userdata)
 {
-    log_debug2_m << "source_stream_info()";
+    log_debug2_m << "source_stream_info(); eol: " << eol;
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
-
     if (eol != 0)
         return;
 
