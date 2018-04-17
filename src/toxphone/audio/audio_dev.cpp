@@ -946,21 +946,32 @@ data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::Aud
         data::AudioDevInfo audioDevInfo;
         fillAudioDevInfo(info, audioDevInfo);
 
-        if (devices.empty())
+        enum DeviceDefault {Yes = true, No = false};
+        auto setCurrentDevice = [&audioDevInfo, &devices](DeviceDefault devDefault, int  line)
         {
+            for (int i = 0; i < devices.count(); ++i)
+            {
+                devices[i].isCurrent = false;
+                devices[i].isDefault = false;
+            }
             audioDevInfo.isCurrent = true;
+            audioDevInfo.isDefault = bool(devDefault);
 
             alog::Line logLine =
-                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
+                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, line, "AudioDev")
                 << ((audioDevInfo.type == data::AudioDevType::Sink)
-                    ? "Sound sink "
-                    : "Sound source ");
-            logLine << "is current"
-                    << "; index: "  << audioDevInfo.index
-                    << "; (card: "  << audioDevInfo.cardIndex << ")"
-                    << "; volume: " << audioDevInfo.volume
-                    << "; name: "   << audioDevInfo.name;
-        }
+                    ? "Sound sink"
+                    : "Sound source");
+            logLine << " current: "  << audioDevInfo.isCurrent
+                    << "; default: " << audioDevInfo.isDefault
+                    << "; index: "   << audioDevInfo.index
+                    << "; (card: "   << audioDevInfo.cardIndex << ")"
+                    << "; volume: "  << audioDevInfo.volume
+                    << "; name: "    << audioDevInfo.name;
+        };
+
+        if (devices.empty())
+            setCurrentDevice(DeviceDefault::No, __LINE__);
 
         // Инициализация isDefault
         const char* confName =
@@ -971,26 +982,25 @@ data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::Aud
         config::state().getValue(confName, devName);
         if (devName == audioDevInfo.name.constData())
         {
-            for (int i = 0; i < devices.count(); ++i)
-            {
-                devices[i].isCurrent = false;
-                devices[i].isDefault = false;
-            }
-            audioDevInfo.isCurrent = true;
-            audioDevInfo.isDefault = true;
-
-            alog::Line logLine =
-                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-                << ((audioDevInfo.type == data::AudioDevType::Sink)
-                    ? "Sound sink "
-                    : "Sound source ");
-            logLine << "is default/current"
-                    << "; index: "  << audioDevInfo.index
-                    << "; (card: "  << audioDevInfo.cardIndex << ")"
-                    << "; volume: " << audioDevInfo.volume
-                    << "; name: "   << audioDevInfo.name;
+            setCurrentDevice(DeviceDefault::Yes, __LINE__);
         }
+        else if (devName.empty())
+        {
+            bool defaultDeviceAssigned = false;
+            for (int i = 0; i < devices.count(); ++i)
+                if (devices[i].isDefault)
+                {
+                    defaultDeviceAssigned = true;
+                    break;
+                }
 
+            if (!defaultDeviceAssigned)
+            {
+                static QRegExp reg {R"(.*Yealink.*VOIP_USB_Phone.*)"};
+                if (reg.exactMatch(audioDevInfo.name))
+                    setCurrentDevice(DeviceDefault::No, __LINE__);
+            }
+        }
         audioDevInfoPtr = devices.addCopy(audioDevInfo);
     }
 
