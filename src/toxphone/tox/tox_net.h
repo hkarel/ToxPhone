@@ -74,6 +74,10 @@ private:
     static void tox_friend_message          (Tox* tox, uint32_t friend_number,
                                              TOX_MESSAGE_TYPE type, const uint8_t* message,
                                              size_t length, void* user_data);
+    static void tox_file_recv               (Tox *tox, uint32_t friend_number,
+                                             uint32_t file_number, uint32_t kind,
+                                             uint64_t file_size, const uint8_t *filename,
+                                             size_t filename_length, void* user_data);
     static void tox_self_connection_status  (Tox* tox, TOX_CONNECTION connection_status,
                                              void* user_data);
     static void tox_friend_connection_status(Tox* tox, uint32_t friend_number,

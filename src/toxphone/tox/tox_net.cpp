@@ -29,6 +29,9 @@ static const char* error_save_tox_state =
 static const char* tox_chat_responce_message =
     QT_TRANSLATE_NOOP("ToxNet", "Hi, it ToxPhone client. The ToxPhone client not support a chat function.");
 
+static const char* tox_transfer_data_message =
+    QT_TRANSLATE_NOOP("ToxNet", "Hi, it ToxPhone client. The ToxPhone client not support a transfer of data.");
+
 //--------------------------------- ToxNet -----------------------------------
 
 ToxNet& toxNet()
@@ -222,6 +225,7 @@ bool ToxNet::init()
     tox_callback_friend_name             (_tox, tox_friend_name);
     tox_callback_friend_status_message   (_tox, tox_friend_status_message);
     tox_callback_friend_message          (_tox, tox_friend_message);
+    tox_callback_file_recv               (_tox, tox_file_recv);
     tox_callback_self_connection_status  (_tox, tox_self_connection_status);
     tox_callback_friend_connection_status(_tox, tox_friend_connection_status);
 
@@ -981,6 +985,29 @@ void ToxNet::tox_friend_message(Tox* tox, uint32_t friend_number, TOX_MESSAGE_TY
         data::ToxMessage toxMessage;
         toxMessage.friendNumber = friend_number;
         toxMessage.text = QByteArray(tox_chat_responce_message);
+
+        Message::Ptr m = createMessage(toxMessage);
+        tn->message(m);
+    }
+}
+
+void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_number,
+                           uint32_t kind, uint64_t file_size, const uint8_t *filename,
+                           size_t filename_length, void* user_data)
+{
+    if (kind == TOX_FILE_KIND_AVATAR)
+        log_debug_m << "ToxEvent: friend send avatar. Event discarded"
+                    << ToxFriendLog(tox, friend_number);
+
+    tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_CANCEL, 0);
+
+    if (kind != TOX_FILE_KIND_AVATAR)
+    {
+        ToxNet* tn = static_cast<ToxNet*>(user_data);
+
+        data::ToxMessage toxMessage;
+        toxMessage.friendNumber = friend_number;
+        toxMessage.text = QByteArray(tox_transfer_data_message);
 
         Message::Ptr m = createMessage(toxMessage);
         tn->message(m);
