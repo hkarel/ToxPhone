@@ -39,9 +39,10 @@ packet_depends=$(cat << EOS
 EOS
 )
 
-[ "${os_arch:0:3}" = "arm" ] && os_arch=armhf
+os_arch_control=$os_arch
+[ "${os_arch:0:3}" = "arm" ] && os_arch_control=armhf
 sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
-    -e "s/%ARCHITECTURE%/${os_arch}/" \
+    -e "s/%ARCHITECTURE%/${os_arch_control}/" \
     -e "s/%INSTALLED_SIZE%/${installed_size}/" \
     -e "s/%DEPENDS%/${packet_depends}/" \
     -i $package_dir/DEBIAN/control
