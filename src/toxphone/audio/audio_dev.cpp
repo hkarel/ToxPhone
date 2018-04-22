@@ -94,6 +94,10 @@ AudioDev::AudioDev()
     _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
     _recordAudioStreamInfo.type   = data::AudioStreamInfo::Type::Record;
 
+//    _updateStartVolumeTimer.setInterval(300);
+//    chk_connect_a(&_updateStartVolumeTimer, SIGNAL(timeout()),
+//                  this, SLOT(updateStartVolumeTimeout()))
+
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &AudioDev::command_##COMMAND, this);
 
@@ -547,6 +551,22 @@ void AudioDev::stopAudioTests()
         stopRecord();
 }
 
+//void AudioDev::updateStartVolumeTimeout()
+//{
+//    Message::Ptr m;
+//    { //Block for QMutexLocker
+//        QMutexLocker locker(&_streamLock); (void) locker;
+//        if (!_updateStartVolume.isEmpty())
+//            m = _updateStartVolume.dequeue();
+//    }
+//    if (m.empty())
+//    {
+//        _updateStartVolumeTimer.stop();
+//        return;
+//    }
+//    message(m);
+//}
+
 bool AudioDev::start()
 {
     MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
@@ -585,64 +605,58 @@ void AudioDev::message(const communication::Message::Ptr& message)
     }
 }
 
-void AudioDev::command_IncomingConfigConnection(const Message::Ptr& message)
+void AudioDev::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
 {
+    MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
+
     Message::Ptr m;
-
-    { //Block for QMutexLocker
-        QMutexLocker locker(&_devicesLock); (void) locker;
-        for (int i = 0; i < _sinkDevices.count(); ++i)
-        {
-            m = createMessage(_sinkDevices[i], Message::Type::Event);
-            tcp::listener().send(m);
-        }
-        for (int i = 0; i < _sourceDevices.count(); ++i)
-        {
-            m = createMessage(_sourceDevices[i], Message::Type::Event);
-            tcp::listener().send(m);
-        }
-    }
-
-    { //Block for MainloopLocker
-        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
-
-        // Отправляем фиктивные сообщения о создании потоков, чтобы правильно
-        // проинициализировать настройки конфигуратора
-        data::AudioStreamInfo audioStreamInfo;
-        if (_palybackAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
-        {
-            audioStreamInfo = _palybackAudioStreamInfo;
-            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
-
-            m = createMessage(audioStreamInfo, Message::Type::Event);
-            tcp::listener().send(m);
-        }
-        if (_voiceAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
-        {
-            audioStreamInfo = _voiceAudioStreamInfo;
-            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
-
-            m = createMessage(audioStreamInfo, Message::Type::Event);
-            tcp::listener().send(m);
-        }
-        if (_recordAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
-        {
-            audioStreamInfo = _recordAudioStreamInfo;
-            audioStreamInfo.state = data::AudioStreamInfo::State::Created;
-
-            m = createMessage(audioStreamInfo, Message::Type::Event);
-            tcp::listener().send(m);
-        }
-
-        m = createMessage(_palybackAudioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
-
-        m = createMessage(_voiceAudioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
-
-        m = createMessage(_recordAudioStreamInfo, Message::Type::Event);
+    for (int i = 0; i < _sinkDevices.count(); ++i)
+    {
+        m = createMessage(_sinkDevices[i], Message::Type::Event);
         tcp::listener().send(m);
     }
+    for (int i = 0; i < _sourceDevices.count(); ++i)
+    {
+        m = createMessage(_sourceDevices[i], Message::Type::Event);
+        tcp::listener().send(m);
+    }
+
+    // Отправляем фиктивные сообщения о создании потоков, чтобы правильно
+    // проинициализировать настройки конфигуратора
+    data::AudioStreamInfo audioStreamInfo;
+    if (_palybackAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    {
+        audioStreamInfo = _palybackAudioStreamInfo;
+        audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+        m = createMessage(audioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+    if (_voiceAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    {
+        audioStreamInfo = _voiceAudioStreamInfo;
+        audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+        m = createMessage(audioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+    if (_recordAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+    {
+        audioStreamInfo = _recordAudioStreamInfo;
+        audioStreamInfo.state = data::AudioStreamInfo::State::Created;
+
+        m = createMessage(audioStreamInfo, Message::Type::Event);
+        tcp::listener().send(m);
+    }
+
+    m = createMessage(_palybackAudioStreamInfo, Message::Type::Event);
+    tcp::listener().send(m);
+
+    m = createMessage(_voiceAudioStreamInfo, Message::Type::Event);
+    tcp::listener().send(m);
+
+    m = createMessage(_recordAudioStreamInfo, Message::Type::Event);
+    tcp::listener().send(m);
 }
 
 void AudioDev::command_AudioDevChange(const Message::Ptr& message)
@@ -650,7 +664,7 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
     data::AudioDevChange audioDevChange;
     readFromMessage(message, audioDevChange);
 
-    QMutexLocker locker(&_devicesLock); (void) locker;
+    MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
     data::AudioDevInfo::List* devices = getDevices(audioDevChange.type);
 
     // ChangeFlag::Volume
@@ -671,8 +685,6 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
         volume.channels = audioDevInfo->channels;
         for (quint8 i = 0; i < volume.channels; ++i)
             volume.values[i] = audioDevInfo->volume;
-
-        MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
 
         if (audioDevInfo->type == data::AudioDevType::Sink)
         {
@@ -918,21 +930,7 @@ void AudioDev::fillAudioDevInfo(const InfoType* info, data::AudioDevInfo& audioD
 }
 
 template<typename InfoType>
-void AudioDev::fillAudioDevVolume(const InfoType* info, data::AudioDevChange& audioDevChange)
-{
-    data::AudioDevType type = data::AudioDevType::Sink;
-    if (std::is_same<InfoType, pa_source_info>::value)
-        type = data::AudioDevType::Source;
-
-    audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
-    audioDevChange.cardIndex = info->card;
-    audioDevChange.type = type;
-    audioDevChange.index = info->index;
-    audioDevChange.value = info->volume.values[0];
-}
-
-template<typename InfoType>
-data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List& devices)
+void AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List& devices)
 {
     data::AudioDevInfo* audioDevInfoPtr = 0;
     if (lst::FindResult fr = devices.find(info->name))
@@ -1002,6 +1000,7 @@ data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::Aud
             }
         }
         audioDevInfoPtr = devices.addCopy(audioDevInfo);
+        updateStartVolume(audioDevInfo);
     }
 
     if (configConnected())
@@ -1009,7 +1008,46 @@ data::AudioDevInfo* AudioDev::updateAudioDevInfo(const InfoType* info, data::Aud
         Message::Ptr m = createMessage(*audioDevInfoPtr, Message::Type::Event);
         tcp::listener().send(m);
     }
-    return audioDevInfoPtr;
+}
+
+void AudioDev::updateStartVolume(const data::AudioDevInfo& audioDevInfo)
+{
+    QVector<QString> knownDevices;
+    config::state().getValue("audio.known_devices", knownDevices);
+    if (!knownDevices.contains(audioDevInfo.name))
+    {
+        knownDevices.append(audioDevInfo.name);
+        config::state().setValue("audio.known_devices", knownDevices,
+                                 YAML::EmitterStyle::Block);
+        config::state().save();
+
+        data::AudioDevChange audioDevChange;
+        audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
+        audioDevChange.cardIndex  = audioDevInfo.cardIndex;
+        audioDevChange.type       = audioDevInfo.type;
+        audioDevChange.index      = audioDevInfo.index;
+        audioDevChange.value      = audioDevInfo.volumeSteps * 0.85;
+
+        Message::Ptr m = createMessage(audioDevChange);
+        QMetaObject::invokeMethod(this, "message", Qt::QueuedConnection,
+                                  Q_ARG(communication::Message::Ptr, m));
+    }
+
+//    quint32 currentVolume = audioDevInfo.volume;
+//    audioDevChange.value += (currentVolume < audioDevInfo.volumeSteps) ? 1 : -1;
+//    Message::Ptr m1 = createMessage(audioDevChange);
+
+//    audioDevChange.value = currentVolume;
+//    Message::Ptr m2 = createMessage(audioDevChange);
+
+//    { //Block for QMutexLocker
+//        QMutexLocker locker(&_streamLock); (void) locker;
+//        _updateStartVolume.enqueue(m1);
+//        _updateStartVolume.enqueue(m2);
+//    }
+//    QMetaObject::invokeMethod(&_updateStartVolumeTimer, "start", Qt::QueuedConnection);
+//    message(m);
+
 }
 
 void AudioDev::fillAudioStreamInfo(const pa_sink_input_info* info,
@@ -1023,12 +1061,9 @@ void AudioDev::fillAudioStreamInfo(const pa_sink_input_info* info,
     audioStreamInfo.channels = info->channel_map.channels;
     audioStreamInfo.volume = info->volume.values[0];
 
-    { //Block for QMutexLocker
-        QMutexLocker locker(&_devicesLock); (void) locker;
-        lst::FindResult fr = _sinkDevices.findRef(info->sink);
-        audioStreamInfo.volumeSteps =
-            (fr.success()) ? _sinkDevices[fr.index()].volumeSteps : 0;
-    }
+    lst::FindResult fr = _sinkDevices.findRef(info->sink);
+    audioStreamInfo.volumeSteps =
+        (fr.success()) ? _sinkDevices[fr.index()].volumeSteps : 0;
 }
 
 void AudioDev::fillAudioStreamInfo(const pa_source_output_info* info,
@@ -1042,12 +1077,9 @@ void AudioDev::fillAudioStreamInfo(const pa_source_output_info* info,
     audioStreamInfo.channels = info->channel_map.channels;
     audioStreamInfo.volume = info->volume.values[0];
 
-    { //Block for QMutexLocker
-        QMutexLocker locker(&_devicesLock); (void) locker;
-        lst::FindResult fr = _sourceDevices.findRef(info->source);
-        audioStreamInfo.volumeSteps =
-            (fr.success()) ? _sourceDevices[fr.index()].volumeSteps : 0;
-    }
+    lst::FindResult fr = _sourceDevices.findRef(info->source);
+    audioStreamInfo.volumeSteps =
+        (fr.success()) ? _sourceDevices[fr.index()].volumeSteps : 0;
 }
 
 data::AudioDevInfo::List* AudioDev::getDevices(data::AudioDevType type)
@@ -1067,7 +1099,6 @@ data::AudioDevInfo* AudioDev::currentDevice(const data::AudioDevInfo::List& devi
 const char* AudioDev::currentDeviceName(const data::AudioDevInfo::List& devices,
                                         QByteArray& buff)
 {
-    QMutexLocker locker(&_devicesLock); (void) locker;
     if (data::AudioDevInfo* audioDevInfo = currentDevice(devices))
         buff = audioDevInfo->name;
 
@@ -1076,8 +1107,6 @@ const char* AudioDev::currentDeviceName(const data::AudioDevInfo::List& devices,
 
 bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardIndex)
 {
-    QMutexLocker locker(&_devicesLock); (void) locker;
-
     bool isRemoved = false;
     bool isCurrent = false;
     data::AudioDevInfo::List* devices = getDevices(type);
@@ -1349,7 +1378,6 @@ void AudioDev::sink_info(pa_context* context, const pa_sink_info* info,
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    QMutexLocker locker(&ad->_devicesLock); (void) locker;
     lst::FindResult fr = ad->_sinkDevices.find(info->name);
     if (fr.failed())
         log_verbose_m << "Sound sink detected"
@@ -1357,7 +1385,6 @@ void AudioDev::sink_info(pa_context* context, const pa_sink_info* info,
                       << "; (card: " << info->card << ")"
                       << "; volume: " << info->volume.values[0]
                       << "; name: " << info->name;
-                      //<< "; description: " << sinkDescr
 
     ad->updateAudioDevInfo(info, ad->_sinkDevices);
 }
@@ -1372,7 +1399,6 @@ void AudioDev::sink_change(pa_context* context, const pa_sink_info* info,
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    QMutexLocker locker(&ad->_devicesLock); (void) locker;
     lst::FindResult fr = ad->_sinkDevices.findRef(quint32(info->index));
     if (fr.failed())
         return;
@@ -1396,7 +1422,6 @@ void AudioDev::source_info(pa_context* context, const pa_source_info* info,
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    QMutexLocker locker(&ad->_devicesLock); (void) locker;
     lst::FindResult fr = ad->_sourceDevices.find(info->name);
     if (fr.failed())
         log_verbose_m << "Sound source detected"
@@ -1404,7 +1429,6 @@ void AudioDev::source_info(pa_context* context, const pa_source_info* info,
                       << "; (card: " << info->card << ")"
                       << "; volume: " << info->volume.values[0]
                       << "; name: " << info->name;
-                      //<< "; description: " << sourceDescr
 
     ad->updateAudioDevInfo(info, ad->_sourceDevices);
 }
@@ -1419,7 +1443,6 @@ void AudioDev::source_change(pa_context* context, const pa_source_info* info,
     if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
         return;
 
-    QMutexLocker locker(&ad->_devicesLock); (void) locker;
     lst::FindResult fr = ad->_sourceDevices.findRef(quint32(info->index));
     if (fr.failed())
         return;
