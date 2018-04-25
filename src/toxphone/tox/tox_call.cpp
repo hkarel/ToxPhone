@@ -181,18 +181,22 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         log_verbose_m << "Begin outgoing call (state: WaitingAnswer). "
                       << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
 
+        ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+        if (_callState.direction != data::ToxCallState::Direction::Undefined)
+        {
+            log_debug_m << "Current direction of call is not 'Undefined'"
+                        << ". Command is interrupted";
+            return;
+        }
         _sendVoiceFriendNumber = quint32(-1);
-
         _callState.direction = data::ToxCallState::Direction::Outgoing;
         _callState.callState = data::ToxCallState::CallState::WaitingAnswer;
         _callState.callEnd = data::ToxCallState::CallEnd::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
 
         TOXAV_ERR_CALL err;
-        { //Block for ToxGlobalLock
-            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-            toxav_call(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
-        }
+        toxav_call(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
+
         if (err != TOXAV_ERR_CALL_OK)
         {
             log_error_m << "Failed toxav_call: " << toxError(err);
@@ -207,10 +211,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
                 writeToMessage(error, answer);
                 tcp::listener().send(answer);
             }
-            { //Block for ToxGlobalLock
-                ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-                toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
-            }
+            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
+
             _callState.direction = data::ToxCallState::Direction::Undefined;
             _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
@@ -236,6 +238,14 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         log_verbose_m << "Accept incoming call (state: InProgress). "
                       << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
 
+        ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+        if (!(_callState.direction == data::ToxCallState::Direction::Incoming
+              && _callState.callState == data::ToxCallState::CallState::WaitingAnswer))
+        {
+            log_debug_m << "Current direction of call is not 'Incoming, WaitingAnswer'"
+                        << ". Command is interrupted";
+            return;
+        }
         _skipFirstFrames = 0;
         _callState.direction = data::ToxCallState::Direction::Incoming;
         _callState.callState = data::ToxCallState::CallState::InProgress;
@@ -243,10 +253,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         _callState.friendNumber = toxCallAction.friendNumber;
 
         TOXAV_ERR_ANSWER err;
-        { //Block for ToxGlobalLock
-            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-            toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
-        }
+        toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
+
         if (err == TOXAV_ERR_ANSWER_OK)
         {
             _recordBytes = 0;
@@ -266,10 +274,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
                 writeToMessage(error, answer);
                 tcp::listener().send(answer);
             }
-            { //Block for ToxGlobalLock
-                ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-                toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
-            }
+            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
+
             _callState.direction = data::ToxCallState::Direction::Undefined;
             _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
@@ -303,8 +309,14 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             logLine << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
         }
 
+        ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+        if (_callState.direction == data::ToxCallState::Direction::Undefined)
+        {
+            log_debug_m << "Current direction of call already 'Undefined'"
+                        << ". Command is interrupted";
+            return;
+        }
         endCalling();
-
         _callState.direction = data::ToxCallState::Direction::Undefined;
         _callState.callState = data::ToxCallState::CallState::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
@@ -315,10 +327,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             _callState.callEnd = data::ToxCallState::CallEnd::SelfEnd;
 
         TOXAV_ERR_CALL_CONTROL err;
-        { //Block for ToxGlobalLock
-            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-            toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, &err);
-        }
+        toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, &err);
+
         if (err != TOXAV_ERR_CALL_CONTROL_OK)
         {
             log_error_m << "Failed toxav_call_control: " << toxError(err);
@@ -475,7 +485,6 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
         tc->endCalling();
-
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
         tc->_callState.callState = data::ToxCallState::CallState::Undefined;
         tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
@@ -498,7 +507,6 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
             logLine << ToxFriendLog(toxav_get_tox(av), friend_number);
         }
         tc->endCalling();
-
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
         tc->_callState.callState = data::ToxCallState::CallState::Undefined;
         tc->_callState.callEnd = data::ToxCallState::CallEnd::FriendEnd;
