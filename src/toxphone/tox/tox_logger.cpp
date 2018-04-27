@@ -10,7 +10,8 @@ extern bool enable_toxcore_log;
 /**
   Небольшой хак: переопределяем реализацию функций из ядра toxcore
 */
-struct Logger {
+struct Logger
+{
     logger_cb *callback = {0};
     void *context  = {0};
     void *userdata = {0};
@@ -19,16 +20,14 @@ struct Logger {
 // Заперт на mangling для имен функций
 Logger *logger_new(void) asm ("logger_new");
 void logger_kill(Logger *log) asm ("logger_kill");
-void logger_callback_log(Logger *log,
-                         logger_cb *function,
-                         void *context,
-                         void *userdata) asm ("logger_callback_log");
-void logger_write(Logger* log,
-                  LOGGER_LEVEL level,
-                  const char* file,
-                  int line,
-                  const char* func,
-                  const char* format, ...) asm ("logger_write");
+
+void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
+    asm ("logger_callback_log");
+
+void logger_write(
+    const Logger* log, LOGGER_LEVEL level, const char* file, int line, const char* func,
+    const char* format, ...)
+    asm ("logger_write");
 
 Logger *logger_new(void)
 {
@@ -40,10 +39,7 @@ void logger_kill(Logger *log)
     (void) log;
 }
 
-void logger_callback_log(Logger *log,
-                         logger_cb *function,
-                         void *context,
-                         void *userdata)
+void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
 {
     (void) log;
     (void) function;
@@ -51,12 +47,9 @@ void logger_callback_log(Logger *log,
     (void) userdata;
 }
 
-void logger_write(Logger* log,
-                  LOGGER_LEVEL level,
-                  const char* file,
-                  int line,
-                  const char* func,
-                  const char* format, ...)
+void logger_write(
+    const Logger* log, LOGGER_LEVEL level, const char* file, int line, const char* func,
+    const char* format, ...)
 {
     (void) log;
     if (!enable_toxcore_log)

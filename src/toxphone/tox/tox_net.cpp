@@ -996,7 +996,7 @@ void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_numbe
                            size_t filename_length, void* user_data)
 {
     if (kind == TOX_FILE_KIND_AVATAR)
-        log_debug_m << "ToxEvent: friend send avatar. Event discarded"
+        log_debug_m << "ToxEvent: friend send avatar. Event discarded. "
                     << ToxFriendLog(tox, friend_number);
 
     tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_CANCEL, 0);
