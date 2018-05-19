@@ -174,7 +174,8 @@ void ToxPhoneApplication::sendToxPhoneInfo()
         toxPhoneInfo.configConnectCount = _configConnectCount;
 
         Message::Ptr m = createMessage(toxPhoneInfo);
-        m->destinationPoints().insert({intf->broadcast, port - 1});
+        for (int i = 1; i <= 5; ++i)
+            m->destinationPoints().insert({intf->broadcast, port + i});
         udp::socket().send(m);
     }
 }

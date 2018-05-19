@@ -73,13 +73,30 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
     if (!config::state().getValue("connection.port", port))
         config::state().setValue("connection.port", port);
 
-    if (!udp::socket().init({QHostAddress::Any, port - 1}))
-        return false;
+    int port_counter = 1;
+    while (port_counter <= 5)
+    {
+        if (!udp::socket().init({QHostAddress::Any, port + port_counter}))
+            return false;
 
-    udp::socket().start();
-    udp::socket().waitBinding(3);
-    if (!udp::socket().isBound())
-        return false;
+        udp::socket().start();
+        //udp::socket().waitBinding(1);
+
+        int attempts = 3;
+        while (attempts--)
+        {
+            usleep(50*1000);
+            if (udp::socket().isBound())
+                break;
+        }
+        if (udp::socket().isBound())
+            break;
+
+        ++port_counter;
+        udp::socket().stop();
+    }
+    if (port_counter > 5)
+        log_error << "The number of attempts of initialization of UDP is exhausted";
 
     return (_init = true);
 }

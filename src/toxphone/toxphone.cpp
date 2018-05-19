@@ -438,7 +438,8 @@ int main(int argc, char *argv[])
         Message::Ptr message = createMessage(applShutdown);
         network::Interface::List netInterfaces = network::getInterfaces();
         for (network::Interface* intf : netInterfaces)
-            message->destinationPoints().insert({intf->broadcast, port - 1});
+            for (int i = 1; i <= 5; ++i)
+                message->destinationPoints().insert({intf->broadcast, port + i});
 
         udp::socket().send(message);
         usleep(200*1000);

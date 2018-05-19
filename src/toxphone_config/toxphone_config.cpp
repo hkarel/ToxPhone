@@ -106,9 +106,9 @@ int main(int argc, char *argv[])
         tcp::Socket::Ptr socket {new tcp::Socket};
 
         QString errMessage = QObject::tr(
-            "During the initialization of the program, errors occurred. "
-            "The execution of the program will be stopped. For information "
-            "about the error, see the log file %1");
+            "During the initialization of the program, errors occurred.\n"
+            "The execution of the program will be stopped.\n"
+            "For information about the error, see the log file: %1");
         errMessage = errMessage.arg(logFile);
 
         ConnectionWindow cw;
