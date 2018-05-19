@@ -5,11 +5,18 @@ if [ ! -e /etc/systemd/system/toxphone.service ]; then
     sleep 1
     killall toxphone 2> /dev/null
     sleep 3
-else
-    res=$(systemctl list-unit-files | grep toxphone)
-    if [ -n "$res" ]; then
-        systemctl stop toxphone
-    fi
+fi
+
+res=$(systemctl list-unit-files | grep 'toxphone.service')
+if [ -n "$res" ]; then
+    systemctl stop    toxphone.service
+    systemctl disable toxphone.service
+fi
+
+res=$(systemctl list-unit-files | grep 'toxphone-cpufreq.service')
+if [ -n "$res" ]; then
+    systemctl stop    toxphone-cpufreq.service
+    systemctl disable toxphone-cpufreq.service
 fi
 
 exit 0

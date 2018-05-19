@@ -1,0 +1,11 @@
+[Unit]
+Description=CPUFreq Governors for ToxPhone
+After=cpufrequtils.service
+
+[Service]
+Type=simple
+RemainAfterExit=true
+ExecStart=/usr/bin/cpufreq-set -g ondemand -d 480000
+
+[Install]
+RequiredBy=cpufrequtils.service

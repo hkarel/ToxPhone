@@ -4,14 +4,21 @@ if [ ! -e /etc/systemd/system/toxphone.service ]; then
     killall toxphone-watchdog 2> /dev/null
     sleep 1
     killall toxphone 2> /dev/null
-else
-    res=$(systemctl list-unit-files | grep toxphone)
-    if [ -n "$res" ]; then
-        systemctl stop toxphone
-        systemctl disable toxphone
-        #systemctl mask toxphone
-    fi
 fi
+
+res=$(systemctl list-unit-files | grep 'toxphone.service')
+if [ -n "$res" ]; then
+    systemctl stop    toxphone.service
+    systemctl disable toxphone.service
+    #systemctl mask   toxphone.service
+fi
+
+res=$(systemctl list-unit-files | grep 'toxphone-cpufreq.service')
+if [ -n "$res" ]; then
+    systemctl stop    toxphone-cpufreq.service
+    systemctl disable toxphone-cpufreq.service
+fi
+
 rm -f /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
 
 if [ -e /etc/init/toxphone.conf ]; then

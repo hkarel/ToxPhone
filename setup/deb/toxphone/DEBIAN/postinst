@@ -38,9 +38,15 @@ if [ "$response" -eq 2 ]; then
     sed -e "s/%TARGET_USER%/$SUDO_USER/" \
         -i /etc/systemd/system/toxphone.service
 
-    systemctl unmask toxphone
-    systemctl enable toxphone
-    systemctl start  toxphone
+    systemctl unmask toxphone.service
+    systemctl enable toxphone.service
+    systemctl start  toxphone.service
+
+    if [ -e /etc/systemd/system/toxphone-cpufreq.service ]; then
+        systemctl unmask toxphone-cpufreq.service
+        systemctl enable toxphone-cpufreq.service
+        systemctl start  toxphone-cpufreq.service
+    fi
 
     if [ -e /etc/init/toxphone.conf ]; then
         initctl reload-configuration
@@ -50,10 +56,18 @@ if [ "$response" -eq 2 ]; then
 else
     echo "Selected launch: in user space"
 
-    systemctl stop    toxphone
-    systemctl disable toxphone
+    if [ -e /etc/systemd/system/toxphone.service ]; then
+        systemctl stop    toxphone.service
+        systemctl disable toxphone.service
+        rm -f /etc/systemd/system/toxphone.service
+    fi
 
-    rm -f /etc/systemd/system/toxphone.service
+    if [ -e /etc/systemd/system/toxphone-cpufreq.service ]; then
+        systemctl stop    toxphone-cpufreq.service
+        systemctl disable toxphone-cpufreq.service
+        rm -f /etc/systemd/system/toxphone-cpufreq.service
+    fi
+
     systemctl daemon-reload
 
     ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop

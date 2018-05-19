@@ -41,6 +41,10 @@ if [ "$os_id" = "ubuntu" -a "$os_ver" = "14.04" ]; then
     cp $script_dir/systemd/toxphone.service-ubuntu14 $package_dir/etc/systemd/system/toxphone.service
 else
     cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
+
+    if [ "${os_arch:0:3}" = "arm" ]; then
+        cp $script_dir/systemd/toxphone-cpufreq.service  $package_dir/etc/systemd/system
+    fi
 fi
 
 for f in $(cat ${build_dir}/package_build_info); do
