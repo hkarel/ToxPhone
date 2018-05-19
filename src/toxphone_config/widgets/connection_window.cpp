@@ -15,7 +15,6 @@
 #include <unistd.h>
 
 #define PHONES_LIST_TIMEUPDATE 5
-extern QString toxInfoString;
 
 ConnectionWindow::ConnectionWindow(QWidget *parent) :
     QDialog(parent),
@@ -193,8 +192,6 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
         qApp->processEvents();
     }
 
-    toxInfoString = cw->info();
-
     _discartConnect = false;
     _socket->connect();
 
@@ -263,6 +260,9 @@ void ConnectionWindow::command_CloseConnection(const Message::Ptr& message)
 
 void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
 {
+    if (message->socketType() != SocketType::Udp)
+        return;
+
     data::ToxPhoneInfo toxPhoneInfo;
     readFromMessage(message, toxPhoneInfo);
 
@@ -275,6 +275,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         if (cw->applId() == toxPhoneInfo.applId)
         {
             cw->resetLifeTimer();
+            cw->setInfo(toxPhoneInfo.info);
             cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
             if (cw->isPointToPoint() && !toxPhoneInfo.isPointToPoint)
             {

@@ -34,7 +34,7 @@ signals:
 
 public slots:
     static void stop(int exitCode);
-    void sendToxPhoneInfo();
+    void sendToxPhoneInfo(SocketDescriptor socketDescriptor = 0);
 
 private slots:
     void message(const communication::Message::Ptr&);

@@ -11,7 +11,6 @@ namespace command {
 #define REGISTRY_COMMAND_MULTIPROC(COMMAND, UUID) \
     const QUuidEx COMMAND = CommandsPool::Registry{UUID, #COMMAND, true};
 
-REGISTRY_COMMAND_SINGLPROC(ToxPhoneInfo,             "936920c9-f5eb-43f5-8b4b-b00ed260f9d6")
 REGISTRY_COMMAND_SINGLPROC(ToxPhoneAbout,            "fbf1ff18-54d8-4fd4-9374-5d6d50767bdc")
 REGISTRY_COMMAND_SINGLPROC(ApplShutdown,             "ade7ce1a-564f-4436-940d-c0899adac616")
 REGISTRY_COMMAND_SINGLPROC(ToxProfile,               "400c2df2-fba2-4dc7-a80b-78cbcec61ac4")
@@ -33,6 +32,7 @@ REGISTRY_COMMAND_SINGLPROC(DiverterInfo,             "7bfe1a78-1012-48ac-9b09-bf
 REGISTRY_COMMAND_SINGLPROC(DiverterChange,           "f09db7e2-b3e7-410e-8131-7473c35c05bd")
 REGISTRY_COMMAND_SINGLPROC(DiverterTest,             "ad1dda11-2065-4bd1-9cc0-352188f1f9f1")
 
+REGISTRY_COMMAND_MULTIPROC(ToxPhoneInfo,             "936920c9-f5eb-43f5-8b4b-b00ed260f9d6")
 REGISTRY_COMMAND_MULTIPROC(IncomingConfigConnection, "917b1e18-4a5e-4432-b6d6-457a666ef2b1")
 REGISTRY_COMMAND_MULTIPROC(ToxCallState,             "283895bf-500d-465d-9b29-8284d3e17a99")
 REGISTRY_COMMAND_MULTIPROC(PhoneFriendInfo,          "a5d53b3e-397b-47b1-a2ca-e22d02071122")

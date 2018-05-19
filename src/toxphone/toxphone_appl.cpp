@@ -108,7 +108,7 @@ void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
         _closeSocketDescriptors.insert(socketDescriptor);
         return;
     }
-    sendToxPhoneInfo();
+    sendToxPhoneInfo(socketDescriptor);
 
     bool connected = true;
     configConnected(&connected);
@@ -153,35 +153,57 @@ void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor
     sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::sendToxPhoneInfo()
+void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
 {
     int port = 3609;
     config::base().getValue("config_connection.port", port);
 
-    QString info;
-    config::base().getValue("config_connection.info", info);
+    QString info = "Tox Phone Info";
+    config::state().getValue("info_string", info, false);
 
     network::Interface::List nl = network::getInterfaces();
     _netInterfaces.swap(nl);
     _netInterfacesTimer.reset();
 
+    data::ToxPhoneInfo toxPhoneInfo;
+    toxPhoneInfo.info = info;
+    toxPhoneInfo.applId = _applId;
+    toxPhoneInfo.configConnectCount = _configConnectCount;
     for (network::Interface* intf : _netInterfaces)
     {
-        data::ToxPhoneInfo toxPhoneInfo;
-        toxPhoneInfo.info = info;
-        toxPhoneInfo.applId = _applId;
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
-        toxPhoneInfo.configConnectCount = _configConnectCount;
-
         Message::Ptr m = createMessage(toxPhoneInfo);
         for (int i = 1; i <= 5; ++i)
             m->destinationPoints().insert({intf->broadcast, port + i});
         udp::socket().send(m);
     }
+
+    if (socketDescriptor)
+    {
+        toxPhoneInfo.isPointToPoint = false;
+        Message::Ptr m = createMessage(toxPhoneInfo);
+        m->destinationSocketDescriptors().insert(socketDescriptor);
+        tcp::listener().send(m);
+    }
 }
 
 void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
 {
+    // Обработка сообщения поступившего с TCP сокета
+    if (message->socketType() == SocketType::Tcp)
+    {
+        data::ToxPhoneInfo toxPhoneInfo;
+        readFromMessage(message, toxPhoneInfo);
+        if (!toxPhoneInfo.info.trimmed().isEmpty())
+        {
+            config::state().setValue("info_string", toxPhoneInfo.info.trimmed());
+            config::state().save();
+        }
+        sendToxPhoneInfo(message->socketDescriptor());
+        return;
+    }
+
+    // Обработка сообщения поступившего с UDP сокета
     if (_netInterfacesTimer.elapsed<chrono::seconds>() > 15)
     {
         network::Interface::List nl = network::getInterfaces();
@@ -189,8 +211,8 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
         _netInterfacesTimer.reset();
     }
 
-    QString info;
-    config::base().getValue("config_connection.info", info);
+    QString info = "Tox Phone Info";
+    config::state().getValue("info_string", info, false);
 
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;

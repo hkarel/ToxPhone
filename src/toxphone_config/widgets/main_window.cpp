@@ -16,8 +16,6 @@
 #include <limits>
 #include <unistd.h>
 
-extern QString toxInfoString;
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -53,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) :
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &MainWindow::command_##COMMAND, this);
 
+    FUNC_REGISTRATION(ToxPhoneInfo)
     FUNC_REGISTRATION(ToxPhoneAbout)
     FUNC_REGISTRATION(ToxProfile)
     FUNC_REGISTRATION(RequestFriendship)
@@ -146,8 +145,6 @@ void MainWindow::socketConnected(communication::SocketDescriptor)
     QString msg = tr("Connected to %1 : %2");
     ui->labelConnectStatus->setText(msg.arg(_socket->peerPoint().address().toString())
                                        .arg(_socket->peerPoint().port()));
-
-    setWindowTitle(QString("%1 (%2)").arg(qApp->applicationName()).arg(toxInfoString));
     show();
 }
 
@@ -189,6 +186,21 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     ui->labelDeviceCurentMode->setText("Undefined");
 
     aboutClear();
+}
+
+void MainWindow::command_ToxPhoneInfo(const Message::Ptr& message)
+{
+    if (message->socketType() != SocketType::Tcp)
+        return;
+
+    data::ToxPhoneInfo toxPhoneInfo;
+    readFromMessage(message, toxPhoneInfo);
+
+    if (!toxPhoneInfo.info.isEmpty())
+    {
+        setWindowTitle(QString("%1 (%2)").arg(qApp->applicationName()).arg(toxPhoneInfo.info));
+        ui->lineToxInfoString->setText(toxPhoneInfo.info);
+    }
 }
 
 void MainWindow::command_ToxPhoneAbout(const Message::Ptr& message)
@@ -1241,6 +1253,15 @@ void MainWindow::on_btnTestPhoneRingtone_clicked(bool)
     diverterTest.ringTone = true;
 
     Message::Ptr m = createMessage(diverterTest);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnSaveToxInfo_clicked(bool)
+{
+    data::ToxPhoneInfo toxPhoneInfo;
+    toxPhoneInfo.info = ui->lineToxInfoString->text().trimmed();
+
+    Message::Ptr m = createMessage(toxPhoneInfo);
     _socket->send(m);
 }
 

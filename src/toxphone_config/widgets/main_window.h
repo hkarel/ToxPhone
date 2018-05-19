@@ -77,12 +77,15 @@ private slots:
     void on_btnSavePhoneRingtone_clicked(bool);
     void on_btnTestPhoneRingtone_clicked(bool);
 
+    void on_btnSaveToxInfo_clicked(bool);
+
     void on_labelCopyright_linkActivated(const QString& link);
 
 private:
     void closeEvent(QCloseEvent*) override;
 
     //--- Обработчики команд ---
+    void command_ToxPhoneInfo(const Message::Ptr&);
     void command_ToxPhoneAbout(const Message::Ptr&);
     void command_ToxProfile(const Message::Ptr&);
     void command_RequestFriendship(const Message::Ptr&);

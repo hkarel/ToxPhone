@@ -20,7 +20,8 @@ QString ConnectionWidget::info() const
 
 void ConnectionWidget::setInfo(const QString& info)
 {
-    ui->labelInfo->setText(info);
+    if (info != ui->labelInfo->text())
+        ui->labelInfo->setText(info);
 }
 
 void ConnectionWidget::setHostPoint(const communication::HostPoint& val)
