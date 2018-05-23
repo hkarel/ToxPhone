@@ -1,11 +1,15 @@
 [Unit]
-Description=CPUFreq Governors for ToxPhone
+Description=Controls the frequency of processor for ToxPhone
 After=cpufrequtils.service
 
 [Service]
 Type=simple
-RemainAfterExit=true
-ExecStart=/usr/bin/cpufreq-set -g ondemand -d 480000
+User=root
+Group=toxphone
+ExecStart=/opt/toxphone/toxphone-cpufreq
+TimeoutSec=15
+KillMode=process
+Restart=on-failure
 
 [Install]
 RequiredBy=cpufrequtils.service

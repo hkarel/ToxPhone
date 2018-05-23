@@ -234,6 +234,26 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
 {
     readFromMessage(message, _callState);
 
+    QFile pipe {"/tmp/toxphone/cpufreq"};
+    if (pipe.exists())
+    {
+        // Изменяем частоту работы процессора
+        if (pipe.open(QIODevice::WriteOnly))
+        {
+            const char* command =
+                (_callState.direction == data::ToxCallState::Direction::Undefined)
+                ? "cpufreq-default\n" : "cpufreq-max\n";
+
+            if (pipe.write(command) == -1)
+                log_error_m << "Failed write command " << command
+                            << " to pipe /tmp/toxphone/cpufreq";
+            pipe.flush();
+            pipe.close();
+        }
+        else
+            log_error_m << "Failed open pipe /tmp/toxphone/cpufreq at write-mode";
+    }
+
     if (!diverterIsActive())
         return;
 

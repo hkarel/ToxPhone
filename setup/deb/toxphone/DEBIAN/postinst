@@ -42,12 +42,6 @@ if [ "$response" -eq 2 ]; then
     systemctl enable toxphone.service
     systemctl start  toxphone.service
 
-    if [ -e /etc/systemd/system/toxphone-cpufreq.service ]; then
-        systemctl unmask toxphone-cpufreq.service
-        systemctl enable toxphone-cpufreq.service
-        systemctl start  toxphone-cpufreq.service
-    fi
-
     if [ -e /etc/init/toxphone.conf ]; then
         initctl reload-configuration
     fi
@@ -62,17 +56,17 @@ else
         rm -f /etc/systemd/system/toxphone.service
     fi
 
-    if [ -e /etc/systemd/system/toxphone-cpufreq.service ]; then
-        systemctl stop    toxphone-cpufreq.service
-        systemctl disable toxphone-cpufreq.service
-        rm -f /etc/systemd/system/toxphone-cpufreq.service
-    fi
-
-    systemctl daemon-reload
-
     ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
     su -c "XDG_RUNTIME_DIR=/run/user/$SUDO_UID /opt/toxphone/autorun/toxphone-autorun" $SUDO_USER
 fi
 
+if [ -e /etc/systemd/system/toxphone-cpufreq.service ]; then
+    systemctl unmask toxphone-cpufreq.service
+    systemctl enable toxphone-cpufreq.service
+    systemctl start  toxphone-cpufreq.service
+fi
+
+systemctl daemon-reload
 udevadm control --reload-rules
+
 exit 0

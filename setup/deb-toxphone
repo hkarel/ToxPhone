@@ -43,6 +43,7 @@ else
     cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
 
     if [ "${os_arch:0:3}" = "arm" ]; then
+        cp $script_dir/setup/toxphone-cpufreq            $package_dir/opt/toxphone
         cp $script_dir/systemd/toxphone-cpufreq.service  $package_dir/etc/systemd/system
     fi
 fi
@@ -86,14 +87,12 @@ packet_depends=$(cat << EOS
     libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
 EOS
 )
-packet_depends1=
 if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
-    packet_depends1=$(cat << EOS
-        , libvpx3
-EOS
-)
+    packet_depends="${packet_depends}, libvpx3"
 fi
-packet_depends="${packet_depends}${packet_depends1}"
+if [ "${os_arch:0:3}" = "arm" ]; then
+    packet_depends="${packet_depends}, cpufrequtils"
+fi
 
 os_arch_control=$os_arch
 [ "${os_arch:0:3}" = "arm" ] && os_arch_control=armhf

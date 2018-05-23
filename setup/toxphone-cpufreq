@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -u
+
+mkdir -p /tmp/toxphone
+pipe=/tmp/toxphone/cpufreq
+
+cpu_policy=$(cpufreq-info --policy)
+cpufreq_min=$(echo  "$cpu_policy" | cut -d' ' -f1)
+cpufreq_max=$(echo  "$cpu_policy" | cut -d' ' -f2)
+cpu_governor=$(echo "$cpu_policy" | cut -d' ' -f3)
+
+trap "rm -f $pipe; cpufreq-set --min $cpufreq_min" EXIT
+
+if [ ! -p $pipe ]; then
+    mkfifo $pipe
+    chown root:toxphone $pipe
+    chmod 664 $pipe
+fi
+
+line=
+prev_line=
+
+while true
+do
+    if read line < $pipe; then
+        if [ "$prev_line" != "$line" ]; then
+            prev_line=$line
+            [ "$line" == 'cpufreq-max'     ] && cpufreq-set --min $cpufreq_max
+            [ "$line" == 'cpufreq-default' ] && cpufreq-set --min $cpufreq_min
+        fi
+    fi
+done
+
