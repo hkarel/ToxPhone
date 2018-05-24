@@ -87,11 +87,11 @@ packet_depends=$(cat << EOS
     libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
 EOS
 )
-if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
-    packet_depends="${packet_depends}, libvpx3"
-fi
+#if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
+#    packet_depends="${packet_depends}, libvpx3"
+#fi
 if [ "${os_arch:0:3}" = "arm" ]; then
-    packet_depends="${packet_depends}, cpufrequtils"
+    packet_depends="${packet_depends}, cpufrequtils, libvpx3"
 fi
 
 os_arch_control=$os_arch

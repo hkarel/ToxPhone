@@ -38,6 +38,8 @@ if [ "$response" -eq 2 ]; then
     sed -e "s/%TARGET_USER%/$SUDO_USER/" \
         -i /etc/systemd/system/toxphone.service
 
+    systemctl daemon-reload
+
     systemctl unmask toxphone.service
     systemctl enable toxphone.service
     systemctl start  toxphone.service
@@ -50,10 +52,17 @@ if [ "$response" -eq 2 ]; then
 else
     echo "Selected launch: in user space"
 
+    systemctl daemon-reload
+
     if [ -e /etc/systemd/system/toxphone.service ]; then
         systemctl stop    toxphone.service
         systemctl disable toxphone.service
         rm -f /etc/systemd/system/toxphone.service
+    fi
+
+    if [ ! -d /home/$SUDO_USER/.config/autostart ]; then
+        mkdir -p /home/$SUDO_USER/.config/autostart
+        chown ${SUDO_USER}:${SUDO_USER} /home/$SUDO_USER/.config/autostart
     fi
 
     ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop

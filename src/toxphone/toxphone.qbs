@@ -1,4 +1,5 @@
 import qbs
+import qbs.File
 import qbs.TextFile
 import QbsUtl
 import GccUtl
@@ -89,7 +90,10 @@ Product {
             lib.sodium.dynamicLibraries
         );
 
-        if (!(project.osName === "ubuntu" && project.osVersion === "14.04")) {
+        //if (project.osName !== "ubuntu") {
+        //    libs.push("vpx");
+        //}
+        if (qbs.architecture.startsWith("arm") === true) {
             libs.push("vpx");
         }
         return libs;
@@ -97,8 +101,13 @@ Product {
 
     cpp.staticLibraries: {
         var libs = [];
-        if (project.osName === "ubuntu" && project.osVersion === "14.04") {
-            // Version VPX must be not less than 1.5.0
+        //if (project.osName === "ubuntu") {
+        //    // Version VPX must be not less than 1.5.0
+        //    libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
+        //}
+
+        // Version VPX must be not less than 1.5.0
+        if (qbs.architecture.startsWith("x86_64") === true) {
             libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
         }
         return libs;
