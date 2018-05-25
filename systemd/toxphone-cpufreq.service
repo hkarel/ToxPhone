@@ -12,4 +12,4 @@ KillMode=process
 Restart=on-failure
 
 [Install]
-RequiredBy=cpufrequtils.service
+WantedBy=cpufrequtils.service
