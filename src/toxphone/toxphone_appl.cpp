@@ -171,19 +171,50 @@ void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
     toxPhoneInfo.configConnectCount = _configConnectCount;
     for (network::Interface* intf : _netInterfaces)
     {
+        toxPhoneInfo.hostPoint = {intf->ip, port};
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
-        Message::Ptr m = createMessage(toxPhoneInfo);
-        for (int i = 1; i <= 5; ++i)
-            m->destinationPoints().insert({intf->broadcast, port + i});
-        udp::socket().send(m);
+        if (intf->canBroadcast() && !intf->isPointToPoint())
+        {
+            Message::Ptr message = createMessage(toxPhoneInfo);
+            for (int i = 1; i <= 5; ++i)
+                message->destinationPoints().insert({intf->broadcast, port + 1});
+            udp::socket().send(message);
+        }
+        else if (intf->isPointToPoint() && (intf->subnetPrefixLength == 24))
+        {
+            Message::Ptr message = createMessage(toxPhoneInfo);
+            for (int i = 1; i <= 5; ++i)
+            {
+                union {
+                    quint8  ip4[4];
+                    quint32 ip4_val;
+                };
+                ip4_val = intf->subnet.toIPv4Address();
+                for (quint8 i = 1; i < 255; ++i)
+                {
+                    ip4[0] = i;
+                    QHostAddress addr {ip4_val};
+                    message->destinationPoints().insert({addr, port + 1});
+                    if (message->destinationPoints().count() > 20)
+                    {
+                        udp::socket().send(message);
+                        message = createMessage(toxPhoneInfo);
+                        usleep(25);
+                    }
+                }
+            }
+            if (!message->destinationPoints().isEmpty())
+                udp::socket().send(message);
+        }
     }
 
     if (socketDescriptor)
     {
+        toxPhoneInfo.hostPoint = HostPoint();
         toxPhoneInfo.isPointToPoint = false;
-        Message::Ptr m = createMessage(toxPhoneInfo);
-        m->destinationSocketDescriptors().insert(socketDescriptor);
-        tcp::listener().send(m);
+        Message::Ptr message = createMessage(toxPhoneInfo);
+        message->destinationSocketDescriptors().insert(socketDescriptor);
+        tcp::listener().send(message);
     }
 }
 
@@ -214,6 +245,9 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     QString info = "Tox Phone Info";
     config::state().getValue("info_string", info, false);
 
+    int port = 3609;
+    config::base().getValue("config_connection.port", port);
+
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;
     toxPhoneInfo.applId = _applId;
@@ -221,13 +255,14 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     for (network::Interface* intf : _netInterfaces)
         if (message->sourcePoint().address().isInSubnet(intf->subnet, intf->subnetPrefixLength))
         {
+            toxPhoneInfo.hostPoint = {intf->ip, port};
             toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
+
+            Message::Ptr answer = message->cloneForAnswer();
+            writeToMessage(toxPhoneInfo, answer);
+            udp::socket().send(answer);
             break;
         }
-
-    Message::Ptr answer = message->cloneForAnswer();
-    writeToMessage(toxPhoneInfo, answer);
-    udp::socket().send(answer);
 }
 
 void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)

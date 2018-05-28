@@ -16,6 +16,7 @@
 #include "shared/container_ptr.h"
 #include "shared/qt/quuidex.h"
 #include "shared/qt/communication/commands_base.h"
+#include "shared/qt/communication/host_point.h"
 #include <sys/time.h>
 
 namespace communication {
@@ -163,6 +164,9 @@ struct ToxPhoneInfo : Data<&command::ToxPhoneInfo,
 
     // Идентификатор приложения времени исполнения.
     QUuidEx applId;
+
+    // Адрес ToxPhone-клиента в локальной сети.
+    HostPoint hostPoint;
 
     // Признак что интерфейс с которого пришло сообщение является poin-to-point.
     // Используется для отсечения poin-to-point интерфейсов в конфигураторе.

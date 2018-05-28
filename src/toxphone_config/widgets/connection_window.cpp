@@ -224,12 +224,39 @@ void ConnectionWindow::requestPhonesList()
     int port = 3609;
     config::state().getValue("connection.port", port);
 
-    Message::Ptr message = createMessage(command::ToxPhoneInfo);
     network::Interface::List netInterfaces = network::getInterfaces();
     for (network::Interface* intf : netInterfaces)
-        message->destinationPoints().insert({intf->broadcast, port});
-
-    udp::socket().send(message);
+    {
+        if (intf->canBroadcast() && !intf->isPointToPoint())
+        {
+            Message::Ptr message = createMessage(command::ToxPhoneInfo);
+            message->destinationPoints().insert({intf->broadcast, port});
+            udp::socket().send(message);
+        }
+        else if (intf->isPointToPoint() && (intf->subnetPrefixLength == 24))
+        {
+            Message::Ptr message = createMessage(command::ToxPhoneInfo);
+            union {
+                quint8  ip4[4];
+                quint32 ip4_val;
+            };
+            ip4_val = intf->subnet.toIPv4Address();
+            for (quint8 i = 1; i < 255; ++i)
+            {
+                ip4[0] = i;
+                QHostAddress addr {ip4_val};
+                message->destinationPoints().insert({addr, port});
+                if (message->destinationPoints().count() > 20)
+                {
+                    udp::socket().send(message);
+                    message = createMessage(command::ToxPhoneInfo);
+                    usleep(25);
+                }
+            }
+            if (!message->destinationPoints().isEmpty())
+                udp::socket().send(message);
+        }
+    }
 }
 
 void ConnectionWindow::updatePhonesList()
@@ -279,7 +306,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
             cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
             if (cw->isPointToPoint() && !toxPhoneInfo.isPointToPoint)
             {
-                cw->setHostPoint(message->sourcePoint());
+                cw->setHostPoint(toxPhoneInfo.hostPoint);
                 cw->setPointToPoint(false);
             }
             found = true;
@@ -291,9 +318,9 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
     {
         ConnectionWidget* cw = new ConnectionWidget();
         cw->setInfo(toxPhoneInfo.info);
-        cw->setPointToPoint(toxPhoneInfo.isPointToPoint);
         cw->setApplId(toxPhoneInfo.applId);
-        cw->setHostPoint(message->sourcePoint());
+        cw->setHostPoint(toxPhoneInfo.hostPoint);
+        cw->setPointToPoint(toxPhoneInfo.isPointToPoint);
         cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
