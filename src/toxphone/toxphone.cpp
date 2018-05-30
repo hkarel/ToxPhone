@@ -435,13 +435,10 @@ int main(int argc, char *argv[])
         communication::data::ApplShutdown applShutdown;
         applShutdown.applId = ToxPhoneApplication::applId();
 
-        Message::Ptr message = createMessage(applShutdown);
         network::Interface::List netInterfaces = network::getInterfaces();
         for (network::Interface* intf : netInterfaces)
-            for (int i = 1; i <= 5; ++i)
-                message->destinationPoints().insert({intf->broadcast, port + i});
+            sendUdpMessageToConfig(intf, port, applShutdown);
 
-        udp::socket().send(message);
         usleep(200*1000);
     }
     catch (std::exception& e)

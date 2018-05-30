@@ -10,7 +10,6 @@
 #include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
-#include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/version/version_number.h"
 
 #define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
@@ -173,39 +172,7 @@ void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
     {
         toxPhoneInfo.hostPoint = {intf->ip, port};
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
-        if (intf->canBroadcast() && !intf->isPointToPoint())
-        {
-            Message::Ptr message = createMessage(toxPhoneInfo);
-            for (int i = 1; i <= 5; ++i)
-                message->destinationPoints().insert({intf->broadcast, port + 1});
-            udp::socket().send(message);
-        }
-        else if (intf->isPointToPoint() && (intf->subnetPrefixLength == 24))
-        {
-            Message::Ptr message = createMessage(toxPhoneInfo);
-            for (int i = 1; i <= 5; ++i)
-            {
-                union {
-                    quint8  ip4[4];
-                    quint32 ip4_val;
-                };
-                ip4_val = intf->subnet.toIPv4Address();
-                for (quint8 i = 1; i < 255; ++i)
-                {
-                    ip4[0] = i;
-                    QHostAddress addr {ip4_val};
-                    message->destinationPoints().insert({addr, port + 1});
-                    if (message->destinationPoints().count() > 20)
-                    {
-                        udp::socket().send(message);
-                        message = createMessage(toxPhoneInfo);
-                        usleep(25);
-                    }
-                }
-            }
-            if (!message->destinationPoints().isEmpty())
-                udp::socket().send(message);
-        }
+        sendUdpMessageToConfig(intf, port, toxPhoneInfo);
     }
 
     if (socketDescriptor)

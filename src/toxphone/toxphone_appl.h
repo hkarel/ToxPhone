@@ -7,6 +7,7 @@
 #include "shared/steady_timer.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
+#include "shared/qt/communication/transport/udp.h"
 
 #include <QtCore>
 #include <QCoreApplication>
@@ -89,4 +90,43 @@ private:
     // Идентификатор приложения времени исполнения.
     static QUuidEx _applId;
 };
+
+template<typename MessageData>
+void sendUdpMessageToConfig(const network::Interface* interface, int basePort,
+                            const MessageData& messageData)
+{
+    if (interface->canBroadcast() && !interface->isPointToPoint())
+    {
+        Message::Ptr message = createMessage(messageData);
+        for (int i = 1; i <= 5; ++i)
+            message->destinationPoints().insert({interface->broadcast, basePort + i});
+        udp::socket().send(message);
+    }
+    else if (interface->isPointToPoint() && (interface->subnetPrefixLength == 24))
+    {
+        Message::Ptr message = createMessage(messageData);
+        for (int i = 1; i <= 5; ++i)
+        {
+            union {
+                quint8  ip4[4];
+                quint32 ip4_val;
+            };
+            ip4_val = interface->subnet.toIPv4Address();
+            for (quint8 i = 1; i < 255; ++i)
+            {
+                ip4[0] = i;
+                QHostAddress addr {ip4_val};
+                message->destinationPoints().insert({addr, basePort + i});
+                if (message->destinationPoints().count() > 20)
+                {
+                    udp::socket().send(message);
+                    message = createMessage(messageData);
+                    usleep(10);
+                }
+            }
+        }
+        if (!message->destinationPoints().isEmpty())
+            udp::socket().send(message);
+    }
+}
 

@@ -250,7 +250,7 @@ void ConnectionWindow::requestPhonesList()
                 {
                     udp::socket().send(message);
                     message = createMessage(command::ToxPhoneInfo);
-                    usleep(25);
+                    usleep(10);
                 }
             }
             if (!message->destinationPoints().isEmpty())
