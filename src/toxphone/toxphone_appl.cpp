@@ -155,7 +155,7 @@ void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor
 
 void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
 {
-    int port = 3609;
+    int port = 33601;
     config::base().getValue("config_connection.port", port);
 
     QString info = "Tox Phone Info";
@@ -245,7 +245,7 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     QString info = "Tox Phone Info";
     config::state().getValue("info_string", info, false);
 
-    int port = 3609;
+    int port = 33610;
     config::base().getValue("config_connection.port", port);
 
     data::ToxPhoneInfo toxPhoneInfo;

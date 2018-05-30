@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
                 hostAddress = QHostAddress(hostAddressStr);
         }
 
-        int port = 3609;
+        int port = 33601;
         config::base().getValue("config_connection.port", port);
         if (!tcp::listener().init({hostAddress, port}))
         {

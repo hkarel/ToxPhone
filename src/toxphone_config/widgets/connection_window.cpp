@@ -68,7 +68,7 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
     chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
                   this, SLOT(socketDisconnected(communication::SocketDescriptor)))
 
-    int port = 3609;
+    int port = 33601;
     if (!config::state().getValue("connection.port", port))
         config::state().setValue("connection.port", port);
 
@@ -221,7 +221,7 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
 
 void ConnectionWindow::requestPhonesList()
 {
-    int port = 3609;
+    int port = 33601;
     config::state().getValue("connection.port", port);
 
     network::Interface::List netInterfaces = network::getInterfaces();
