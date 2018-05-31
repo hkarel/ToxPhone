@@ -65,9 +65,6 @@ public slots:
     // Признак активности записи голосового потока
     bool recordActive() const {return _recordActive;}
 
-//private slots:
-//    void updateStartVolumeTimeout();
-
 private:
     Q_OBJECT
     DISABLE_DEFAULT_COPY(AudioDev)
@@ -98,6 +95,9 @@ private:
 
     // Останавливает выполнение всех аудио-тестов
     void stopAudioTests();
+
+    void readAudioStreamVolume (data::AudioStreamInfo&, const char* confKey);
+    void saveAudioStreamVolume(data::AudioStreamInfo&, const char* confKey);
 
 private:
     // PulseAudio callback
@@ -160,19 +160,6 @@ private:
 
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;
-
-    // Сообщения из _updateStartVolume используются для "передергивания" уровня
-    // громкости для устройства подключенного первый раз. Если этого не делать
-    // PulseAudio может не проигрывать/записывать звук через это устройство.
-    // Под "передергиванием" понимается увеличение уровня громкости на единицу
-    // первым сообщением, а вторым сообщением - уменьшение на единицу.
-    // Уровни громкости меняются по таймеру с небольшим интервалом.
-    // Если "передергиать" громкость без таймера, то движок PulseAudio будет
-    // учитывать только последнее сообщение, и фактически уровень громкости
-    // меняться не будет.
-//    QQueue<Message::Ptr> _updateStartVolume;
-//    QMutex _updateStartVolumeLock;
-//    QTimer _updateStartVolumeTimer;
 
     pa_stream* _playbackStream = {0}; // Поток для воспроизведения звуков
     pa_stream* _voiceStream = {0};    // Поток для воспроизведения голоса

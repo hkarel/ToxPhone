@@ -72,6 +72,11 @@ extern const QUuidEx FriendRequests;
 extern const QUuidEx FriendItem;
 
 /**
+  Информация по изменению персональных аудио-установок друга
+*/
+extern const QUuidEx FriendAudioChange;
+
+/**
   Список друзей
 */
 extern const QUuidEx FriendList;
@@ -250,7 +255,6 @@ struct FriendItem : Data<&command::FriendItem,
         StatusMessage = 0x02, // Изменен статус-сообщение
         IsConnecnted  = 0x04  // Изменен признак подключения к сети
     };
-
     ChangeFlag changeFlag = {ChangeFlag::None};
     QByteArray publicKey;      // Идентификатор друга
     quint32    number;         // Числовой идентификатор друга
@@ -262,6 +266,30 @@ struct FriendItem : Data<&command::FriendItem,
     QString nameAlias;         // Альтернативное имя друга
     quint32 phoneNumber = {0}; // Число (0-99) для вызова друга с телефона
 
+    /** Персональные аудио-установки **/
+    bool personalVolumes = {false}; // Признак использования персональных
+                                    // установок для звуковых потоков
+    bool echoMute = {false};        // Признак использования системы эхоподавления
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct FriendAudioChange : Data<&command::FriendAudioChange,
+                                 Message::Type::Command,
+                                 Message::Type::Answer>
+{
+    enum class ChangeFlag : quint32
+    {
+        None        = 0,
+        PersVolumes = 1, // Изменен признак использования персональных установок
+                         // для звуковых потоков.
+        EchoMute    = 2, // Изменен признак использования системы эхоподавления
+    };
+    ChangeFlag changeFlag = {ChangeFlag::None};
+    QByteArray publicKey; // Tox- Идентификатор друга
+    quint32    number;    // Tox- Числовой идентификатор друга
+    qint64     value;     // Зачение изменяемого параметра
+
     DECLARE_B_SERIALIZE_FUNC
 };
 
@@ -272,9 +300,9 @@ struct FriendList : Data<&command::FriendList,
     DECLARE_B_SERIALIZE_FUNC
 };
 
-struct RemoveFriend: Data<&command::RemoveFriend,
-                           Message::Type::Command,
-                           Message::Type::Answer>
+struct RemoveFriend : Data<&command::RemoveFriend,
+                            Message::Type::Command,
+                            Message::Type::Answer>
 {
     QByteArray publicKey;
     QString    name;
@@ -288,7 +316,6 @@ struct DhtConnectStatus : Data<&command::DhtConnectStatus,
     bool active = {false};
     DECLARE_B_SERIALIZE_FUNC
 };
-
 
 /**
   Тип аудио-устройства
@@ -333,10 +360,10 @@ struct AudioDevInfo : Data<&command::AudioDevInfo,
     DECLARE_B_SERIALIZE_FUNC
 };
 
-struct AudioDevChange: Data<&command::AudioDevChange,
-                             Message::Type::Command,
-                             Message::Type::Answer,
-                             Message::Type::Event>
+struct AudioDevChange : Data<&command::AudioDevChange,
+                              Message::Type::Command,
+                              Message::Type::Answer,
+                              Message::Type::Event>
 {
     AudioDevChange() = default;
     AudioDevChange(const AudioDevInfo&);
@@ -363,10 +390,11 @@ struct AudioDevChange: Data<&command::AudioDevChange,
 
     DECLARE_B_SERIALIZE_FUNC
 };
-struct AudioStreamInfo: Data<&command::AudioStreamInfo,
-                              Message::Type::Command,
-                              Message::Type::Answer,
-                              Message::Type::Event>
+
+struct AudioStreamInfo : Data<&command::AudioStreamInfo,
+                               Message::Type::Command,
+                               Message::Type::Answer,
+                               Message::Type::Event>
 {
     // Типы потоков
     enum class Type : quint32
@@ -438,9 +466,8 @@ struct ToxCallAction : Data<&command::ToxCallAction,
         Call      = 4, // Сделать вызов
         End       = 5  // Завершить звонок
     };
-
     Action  action = {Action::None};
-    quint32 friendNumber = quint32(-1); // Числовой идентификатор друга
+    quint32 friendNumber = quint32(-1); // Tox- Числовой идентификатор друга
 
     DECLARE_B_SERIALIZE_FUNC
 };
@@ -480,10 +507,12 @@ struct ToxCallState : Data<&command::ToxCallState,
         Error        = 10  // В процессе звонка произошла какая-то ошибка
     };
 
-    Direction direction    = {Direction::Undefined};
-    CallState callState    = {CallState::Undefined};
-    CallEnd   callEnd      = {CallEnd::Undefined};
-    quint32   friendNumber = quint32(-1);  // Числовой идентификатор друга
+    Direction  direction = {Direction::Undefined};
+    CallState  callState = {CallState::Undefined};
+    CallEnd    callEnd   = {CallEnd::Undefined};
+
+    QByteArray friendPublicKey;            // Tox- Идентификатор друга
+    quint32    friendNumber = quint32(-1); // Tox- Числовой идентификатор друга
 
     DECLARE_B_SERIALIZE_FUNC
 };

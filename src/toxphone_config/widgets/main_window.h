@@ -48,6 +48,7 @@ private slots:
     void on_btnFriendReject_clicked(bool);
     void on_btnRemoveFriend_clicked(bool);
     void on_btnSaveFiendPhone_clicked(bool);
+    void on_chkPersonalAudioVolumes_clicked(bool);
     void on_btnCall_clicked(bool);
     void on_btnEndCall_clicked(bool);
 
@@ -95,6 +96,7 @@ private:
     void command_FriendList(const Message::Ptr&);
     void command_RemoveFriend(const Message::Ptr&);
     void command_PhoneFriendInfo(const Message::Ptr&);
+    void command_FriendAudioChange(const Message::Ptr&);
     void command_DhtConnectStatus(const Message::Ptr&);
     void command_AudioDevInfo(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);

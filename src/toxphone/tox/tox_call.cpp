@@ -193,6 +193,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         _callState.callState = data::ToxCallState::CallState::WaitingAnswer;
         _callState.callEnd = data::ToxCallState::CallEnd::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
+        _callState.friendPublicKey =
+            getToxFriendKey(toxav_get_tox(_toxav), toxCallAction.friendNumber).toHex().toUpper();
 
         TOXAV_ERR_CALL err;
         toxav_call(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
@@ -216,6 +218,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             _callState.direction = data::ToxCallState::Direction::Undefined;
             _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+            _callState.friendPublicKey.clear();
 
             if (err == TOXAV_ERR_CALL_FRIEND_NOT_FOUND
                 || err == TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED)
@@ -251,6 +254,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         _callState.callState = data::ToxCallState::CallState::InProgress;
         _callState.callEnd = data::ToxCallState::CallEnd::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
+        _callState.friendPublicKey =
+            getToxFriendKey(toxav_get_tox(_toxav), toxCallAction.friendNumber).toHex().toUpper();
 
         TOXAV_ERR_ANSWER err;
         toxav_answer(_toxav, toxCallAction.friendNumber, 64 /*Kb/sec*/, 0, &err);
@@ -279,6 +284,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             _callState.direction = data::ToxCallState::Direction::Undefined;
             _callState.callState = data::ToxCallState::CallState::Undefined;
             _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+            _callState.friendPublicKey.clear();
 
             if (err == TOXAV_ERR_ANSWER_FRIEND_NOT_FOUND
                 || err == TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING)
@@ -320,6 +326,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         _callState.direction = data::ToxCallState::Direction::Undefined;
         _callState.callState = data::ToxCallState::CallState::Undefined;
         _callState.friendNumber = toxCallAction.friendNumber;
+        _callState.friendPublicKey =
+            getToxFriendKey(toxav_get_tox(_toxav), toxCallAction.friendNumber).toHex().toUpper();
 
         if (toxCallAction.action == data::ToxCallAction::Action::Reject)
             _callState.callEnd = data::ToxCallState::CallEnd::Reject;
@@ -458,8 +466,9 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
     tc->_callState.callState = data::ToxCallState::CallState::WaitingAnswer;
     tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
     tc->_callState.friendNumber = friend_number;
+    tc->_callState.friendPublicKey =
+        getToxFriendKey(toxav_get_tox(tc->_toxav), friend_number).toHex().toUpper();
 
-    //emit tc->startRingtone();
     tc->sendCallState();
 }
 
@@ -489,6 +498,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
         tc->_callState.callState = data::ToxCallState::CallState::Undefined;
         tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
         tc->_callState.friendNumber = quint32(-1);
+        tc->_callState.friendPublicKey.clear();
 
         tc->sendCallState();
     }
@@ -511,6 +521,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
         tc->_callState.callState = data::ToxCallState::CallState::Undefined;
         tc->_callState.callEnd = data::ToxCallState::CallEnd::FriendEnd;
         tc->_callState.friendNumber = quint32(-1);
+        tc->_callState.friendPublicKey.clear();
 
         tc->sendCallState();
     }

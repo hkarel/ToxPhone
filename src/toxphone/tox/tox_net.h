@@ -51,6 +51,7 @@ private:
     void command_FriendRequest(const Message::Ptr&);
     void command_RemoveFriend(const Message::Ptr&);
     void command_PhoneFriendInfo(const Message::Ptr&);
+    void command_FriendAudioChange(const Message::Ptr&);
     void command_ToxMessage(const Message::Ptr&);
 
     // Функции обновляют состояние конфигуратора

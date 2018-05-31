@@ -18,6 +18,7 @@ REGISTRY_COMMAND_SINGLPROC(RequestFriendship,        "836aeccc-8ec5-44ff-93f5-3d
 REGISTRY_COMMAND_SINGLPROC(FriendRequest,            "85ebe56d-68ec-4d5e-9dbf-11b3a66d0ea3")
 REGISTRY_COMMAND_SINGLPROC(FriendRequests,           "541f07b3-5af1-427e-9eba-69aa561ec22a")
 REGISTRY_COMMAND_SINGLPROC(FriendItem,               "af4115ca-7563-4386-b137-cd6bb46ad5de")
+REGISTRY_COMMAND_SINGLPROC(FriendAudioChange,        "6f0428c4-ccc1-4244-b927-a184aed4a6e0")
 REGISTRY_COMMAND_SINGLPROC(FriendList,               "922f4190-da98-4a0e-a30e-daac62180e62")
 REGISTRY_COMMAND_SINGLPROC(RemoveFriend,             "e6935f6b-3064-4bdb-91e8-37f6b83fc4b6")
 REGISTRY_COMMAND_SINGLPROC(DhtConnectStatus,         "b17a2b17-fbae-4be6-a28e-1693aff51eb8")
@@ -181,6 +182,10 @@ bserial::RawVector FriendItem::toRaw() const
     /** Дополнительные параметры для ToxPhone **/
     stream << nameAlias;
     stream << phoneNumber;
+    /** Персональные аудио-установки **/
+    B_SERIALIZE_V2(stream)
+    stream << personalVolumes;
+    stream << echoMute;
     B_SERIALIZE_RETURN
 }
 
@@ -196,6 +201,30 @@ void FriendItem::fromRaw(const bserial::RawVector& vect)
     /** Дополнительные параметры для ToxPhone **/
     stream >> nameAlias;
     stream >> phoneNumber;
+    /** Персональные аудио-установки **/
+    B_DESERIALIZE_V2(vect, stream)
+    stream >> personalVolumes;
+    stream >> echoMute;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector FriendAudioChange::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << changeFlag;
+    stream << publicKey;
+    stream << number;
+    stream << value;
+    B_SERIALIZE_RETURN
+}
+
+void FriendAudioChange::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> changeFlag;
+    stream >> publicKey;
+    stream >> number;
+    stream >> value;
     B_DESERIALIZE_END
 }
 
@@ -414,6 +443,8 @@ bserial::RawVector ToxCallState::toRaw() const
     stream << callState;
     stream << callEnd;
     stream << friendNumber;
+    B_SERIALIZE_V2(stream)
+    stream << friendPublicKey;
     B_SERIALIZE_RETURN
 }
 
@@ -424,6 +455,8 @@ void ToxCallState::fromRaw(const bserial::RawVector& vect)
     stream >> callState;
     stream >> callEnd;
     stream >> friendNumber;
+    B_DESERIALIZE_V2(vect, stream)
+    stream >> friendPublicKey;
     B_DESERIALIZE_END
 }
 

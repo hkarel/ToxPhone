@@ -61,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(FriendList)
     FUNC_REGISTRATION(RemoveFriend)
     FUNC_REGISTRATION(PhoneFriendInfo)
+    FUNC_REGISTRATION(FriendAudioChange)
     FUNC_REGISTRATION(DhtConnectStatus)
     FUNC_REGISTRATION(AudioDevInfo)
     FUNC_REGISTRATION(AudioDevChange)
@@ -167,9 +168,10 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     ui->listFriends->clear();
     ui->lineToxName->clear();
     ui->lineToxStatus->clear();
-    ui->linefToxId->clear();
+    ui->lineToxId->clear();
     ui->lineToxNameAlias->clear();
     ui->linePhoneNumber->clear();
+    ui->chkPersonalAudioVolumes->setChecked(false);
 
     ui->cboxAudioPlayback->clear();
     ui->cboxAudioRecord->clear();
@@ -415,6 +417,18 @@ void MainWindow::command_PhoneFriendInfo(const Message::Ptr& message)
                                      msg.arg(phoneFriendInfo.name));
         }
         else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
+    }
+}
+
+void MainWindow::command_FriendAudioChange(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() != Message::ExecStatus::Success)
         {
             QString msg = errorDescription(message);
             QMessageBox::critical(this, qApp->applicationName(), msg);
@@ -949,6 +963,28 @@ void MainWindow::on_btnSaveFiendPhone_clicked(bool)
     _socket->send(m);
 }
 
+void MainWindow::on_chkPersonalAudioVolumes_clicked(bool)
+{
+    if (!ui->listFriends->count())
+        return;
+
+    if (!ui->listFriends->currentItem())
+        return;
+
+    QListWidgetItem* lwi = ui->listFriends->currentItem();
+    FriendWidget* fw =
+        qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+
+    data::FriendAudioChange friendAudioChange;
+    friendAudioChange.publicKey = fw->properties().publicKey;
+    friendAudioChange.number = fw->properties().number;
+    friendAudioChange.changeFlag = data::FriendAudioChange::ChangeFlag::PersVolumes;
+    friendAudioChange.value = ui->chkPersonalAudioVolumes->isChecked();
+
+    Message::Ptr m = createMessage(friendAudioChange);
+    _socket->send(m);
+}
+
 void MainWindow::on_btnPlaybackTest_clicked(bool)
 {
     ui->cboxAudioPlayback->setDisabled(true);
@@ -1060,15 +1096,17 @@ void MainWindow::on_listFriends_itemClicked(QListWidgetItem* item)
     ui->lineToxStatus->setText(fw->properties().statusMessage);
     ui->lineToxStatus->home(false);
 
-    ui->linefToxId->clear();
-    ui->linefToxId->setText(fw->properties().publicKey);
-    ui->linefToxId->home(false);
+    ui->lineToxId->clear();
+    ui->lineToxId->setText(fw->properties().publicKey);
+    ui->lineToxId->home(false);
 
     ui->lineToxNameAlias->setText(fw->properties().nameAlias);
     if (fw->properties().phoneNumber != 0)
         ui->linePhoneNumber->setText(QString::number(fw->properties().phoneNumber));
     else
         ui->linePhoneNumber->clear();
+
+    ui->chkPersonalAudioVolumes->setChecked(fw->properties().personalVolumes);
 }
 
 void MainWindow::on_cboxAudioPlayback_currentIndexChanged(int index)

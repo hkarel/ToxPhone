@@ -38,7 +38,7 @@ struct MainloopLocker
 
 static string paStrError(pa_context* context)
 {
-    return string("; Error: ") +  pa_strerror(pa_context_errno(context));
+    return string("; Error: ") + pa_strerror(pa_context_errno(context));
 }
 
 static string paStrError(pa_stream* stream)
@@ -93,10 +93,6 @@ AudioDev::AudioDev()
     _palybackAudioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
     _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
     _recordAudioStreamInfo.type   = data::AudioStreamInfo::Type::Record;
-
-//    _updateStartVolumeTimer.setInterval(300);
-//    chk_connect_a(&_updateStartVolumeTimer, SIGNAL(timeout()),
-//                  this, SLOT(updateStartVolumeTimeout()))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &AudioDev::command_##COMMAND, this);
@@ -551,21 +547,52 @@ void AudioDev::stopAudioTests()
         stopRecord();
 }
 
-//void AudioDev::updateStartVolumeTimeout()
-//{
-//    Message::Ptr m;
-//    { //Block for QMutexLocker
-//        QMutexLocker locker(&_streamLock); (void) locker;
-//        if (!_updateStartVolume.isEmpty())
-//            m = _updateStartVolume.dequeue();
-//    }
-//    if (m.empty())
-//    {
-//        _updateStartVolumeTimer.stop();
-//        return;
-//    }
-//    message(m);
-//}
+void AudioDev::readAudioStreamVolume(data::AudioStreamInfo& streamInfo, const char* confKey)
+{
+    string key;
+    bool personalVolume = false;
+    if (_callState.direction != data::ToxCallState::Direction::Undefined
+        && !_callState.friendPublicKey.isEmpty())
+    {
+        key = "phones." + string(_callState.friendPublicKey) + ".audio_streams.active";
+        config::state().getValue(key, personalVolume, false);
+        if (personalVolume)
+        {
+            //key = "phones." + _callState.friendPublicKey + ".audio_streams.playback_volume";
+            key = "phones." + string(_callState.friendPublicKey) + ".audio_streams." + confKey;
+            if (!config::state().getValue(key, streamInfo.volume, false))
+                personalVolume = false;
+        }
+    }
+    if (!personalVolume)
+    {
+        key = string("audio.streams.") + confKey;
+        config::state().getValue(key, streamInfo.volume);
+    }
+}
+
+void AudioDev::saveAudioStreamVolume(data::AudioStreamInfo& streamInfo, const char* confKey)
+{
+    string key;
+    bool personalVolume = false;
+    if (_callState.direction != data::ToxCallState::Direction::Undefined
+        && !_callState.friendPublicKey.isEmpty())
+    {
+        key = "phones." + string(_callState.friendPublicKey) + ".audio_streams.active";
+        config::state().getValue(key, personalVolume, false);
+        if (personalVolume)
+        {
+            key = "phones." + string(_callState.friendPublicKey) + ".audio_streams." + confKey;
+            config::state().setValue(key, streamInfo.volume);
+        }
+    }
+    if (!personalVolume)
+    {
+        key = string("audio.streams.") + confKey;
+        config::state().setValue(key, streamInfo.volume);
+    }
+    config::state().save();
+}
 
 bool AudioDev::start()
 {
@@ -805,8 +832,20 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _palybackAudioStreamInfo.index;
 
             initChannelsVolune(_palybackAudioStreamInfo, volume);
-            O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0),
-                      "Failed call pa_context_set_sink_input_volume()", _paContext, {})
+            if (O_PTR(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0)))
+            {
+                if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+                {
+                    /* Для потока воспроизведения звуков нет возможности сохранить
+                       персональный уровень громкости, да это и не нужно делать.
+                       saveAudioStreamVolume(_palybackAudioStreamInfo, "playback_volume");
+                    */
+                    config::state().setValue("audio.streams.playback_volume", _palybackAudioStreamInfo.volume);
+                    config::state().save();
+                }
+            }
+            else
+                log_error_m << "Failed call pa_context_set_sink_input_volume()" << paStrError(_paContext);
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
         {
@@ -815,8 +854,13 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _voiceAudioStreamInfo.index;
 
             initChannelsVolune(_voiceAudioStreamInfo, volume);
-            O_PTR_MSG(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0),
-                      "Failed call pa_context_set_sink_input_volume()", _paContext, {})
+            if (O_PTR(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0)))
+            {
+                if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+                    saveAudioStreamVolume(_voiceAudioStreamInfo, "voice_volume");
+            }
+            else
+                log_error_m << "Failed call pa_context_set_sink_input_volume()" << paStrError(_paContext);
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
         {
@@ -825,8 +869,13 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _recordAudioStreamInfo.index;
 
             initChannelsVolune(_recordAudioStreamInfo, volume);
-            O_PTR_MSG(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0),
-                      "Failed call pa_context_set_source_output_volume()", _paContext, {})
+            if (O_PTR(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0)))
+            {
+                if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
+                    saveAudioStreamVolume(_recordAudioStreamInfo, "record_volume");
+            }
+            else
+                log_error_m << "Failed call pa_context_set_source_output_volume()" << paStrError(_paContext);
         }
     }
 }
@@ -1477,7 +1526,12 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
     ad->fillAudioStreamInfo(info, ad->_palybackAudioStreamInfo);
 
     // Восстанавливаем уровень громкости
+    /* Для потока воспроизведения звуков нет возможности использовать
+       персональный уровень громкости, да это и не нужно делать.
+       ad->readAudioStreamVolume(ad->_palybackAudioStreamInfo, "playback_volume");
+    */
     config::state().getValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
+
 
     Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
     if (configConnected())
@@ -1509,7 +1563,7 @@ void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info
     ad->fillAudioStreamInfo(info, ad->_voiceAudioStreamInfo);
 
     // Восстанавливаем уровень громкости
-    config::state().getValue("audio.streams.voice_volume", ad->_voiceAudioStreamInfo.volume);
+    ad->readAudioStreamVolume(ad->_voiceAudioStreamInfo, "voice_volume");
 
     Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
     if (configConnected())
@@ -1541,7 +1595,7 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
     ad->fillAudioStreamInfo(info, ad->_recordAudioStreamInfo);
 
     // Восстанавливаем уровень громкости
-    config::state().getValue("audio.streams.record_volume", ad->_recordAudioStreamInfo.volume);
+    ad->readAudioStreamVolume(ad->_recordAudioStreamInfo, "record_volume");
 
     Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
     if (configConnected())
@@ -1648,9 +1702,6 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
 
             ad->_palybackAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_palybackAudioStreamInfo.index = -1;
-
-            config::state().setValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
-            config::state().save();
 
             if (configConnected())
             {
@@ -1803,9 +1854,6 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
             ad->_voiceAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_voiceAudioStreamInfo.index = -1;
 
-            config::state().setValue("audio.streams.voice_volume", ad->_voiceAudioStreamInfo.volume);
-            config::state().save();
-
             if (configConnected())
             {
                 Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
@@ -1935,9 +1983,6 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 
             ad->_recordAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_recordAudioStreamInfo.index = -1;
-
-            config::state().setValue("audio.streams.record_volume", ad->_recordAudioStreamInfo.volume);
-            config::state().save();
 
             if (configConnected())
             {

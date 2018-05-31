@@ -56,6 +56,7 @@ ToxNet::ToxNet() : QThreadEx(0)
     FUNC_REGISTRATION(FriendRequest)
     FUNC_REGISTRATION(RemoveFriend)
     FUNC_REGISTRATION(PhoneFriendInfo)
+    FUNC_REGISTRATION(FriendAudioChange)
     FUNC_REGISTRATION(ToxMessage)
     _funcInvoker.sort();
 
@@ -761,7 +762,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
     config::state().save();
 
     log_verbose_m << "Phone number " << phoneFriendInfo.phoneNumber
-                  << " assigned to "<< ToxFriendLog(_tox, phoneFriendInfo.number);
+                  << " assigned to " << ToxFriendLog(_tox, phoneFriendInfo.number);
 
     Message::Ptr answer = message->cloneForAnswer();
     writeToMessage(phoneFriendInfo, answer);
@@ -773,6 +774,34 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
 
     Message::Ptr m = createMessage(friendItem, Message::Type::Event);
     tcp::listener().send(m);
+}
+
+void ToxNet::command_FriendAudioChange(const Message::Ptr& message)
+{
+    data::FriendAudioChange friendAudioChange;
+    readFromMessage(message, friendAudioChange);
+
+    if (friendAudioChange.changeFlag == data::FriendAudioChange::ChangeFlag::PersVolumes)
+    {
+        string confKey = "phones." + string(friendAudioChange.publicKey);
+        config::state().setValue(confKey + ".audio_streams.active", bool(friendAudioChange.value));
+        config::state().save();
+
+        log_debug_m << "Personal audio stream volumes flag is assigned to "
+                    << ((friendAudioChange.value) ? "TRUE" : "FALSE")
+                    << " for " << ToxFriendLog(_tox, friendAudioChange.number);
+
+        Message::Ptr answer = message->cloneForAnswer();
+        writeToMessage(friendAudioChange, answer);
+        tcp::listener().send(answer);
+
+        data::FriendItem friendItem;
+        if (!fillFriendItem(friendItem, friendAudioChange.number))
+            return;
+
+        Message::Ptr m = createMessage(friendItem, Message::Type::Event);
+        tcp::listener().send(m);
+    }
 }
 
 void ToxNet::command_ToxMessage(const Message::Ptr& message)
@@ -899,7 +928,10 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
         item.phoneNumber = node["phone_number"].as<int>(0);
         return true;
     };
-    config::state().getValue("phones." + string(item.publicKey), loadFunc, false);
+    string confKey = "phones." + string(item.publicKey);
+    config::state().getValue(confKey, loadFunc, false);
+    config::state().getValue(confKey + ".audio_streams.active", item.personalVolumes, false);
+    config::state().getValue(confKey + ".echo_mute", item.echoMute, false);
     return true;
 }
 
