@@ -82,6 +82,8 @@ private slots:
 
     void on_labelCopyright_linkActivated(const QString& link);
 
+    void updateLabelCallState();
+
 private:
     void closeEvent(QCloseEvent*) override;
 

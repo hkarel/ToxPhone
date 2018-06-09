@@ -153,6 +153,7 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
 {
     hide();
     ui->labelConnectStatus->clear();
+    ui->labelCallState->clear();
 
     ui->lineSelfToxName->clear();
     ui->lineSelfToxStatus->clear();
@@ -728,9 +729,6 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
             ui->btnEndCall->setText(tr(ENDCALL));
             ui->btnEndCall->setEnabled(true);
         }
-
-        QString msg = "Incoming call: " + friendCalling(_callState.friendNumber);
-        ui->labelCallState->setText(msg);
     }
     else if (_callState.direction == data::ToxCallState::Direction::Outgoing)
     {
@@ -746,9 +744,6 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
 
         ui->btnEndCall->setText(tr(ENDCALL));
         ui->btnEndCall->setEnabled(true);
-
-        QString msg = "Outgoing call: " + friendCalling(_callState.friendNumber);
-        ui->labelCallState->setText(msg);
     }
     else // data::ToxCall::Direction::Undefined
     {
@@ -759,9 +754,8 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
 
         ui->btnEndCall->setText(tr(ENDCALL));
         ui->btnEndCall->setEnabled(false);
-
-        ui->labelCallState->clear();
     }
+    updateLabelCallState();
 
     if (_callState.direction == data::ToxCallState::Direction::Undefined)
     {
@@ -1320,6 +1314,34 @@ QString MainWindow::friendCalling(quint32 friendNumber)
         }
     }
     return result;
+}
+
+void MainWindow::updateLabelCallState()
+{
+    if (_callState.direction == data::ToxCallState::Direction::Incoming)
+    {
+        if (ui->listFriends->count() == 0)
+        {
+            QTimer::singleShot(1000, this, SLOT(updateLabelCallState()));
+            return;
+        }
+        QString msg = "Incoming call: " + friendCalling(_callState.friendNumber);
+        ui->labelCallState->setText(msg);
+    }
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing)
+    {
+        if (ui->listFriends->count() == 0)
+        {
+            QTimer::singleShot(1000, this, SLOT(updateLabelCallState()));
+            return;
+        }
+        QString msg = "Outgoing call: " + friendCalling(_callState.friendNumber);
+        ui->labelCallState->setText(msg);
+    }
+    else // data::ToxCall::Direction::Undefined
+    {
+        ui->labelCallState->clear();
+    }
 }
 
 void MainWindow::aboutClear()
