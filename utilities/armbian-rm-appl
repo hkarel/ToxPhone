@@ -1,0 +1,138 @@
+#!/bin/bash
+
+#set -e
+
+need_sleep=0
+
+print_info()
+{
+    echo ""
+    echo "============================================================================="
+    echo -e "$1"
+    echo "============================================================================="
+
+    [ "$need_sleep" -eq 1 ] && sleep 2 && need_sleep=0
+}
+
+
+print_info "!!! Сценарий удаляет ненужные приложения для ToxPhone OrangePi !!!"
+
+#----------------------------------------------------------------------------
+print_info "Armbian configuration utility"
+if [ -n "$(dpkg -l | grep 'armbian-config')" ]; then
+    sudo apt-get purge -y armbian-config && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "Avahi IPv4LL network address configuration daemon"
+if [ -n "$(dpkg -l | grep 'avahi-autoipd')" ]; then
+    sudo apt-get purge -y avahi-autoipd && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "aptitude: terminal-based package manager"
+if [ -n "$(dpkg -l | grep 'aptitude')" ]; then
+    sudo apt-get purge -y aptitude aptitude-common && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "Version of 'host' bundled with BIND 9.X"
+if [ -n "$(dpkg -l | grep 'bind9-host')" ]; then
+    sudo apt-get purge -y bind9-host && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "dosfstools: utilities for making and checking MS-DOS FAT filesystems"
+if [ -n "$(dpkg -l | grep 'dosfstools')" ]; then
+    sudo apt-get purge -y dosfstools && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "Git"
+if [ -n "$(dpkg -l | grep 'ii *git')" ]; then
+    sudo apt-get purge -y git && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "kbd: Linux console font and keytable utilities"
+if [ -n "$(dpkg -l | grep 'kbd')" ]; then
+    sudo apt-get purge -y kbd && need_sleep=1
+fi
+
+
+#----------------------------------------------------------------------------
+print_info "keyboard-configuration: system-wide keyboard preferences"
+if [ -n "$(dpkg -l | grep 'keyboard-configuration')" ]; then
+    sudo apt-get purge -y keyboard-configuration && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "sysbench: Cross-platform and multi-threaded benchmark tool"
+if [ -n "$(dpkg -l | grep 'sysbench')" ]; then
+    sudo apt-get purge -y sysbench && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "expect: Automates interactive applications"
+if [ -n "$(dpkg -l | grep 'ii *expect')" ]; then
+    sudo apt-get purge -y expect && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "network management framework (daemon and userspace tools)"
+if [ -n "$(dpkg -l | grep 'network-manager')" ]; then
+    sudo apt-get purge -y network-manager  && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "stress: tool to impose load on and stress test a computer system"
+if [ -n "$(dpkg -l | grep 'ii *stress')" ]; then
+    sudo apt-get purge -y stress && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "toilet: display large colourful characters in text mode"
+if [ -n "$(dpkg -l | grep 'ii *toilet')" ]; then
+    sudo apt-get purge -y toilet toilet-fonts && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "vlan: user mode programs to enable VLANs on your ethernet devices"
+if [ -n "$(dpkg -l | grep 'ii *vlan')" ]; then
+    sudo apt-get purge -y vlan && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "wget"
+if [ -n "$(dpkg -l | grep 'ii *wget')" ]; then
+    sudo apt-get purge -y wget && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "whiptail: Displays user-friendly dialog boxes from shell scripts"
+if [ -n "$(dpkg -l | grep 'ii *whiptail')" ]; then
+    sudo apt-get purge -y whiptail && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "apt-file"
+if [ -n "$(dpkg -l | grep 'ii *apt-file')" ]; then
+    sudo apt-get purge -y apt-file && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "curl"
+if [ -n "$(dpkg -l | grep 'ii *curl')" ]; then
+    sudo apt-get purge -y curl && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "figlet: Make large character ASCII banners out of ordinary text"
+if [ -n "$(dpkg -l | grep 'ii *figlet')" ]; then
+    sudo apt-get purge -y figlet && need_sleep=1
+fi
+
+#----------------------------------------------------------------------------
+print_info "apt-get autoremove"
+sudo apt-get autoremove
+

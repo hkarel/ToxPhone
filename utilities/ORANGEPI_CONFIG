@@ -1,0 +1,377 @@
+--
+Установить Ubuntu 16.04 Servers
+
+--
+После записи ОС на microsd, еще до установки microsd-карты в OrangePi
+скопировать на карту следующие файлы:
+  interfaces -> /etc/network
+  20auto-upgrades -> /etc/apt/apt.conf.d
+
+--
+В файле /etc/apt/apt.conf.d/50unattended-upgrades на microsd внести следующие
+правки (раскомментировать):
+  Unattended-Upgrade::Automatic-Reboot "true";
+  Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+
+--
+Обновить систему:
+  sudo apt-get -y update && \
+  sudo apt-get -y upgrade && \
+  sudo apt-get -y dist-upgrade && \
+  sudo apt-get -y autoremove && \
+  sudo apt-get -y autoclean \
+
+--
+Скопировать минимально необходимые конфиги:
+  scp ~/.bash_aliases ~/.vimrc voip-phoneX
+
+--
+Установить временную зону:
+  sudo timedatectl set-timezone Europe/Moscow
+
+Посмотреть список временных зон:
+  timedatectl list-timezones
+
+Посмотреть информацию по текущей временной зоне:
+  timedatectl
+
+
+#####################################################
+--
+Установить программы:
+  sudo apt-get install -y \
+    wvdial openvpn wireless-tools wpasupplicant \
+
+--
+Установить программы для сборочного стенда:
+  sudo apt-get install -y \
+    minicom usb-modeswitch libswscale2 qt4-default \
+
+--
+Сконфигурировать сетевые адреса.
+Добавить в файл /etc/network/interfaces следующие строки:
+  # Параметр allow-hotplug в отличие от auto при старте системы не ожидает
+  # обязательного подключения к сети
+  allow-hotplug enp1s0
+  iface enp1s0 inet dhcp
+
+  # Настройка альтернативного адреса для подключения по витой паре
+  # напрямую к устройству.
+  auto enp1s0:0
+  iface enp1s0:0 inet static
+  address 192.168.10.90
+  netmask 255.255.255.0
+
+--
+Настройка WiFi подключения.
+Конфигурирования с динамическим адресом:
+  allow-hotplug wlp1s0
+  iface wlp1s0 inet dhcp
+
+Конфигурирования со статическим адресом:
+  iface wlp1s0 inet static
+  address 192.168.11.100
+  netmask 255.255.255.0
+  gateway 192.168.1.1
+  dns-nameservers 8.8.8.8 192.168.11.1
+
+Подключение к сети без пароля (либо с обычным паролем)
+  wireless-essid hkarel
+  # Подключение без пароля
+  wireless-key off
+
+Подключение к WiFi сети с WPA/WPA2 шифрованием.
+В параметре wpa-psk указывается хеш пароля, а не сам пароль. Хеш пароля можно
+получить при помощи команды: wpa_passphrase `wpa-ssid' `password'
+  wpa-ssid hkarel
+  # password fvMwMD6Y
+  wpa-psk 7edd44594dc0c01f61689cfde7074405047ffd0c01cfb21e4fa57f8c2644d203
+
+--
+Запуск сервиса восстановления WiFi соединения
+  scp wifi-connetcion-recovery*  27fretailN:/tmp
+  ssh 27fretailN
+  sudo mv -f /tmp/wifi-connetcion-recovery /usr/bin && \
+  sudo mv -f /tmp/wifi-connetcion-recovery.service /etc/systemd/system \
+
+Сделать сервис доступным для выполнения:
+  sudo systemctl enable wifi-connetcion-recovery
+  sudo systemctl start wifi-connetcion-recovery
+
+--
+Задействовать swap-файл только когда память заполнена на 85%
+Материалы по теме:
+  https://askubuntu.com/questions/103915/how-do-i-configure-swappiness
+
+Добавить в файл /etc/sysctl.conf строку 'vm.swappiness = 15':
+  sudo sed -i.bak '/vm.swappiness/d' /etc/sysctl.conf && \
+  sudo sh -c "echo 'vm.swappiness = 15' >> /etc/sysctl.conf" \
+
+--
+Установить англоязычную локаль:
+  sudo update-locale LANG=en_US.UTF-8
+
+--
+Установить временную зону:
+  sudo ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+
+--
+Установка MATE (только для демонстрационных компьютеров):
+  sudo apt-get install ubuntu-mate-desktop
+
+  Автологин.
+  В файл /usr/share/lightdm/lightdm.conf.d/60-lightdm-gtk-greeter.conf,
+  в секцию [Seat:*] добавить строку 'autologin-user=user' (без кавычек)
+    sudo vim /usr/share/lightdm/lightdm.conf.d/60-lightdm-gtk-greeter.conf
+
+  Классическое GRUB-меню:
+    sudo sed -i.bak "s/GRUB_HIDDEN_TIMEOUT_QUIET=true/GRUB_HIDDEN_TIMEOUT_QUIET=false/" /etc/default/grub && \
+    sudo update-grub2 \
+
+  Удаление лишних директории:
+    sudo sed \
+      -e "s/^DESKTOP/#DESKTOP/" \
+      -e "s/^TEMPLATES/#TEMPLATES/" \
+      -e "s/^PUBLICSHARE/#PUBLICSHARE/" \
+      -e "s/^MUSIC/#MUSIC/" \
+      -e "s/^PICTURES/#PICTURES/" \
+      -e "s/^VIDEOS/#VIDEOS/" \
+      -i.bak /etc/xdg/user-dirs.defaults && \
+    rm -f ~/.config/user-dirs.dirs && \
+    rm -rf ~/Desktop ~/Templates ~/Public ~/Music ~/Pictures ~/Videos \
+
+  Удаленный доступ:
+    sudo apt-get install -y x11vnc
+
+  sudo reboot
+
+--
+Удаление лишних программ:
+  ./mate-rm-appl
+
+------------------------------
+
+
+4. Установить программы:
+     sudo apt-get install -y \
+       vim htop x11vnc bash-completion usbutils rsync screen qt4-default \
+       curl wvdial minicom usb-modeswitch openvpn libswscale2 \
+
+5. Установить разрешение монитора.
+   (для консольного режима работы этот пунк можно не выполнять)
+   Может случиться так, что монитор не сможет отображать корректно картинку.
+   Что бы это исправить нужно в файле /media/boot/boot.ini в секции
+   "--- Screen Configuration for HDMI ---" раскомментировать подходящее разрешение
+   экрана.
+   Проверена работоспособность такой строки:
+     setenv videoconfig "drm_kms_helper.edid_firmware=edid/1440x900.bin"
+
+6. Включить автологин (https://debianforum.ru/index.php?topic=9711.0)
+   (для консольного режима работы этот пунк можно не выполнять)
+   В файл
+     sudo vi /etc/lightdm/lightdm.conf
+
+   добавить/раскомментировать два параметра:
+     autologin-user=odroid
+     autologin-user-timeout=0
+
+7. Разрешить пользователю odroid записывать core файлы.
+   Данные разрешения нужны только для стенда разработчика.
+     cat << EOF | sudo tee /etc/security/limits.d/core.conf
+#<domain>      <type>  <item>         <value>
+#
+root           soft    core            -1
+root           hard    core            -1
+odroid         soft    core            -1
+odroid         hard    core            -1
+EOF
+
+8. Установить языковую локаль:
+     sudo update-locale LANGUAGE=en_US LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 LC_NUMERIC=C
+
+   Альтернативный вариант установки языковой локали:
+   В файл
+     sudo vi /etc/default/locale
+
+   записать строки:
+     LANGUAGE=en_US
+     LANG=en_US.UTF-8
+     LC_ALL=en_US.UTF-8
+     LC_NUMERIC=C
+
+9. Установка даты и времени.
+   При отключении ODROID XU4 от электросети происходит сброс времени
+   на начальное значение.
+
+   Сменить временную зону:
+     sudo ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+
+   Установить серверы времени в /etc/systemd/timesyncd.conf
+     sudo sed -i.bak 's/#Servers=/Servers=/; /Servers=/s/debian\.pool/ru\.pool/g' /etc/systemd/timesyncd.conf
+
+   Активировать сервис systemd-timesyncd:
+     sudo systemctl enable systemd-timesyncd
+
+   Запустить сервис:
+     sudo systemctl start systemd-timesyncd
+
+   Проверить статус сервиса:
+     systemctl status systemd-timesyncd
+
+   Проверить установленное время:
+     date
+
+   Материал по теме:
+     http://melfis.ru/настройка-ntp-сервера-на-debian-ubuntu-сервере/
+
+10. Изменить имя хоста машины на odroid(номер). Например на odroid1.
+    Для этого редактируем файл /etc/hostname
+      sudo su -c 'echo odroidN > /etc/hostname'
+
+    Так же исправляем имя хоста в /etc/hosts
+      sudo sed -i.bak "s/odroid.*/$(head -n1 \/etc\/hostname)/" /etc/hosts
+
+11. Создать группу tech27 и добавить в нее пользователя odroid.
+      sudo addgroup tech27  && \
+      sudo adduser odroid tech27 && \
+      sudo reboot \
+
+12. Расположение компонентов программы.
+    Директории проекта:
+      sudo mkdir -p /etc/tech27 && \
+      sudo mkdir -p /etc/27FacesRetail && \
+      sudo mkdir -p /opt/27FacesRetail && \
+      sudo mkdir -p /var/opt/27FacesRetail/log && \
+      sudo mkdir -p /var/opt/27FacesRetail/stat && \
+      sudo mkdir -p /var/opt/27FacesRetail/state && \
+      sudo mkdir -p /var/opt/27FacesRetail/video \
+
+    Смена группы:
+      sudo chown root:tech27 /etc/tech27 && \
+      sudo chown root:tech27 /etc/27FacesRetail && \
+      sudo chown root:tech27 /opt/27FacesRetail && \
+      sudo chown root:tech27 /var/opt/27FacesRetail && \
+      sudo chown root:tech27 /var/opt/27FacesRetail/log && \
+      sudo chown root:tech27 /var/opt/27FacesRetail/stat && \
+      sudo chown root:tech27 /var/opt/27FacesRetail/state && \
+      sudo chown root:tech27 /var/opt/27FacesRetail/video \
+
+    Права доступа:
+      sudo chmod 775 /etc/tech27 && \
+      sudo chmod 775 /etc/27FacesRetail && \
+      sudo chmod 775 /opt/27FacesRetail && \
+      sudo chmod 775 /var/opt/27FacesRetail && \
+      sudo chmod 775 /var/opt/27FacesRetail/log && \
+      sudo chmod 775 /var/opt/27FacesRetail/stat && \
+      sudo chmod 775 /var/opt/27FacesRetail/state && \
+      sudo chmod 775 /var/opt/27FacesRetail/video \
+
+13. Не запускать графическую оболочку.
+      sudo systemctl set-default -f multi-user.target
+
+      Вернуть назад графическую оболочку
+      sudo systemctl set-default -f graphical.target
+
+      Проверить текущую цель по умолчанию
+      systemctl get-default
+
+      Источник: http://unix.stackexchange.com/questions/170555/why-is-my-debian-jessie-always-in-runlevel-5
+
+14. Перезагрузка.
+      sudo reboot
+
+15. Подключение через Yota-модем.
+    Было выяснено, что пока оптимальным вариантом будет не выполнять никаких
+    сетевых настроек. Просто подключить Yota-4G модем, и все.
+
+    --- Для экспериментов ---
+    а) Настроить подключение через Yota-модем.
+       Конфигурирование интерфейсов
+         sudo vi /etc/network/interfaces
+
+       Добавить описание для интерфейсов eth0 и eth1
+         auto eth0
+         iface eth0 inet dhcp
+
+         auto eth1
+         iface eth1 inet static
+         gateway 10.0.0.1
+         address 10.0.0.10
+         netmask 255.255.255.0
+
+       Создать скрипт для установки маршрута по умолчанию
+         sudo su -c 'echo -e "#!/bin/sh \nip route replace default via 10.0.0.1 dev eth1" > /etc/network/if-up.d/eth1-default-route' && \
+         sudo chmod 755 /etc/network/if-up.d/eth1-default-route \
+    -------------------------
+
+    б) Настроить подключение к интернет через Wi-Fi модуль.
+
+16. Подключение через 3G модем.
+    Статьи по настройке модемов Huawei:
+      https://3ginfo.ru/page53.html
+      http://www.lib.ru/unixhelp/modemmin.txt
+      https://help.keenetic.net/hc/ru/articles/213967529-Как-при-подключении-к-Интернету-через-интернет-центр-Keenetic-с-микропрограммой-NDMS-V1-и-3G-модем-увеличить-стабильность-подключения-и-скорость-закачки-
+
+    Порядок подключения описан для модема Huawei E3131
+    - проверить, что модем видится системой
+        sudo ls /dev/ttyUSB*
+
+    - перевести модем в режим "только модем"
+        AT^SETPORT="A1,A2;1,3,2"
+
+    - только 3G/WCDMA режим
+        AT^SYSCFG=14,2,3FFFFFFF,2,4
+
+        Возможно, что при проверке значение будет: 14,2,3fffffff,1,2
+        Это тоже верный результат
+
+    - скопировать
+        scp wvdial.conf wvdial-connection wvdial-antifreeze odroidN:/etc/tech27
+
+    - задание в crontab, в качестве параметра скрипта передается название
+      провайдера из файла настроек wvdial.conf. Название провайдера записано
+      в имени соответствующей секции, например так: [Dialer beeline].
+        */2  *  * * *   root    test -x /etc/tech27/wvdial-connection && /etc/tech27/wvdial-connection beeline > /dev/null
+
+17. Настройка альтернативного адреса для подключения по витой паре напрямую
+    к odroud-устройству.
+    Добавить в файл /etc/network/interfaces следующие строки:
+      auto eth1
+      iface eth1 inet dhcp
+
+      auto eth1:0
+      iface eth1:0 inet static
+      address 192.168.10.90
+      netmask 255.255.255.0
+
+    Примечание: если текущий интерфейс - eth0, то соответственно вместо eth1
+                нужно указать eth0
+
+18. Запускать программу как сервис systemd.
+    Материалы по теме:
+      https://www.freedesktop.org/software/systemd/man/index.html (см. раздел systemd.service)
+      https://habrahabr.ru/company/centosadmin/blog/255845/
+
+    Скопировать сценарии запуска на целевой хост:
+      scp 27fretaild.service 27fretail-sync-statistics.service odroidN:/tmp
+
+      ssh odroidN
+      sudo mv -f /tmp/27fretaild.service /etc/systemd/system && \
+      sudo mv -f /tmp/27fretail-sync-statistics.service /etc/systemd/system \
+
+    Сделать сервис доступным для выполнения:
+      sudo systemctl enable 27fretaild
+      sudo systemctl enable 27fretail-sync-statistics
+
+    Статус:
+      sudo systemctl status 27fretaild
+      sudo systemctl status 27fretail-sync-statistics
+
+    Старт, стоп, рестарт:
+      sudo systemctl start 27fretaild
+      sudo systemctl stop 27fretaild
+      sudo systemctl restart 27fretaild
+
+    Если при старте юнита возникают ошибки, то после их исправления необходимо
+    перезапустить сервис systemd:
+      sudo systemctl daemon-reload
