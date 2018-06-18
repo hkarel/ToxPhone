@@ -22,18 +22,24 @@ chown -R root:toxphone /etc/toxphone
 chown -R root:toxphone /var/opt/toxphone
 chmod -R ug=rwX,o=rX   /var/opt/toxphone
 
-response=
-cat << EOF
-Select launch mode for ToxPhone client:
-1 - launch application in user space;
-2 - launch application as system service.
-If used GUI it is recommended to select the launch mode in user space (1)
-EOF
-read -r -p "Enter 1 (default) or 2: " response; response=${response:-'1'}
+response=2
+# cat << EOF
+# Select launch mode for ToxPhone client:
+# 1 - launch application in user space;
+# 2 - launch application as system service.
+# If used GUI it is recommended to select the launch mode in user space (1)
+# EOF
+# read -r -p "Enter 1 (default) or 2: " response; response=${response:-'1'}
+
+res=$(ps aux | grep '/usr/bin/X' | grep -v 'grep')
+[ -n "$res" ] && response=1;
+
+res=$(ps aux | grep '/usr/lib/xorg/Xorg' | grep -v 'grep')
+[ -n "$res" ] && response=1;
 
 # 2 - As system service
 if [ "$response" -eq 2 ]; then
-    echo "Selected launch: as service"
+    echo "ToxPhone will be launched as service"
 
     sed -e "s/%TARGET_USER%/$SUDO_USER/" \
         -i /etc/systemd/system/toxphone.service
@@ -50,7 +56,7 @@ if [ "$response" -eq 2 ]; then
 
 # 1 - As application in user space
 else
-    echo "Selected launch: in user space"
+    echo "ToxPhone will be launched in user space"
 
     systemctl daemon-reload
 
