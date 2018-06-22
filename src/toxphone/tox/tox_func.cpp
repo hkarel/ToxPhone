@@ -92,6 +92,19 @@ uint32_t getToxFriendNum(Tox* tox, const QByteArray& publicKey)
     return tox_friend_by_public_key(tox, (uint8_t*)publicKey.constData(), 0);
 }
 
+
+QByteArray getToxPublicKey(Tox* tox)
+{
+    QByteArray selfPk;
+    selfPk.resize(TOX_PUBLIC_KEY_SIZE);
+
+    ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+
+    tox_self_get_public_key(tox, (uint8_t*)selfPk.constData());
+    return selfPk;
+}
+
+
 #undef log_error_m
 #undef log_warn_m
 #undef log_info_m

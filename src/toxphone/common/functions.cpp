@@ -1,12 +1,22 @@
 #include "functions.h"
 #include <atomic>
 
-bool configConnected(bool* val)
+ToxConfig& toxConfig()
 {
-    static std::atomic_bool connected {false};
-    if (val)
-        connected = *val;
-    return connected;
+    return ::safe_singleton<ToxConfig>();
+}
+
+void ToxConfig::send(const communication::Message::Ptr& message) const
+{
+    if (socket)
+        socket->send(message);
+}
+void ToxConfig::reset()
+{
+    if (socket)
+        socket->stop();
+    socket.reset();
+    socketDescriptor = -1;
 }
 
 bool diverterIsActive(bool* val)

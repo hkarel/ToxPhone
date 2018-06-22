@@ -11,6 +11,7 @@ Product {
     targetName: "toxphone-config"
 
     Depends { name: "cpp" }
+    Depends { name: "lib.sodium" }
     Depends { name: "Yaml" }
     Depends { name: "SharedLib" }
     Depends { name: "Kernel" }
@@ -24,10 +25,14 @@ Product {
         name: "Qt.widgets";
     }
 
+    lib.sodium.version:   project.sodiumVersion
+    lib.sodium.useSystem: project.useSystemSodium
+
     Probe {
         id: pruductProbe
         property string compilerLibraryPath
         configure: {
+            lib.sodium.probe();
             compilerLibraryPath = GccUtl.compilerLibraryPath(cpp.compilerPath);
         }
     }
@@ -39,7 +44,10 @@ Product {
         "./",
         "../",
     ]
-    cpp.systemIncludePaths: Qt.core.cpp.includePaths;
+    cpp.systemIncludePaths: QbsUtl.concatPaths(
+        Qt.core.cpp.includePaths,
+        lib.sodium.includePath
+    )
 
     //cpp.rpaths: [
     //    pruductProbe.compilerLibraryPath,
@@ -53,6 +61,8 @@ Product {
     cpp.dynamicLibraries: [
         "pthread",
     ]
+
+    cpp.staticLibraries: lib.sodium.staticLibrariesPaths(product)
 
     Group {
         name: "widgets"
@@ -73,6 +83,9 @@ Product {
             "main_window.cpp",
             "main_window.h",
             "main_window.ui",
+            "password_window.cpp",
+            "password_window.h",
+            "password_window.ui",
         ]
     }
 

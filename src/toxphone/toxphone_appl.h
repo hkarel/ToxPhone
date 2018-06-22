@@ -9,6 +9,7 @@
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/udp.h"
 
+#include <sodium/crypto_box.h>
 #include <QtCore>
 #include <QCoreApplication>
 #include <atomic>
@@ -35,7 +36,7 @@ signals:
 
 public slots:
     static void stop(int exitCode);
-    void sendToxPhoneInfo(SocketDescriptor socketDescriptor = 0);
+    void sendToxPhoneInfo();
 
 private slots:
     void message(const communication::Message::Ptr&);
@@ -54,11 +55,15 @@ private:
     void updateNetInterfaces();
 
     //--- Обработчики команд ---
+    void command_IncomingConfigConnection(const Message::Ptr&);
     void command_ToxPhoneInfo(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
     void command_DiverterChange(const Message::Ptr&);
     void command_DiverterTest(const Message::Ptr&);
     void command_PhoneFriendInfo(const Message::Ptr&);
+    void command_ConfigAuthorizationRequest(const Message::Ptr&);
+    void command_ConfigAuthorization(const Message::Ptr&);
+    void command_ConfigSavePassword(const Message::Ptr&);
 
     void fillPhoneDiverter(data::DiverterInfo&);
 
@@ -69,8 +74,16 @@ private:
 
     // Идентификатор сокета конфигуратора, используется для предотвращения
     // подключения более чем одного конфигуратора
-    int _configConnectCount = {0};
-    SocketDescriptorSet _closeSocketDescriptors;
+    //int _configConnectCount = {0};
+    //SocketDescriptorSet _closeSocketDescriptors;
+    //SocketDescriptor _configSocketDescriptor = {-1};
+
+    // Сессионные ключи для авторизации Tox-конфигуратора
+    uchar _toxPublicKey[crypto_box_PUBLICKEYBYTES];
+    uchar _toxSecretKey[crypto_box_SECRETKEYBYTES];
+
+    // Сессионный публичный ключ Tox-конфигуратора
+    uchar _configPublicKey[crypto_box_PUBLICKEYBYTES];
 
     // Индикатор состояния звонка
     data::ToxCallState _callState;
@@ -80,7 +93,6 @@ private:
 
     QString _diverterPhoneNumber;
     PhoneDiverter::Mode _diverterDefaultMode = {PhoneDiverter::Mode::Pstn};
-
 
     FunctionInvoker _funcInvoker;
 

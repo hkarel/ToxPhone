@@ -2,6 +2,7 @@
 #include "ui_main_window.h"
 #include "widgets/friend.h"
 #include "widgets/friend_request.h"
+#include "widgets/password_window.h"
 
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
@@ -10,11 +11,19 @@
 #include "shared/qt/version/version_number.h"
 #include "shared/qt/config/config.h"
 
+#include <sodium.h>
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QDesktopServices>
 #include <limits>
 #include <unistd.h>
+
+// Ключи для авторизации конфигуратора
+extern uchar configPublicKey[crypto_box_PUBLICKEYBYTES];
+extern uchar configSecretKey[crypto_box_SECRETKEYBYTES];
+
+// Сессионный публичный ключ Tox-клиента
+extern uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -73,6 +82,9 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(DiverterInfo)
     FUNC_REGISTRATION(DiverterChange)
     FUNC_REGISTRATION(DiverterTest)
+    FUNC_REGISTRATION(ConfigAuthorizationRequest)
+    FUNC_REGISTRATION(ConfigAuthorization)
+    FUNC_REGISTRATION(ConfigSavePassword)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -146,7 +158,6 @@ void MainWindow::socketConnected(communication::SocketDescriptor)
     QString msg = tr("Connected to %1 : %2");
     ui->labelConnectStatus->setText(msg.arg(_socket->peerPoint().address().toString())
                                        .arg(_socket->peerPoint().port()));
-    show();
 }
 
 void MainWindow::socketDisconnected(communication::SocketDescriptor)
@@ -173,6 +184,14 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     ui->lineToxNameAlias->clear();
     ui->linePhoneNumber->clear();
     ui->chkPersonalAudioVolumes->setChecked(false);
+
+    for (int i = 0; i < ui->listFriendRequests->count(); ++i)
+    {
+        QListWidgetItem* lwi = ui->listFriendRequests->item(i);
+        ui->listFriendRequests->removeItemWidget(lwi);
+        delete lwi;
+    }
+    ui->listFriendRequests->clear();
 
     ui->cboxAudioPlayback->clear();
     ui->cboxAudioRecord->clear();
@@ -322,6 +341,11 @@ void MainWindow::command_FriendRequests(const Message::Ptr& message)
             qobject_cast<FriendRequestWidget*>(ui->listFriendRequests->itemWidget(lwi));
         frw->setPublicKey(fr.publicKey);
         frw->setMessage(fr.message);
+    }
+    if (ui->listFriendRequests->count()
+        && !ui->listFriendRequests->currentItem())
+    {
+        ui->listFriendRequests->setCurrentRow(0);
     }
     QString tabRrequestsText = tr("Requests (%1)");
     ui->tabWidget->setTabText(_tabRrequestsIndex, tabRrequestsText.arg(friendRequests.list.count()));
@@ -491,7 +515,7 @@ void MainWindow::command_AudioDevInfo(const Message::Ptr& message)
             data::AudioDevChange audioDevChange {audioDevInfo};
             audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
 
-            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            Message::Ptr m = createMessage(audioDevChange);
             command_AudioDevChange(m);
         }
 
@@ -500,7 +524,7 @@ void MainWindow::command_AudioDevInfo(const Message::Ptr& message)
             data::AudioDevChange audioDevChange {audioDevInfo};
             audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
 
-            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
+            Message::Ptr m = createMessage(audioDevChange);
             command_AudioDevChange(m);
         }
     }
@@ -812,6 +836,55 @@ void MainWindow::command_DiverterTest(const Message::Ptr& message)
         ui->btnTestPhoneRingtone->setChecked(false);
         QString msg = errorDescription(message);
         QMessageBox::critical(this, qApp->applicationName(), msg);
+    }
+}
+
+void MainWindow::command_ConfigAuthorizationRequest(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() == Message::ExecStatus::Success)
+    {
+        data::ConfigAuthorizationRequest configAuthorizationRequest;
+        readFromMessage(message, configAuthorizationRequest);
+
+        if (configAuthorizationRequest.needPassword)
+            ui->btnAuthorizationPassword->setText("Change password");
+        else
+            ui->btnAuthorizationPassword->setText("Set password");
+    }
+}
+
+void MainWindow::command_ConfigAuthorization(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer
+        && message->execStatus() == Message::ExecStatus::Success)
+    {
+        show();
+    }
+}
+
+void MainWindow::command_ConfigSavePassword(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            data::ConfigSavePassword configSavePassword;
+            readFromMessage(message, configSavePassword);
+
+            if (!configSavePassword.password.isEmpty())
+                ui->btnAuthorizationPassword->setText("Change password");
+            else
+                ui->btnAuthorizationPassword->setText("Set password");
+
+            QString msg = tr("Password saved");
+            QMessageBox::information(this, qApp->applicationName(), msg);
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
     }
 }
 
@@ -1294,6 +1367,49 @@ void MainWindow::on_btnSaveToxInfo_clicked(bool)
     toxPhoneInfo.info = ui->lineToxInfoString->text().trimmed();
 
     Message::Ptr m = createMessage(toxPhoneInfo);
+    _socket->send(m);
+}
+
+void MainWindow::on_btnAuthorizationPassword_clicked(bool)
+{
+    PasswordWindow passwordWindow {this};
+    if (passwordWindow.exec() == QDialog::Rejected)
+        return;
+
+    data::ConfigSavePassword configSavePassword;
+    QByteArray passw = passwordWindow.password().toUtf8().trimmed();
+    if (!passw.isEmpty())
+    {
+        QByteArray passwBuff;
+        {
+            QDataStream s {&passwBuff, QIODevice::WriteOnly};
+            s.setVersion(Q_DATA_STREAM_VERSION);
+
+            QByteArray garbage; garbage.resize(512 - passw.length() - 2 * sizeof(int));
+            randombytes((uchar*)garbage.constData(), garbage.length());
+
+            s << passw;
+            s << garbage;
+        }
+        QByteArray nonce; nonce.resize(crypto_box_NONCEBYTES);
+        randombytes((uchar*)nonce.constData(), crypto_box_NONCEBYTES);
+
+        QByteArray ciphertext;
+        ciphertext.resize(passwBuff.length() + crypto_box_MACBYTES);
+
+        int res = crypto_box_easy((uchar*)ciphertext.constData(),
+                                  (uchar*)passwBuff.constData(), passwBuff.length(),
+                                  (uchar*)nonce.constData(), toxPublicKey, configSecretKey);
+        if (res != 0)
+        {
+            QString msg = tr("Failed encript password");
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+            return;
+        }
+        configSavePassword.nonce = nonce;
+        configSavePassword.password = ciphertext;
+    }
+    Message::Ptr m = createMessage(configSavePassword);
     _socket->send(m);
 }
 

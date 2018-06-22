@@ -79,6 +79,7 @@ private slots:
     void on_btnTestPhoneRingtone_clicked(bool);
 
     void on_btnSaveToxInfo_clicked(bool);
+    void on_btnAuthorizationPassword_clicked(bool);
 
     void on_labelCopyright_linkActivated(const QString& link);
 
@@ -110,6 +111,9 @@ private:
     void command_DiverterInfo(const Message::Ptr&);
     void command_DiverterChange(const Message::Ptr&);
     void command_DiverterTest(const Message::Ptr&);
+    void command_ConfigAuthorizationRequest(const Message::Ptr&);
+    void command_ConfigAuthorization(const Message::Ptr&);
+    void command_ConfigSavePassword(const Message::Ptr&);
 
     void friendRequestAccept(bool accept);
     void setSliderLevel(QSlider* slider, int base, int current, int max);
@@ -129,6 +133,8 @@ private:
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;
 
+    // Сессионный публичный ключ Tox-клиента
+    //QByteArray _toxPublicKey;
 
     int _tabRrequestsIndex = {0};
 };

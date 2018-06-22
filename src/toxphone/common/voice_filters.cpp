@@ -29,13 +29,16 @@ void VoiceFilters::bufferUpdated()
 
 void VoiceFilters::sendRecordLevet(quint32 maxLevel, quint32 time)
 {
-    data::AudioRecordLevel audioRecordLevel;
-    audioRecordLevel.max = maxLevel;
-    audioRecordLevel.time = time;
+    if (toxConfig().isActive())
+    {
+        data::AudioRecordLevel audioRecordLevel;
+        audioRecordLevel.max = maxLevel;
+        audioRecordLevel.time = time;
 
-    Message::Ptr m = createMessage(audioRecordLevel, Message::Type::Event);
-    m->setPriority(Message::Priority::High);
-    tcp::listener().send(m);
+        Message::Ptr m = createMessage(audioRecordLevel);
+        m->setPriority(Message::Priority::High);
+        toxConfig().send(m);
+    }
 }
 
 void VoiceFilters::run()
@@ -112,7 +115,7 @@ void VoiceFilters::run()
             // Уровень сигнала для микрофона отправляем именно из этой точки,
             // т.к. это позволит учитывать уровень усиления сигнала полученный
             // в функции filter_audio() при активном флаге gain.
-            if (configConnected())
+            if (toxConfig().isActive())
             {
                 pcm = (int16_t*)data;
                 for (size_t i = 0; i < (dataSize / sizeof(int16_t)); ++i)

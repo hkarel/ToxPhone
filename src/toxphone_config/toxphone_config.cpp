@@ -8,6 +8,7 @@
 #include "widgets/connection_window.h"
 #include "widgets/main_window.h"
 
+#include <sodium.h>
 #include <QtCore>
 #include <QApplication>
 #include <QMessageBox>
@@ -21,6 +22,13 @@ void stopProgram()
 }
 
 } // namespace
+
+// Ключи для авторизации конфигуратора
+uchar configPublicKey[crypto_box_PUBLICKEYBYTES];
+uchar configSecretKey[crypto_box_SECRETKEYBYTES];
+
+// Сессионный публичный ключ Tox-клиента
+uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
 
 using namespace std;
 using namespace communication;

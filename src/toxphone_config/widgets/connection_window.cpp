@@ -10,9 +10,18 @@
 #include "shared/qt/config/config.h"
 #include "kernel/network/interfaces.h"
 
+#include <sodium.h>
 #include <QCloseEvent>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <unistd.h>
+
+// Ключи для авторизации конфигуратора
+extern uchar configPublicKey[crypto_box_PUBLICKEYBYTES];
+extern uchar configSecretKey[crypto_box_SECRETKEYBYTES];
+
+// Сессионный публичный ключ Tox-клиента
+extern uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
 
 #define PHONES_LIST_TIMEUPDATE 5
 
@@ -43,9 +52,11 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ConnectionWindow::command_##COMMAND, this);
 
-    FUNC_REGISTRATION(CloseConnection)
+    //FUNC_REGISTRATION(CloseConnection)
     FUNC_REGISTRATION(ToxPhoneInfo)
     FUNC_REGISTRATION(ApplShutdown)
+    FUNC_REGISTRATION(ConfigAuthorizationRequest)
+    FUNC_REGISTRATION(ConfigAuthorization)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -97,12 +108,11 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
     if (port_counter > 5)
         log_error << "The number of attempts of initialization of UDP is exhausted";
 
-    return (_init = true);
+    return true;
 }
 
 void ConnectionWindow::deinit()
 {
-    _init = false;
     udp::socket().stop();
     //_socket.disconnect();
 }
@@ -129,27 +139,21 @@ void ConnectionWindow::message(const communication::Message::Ptr& message)
 
 void ConnectionWindow::socketConnected(communication::SocketDescriptor)
 {
-    hide();
-    saveGeometry();
+    //hide();
+    //saveGeometry();
 }
 
 void ConnectionWindow::socketDisconnected(communication::SocketDescriptor)
 {
-    if (_init)
-    {
-        show();
-        loadGeometry();
+    sodium_memzero(configPublicKey, crypto_box_PUBLICKEYBYTES);
+    sodium_memzero(configSecretKey, crypto_box_SECRETKEYBYTES);
+    sodium_memzero(toxPublicKey, crypto_box_PUBLICKEYBYTES);
 
-        if (_discartConnect)
-        {
-            QString msg = tr("Connection is closed at the request of the client's Tox"
-                             ". Remote detail: ") + _closeConnection.description;
-            QMessageBox::information(this, qApp->applicationName(), msg);
-        }
-    }
+    show();
+    loadGeometry();
 }
 
-void ConnectionWindow::on_btnConnect_clicked(bool checked)
+void ConnectionWindow::on_btnConnect_clicked(bool /*checked*/)
 {
     QString msg;
     if (!ui->listPhones->count())
@@ -192,7 +196,6 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
         qApp->processEvents();
     }
 
-    _discartConnect = false;
     _socket->connect();
 
     int sleepCount = 0;
@@ -202,14 +205,22 @@ void ConnectionWindow::on_btnConnect_clicked(bool checked)
         qApp->processEvents();
         if (_socket->isConnected())
             break;
-
-        if (_discartConnect)
-            break;
     }
-    if (!_socket->isConnected() && !_discartConnect)
+
+    if (_socket->isConnected())
+    {
+        crypto_box_keypair(configPublicKey, configSecretKey);
+
+        data::ConfigAuthorizationRequest configAuthorizationRequest;
+        configAuthorizationRequest.publicKey =
+            QByteArray((char*)configPublicKey, crypto_box_PUBLICKEYBYTES);
+
+        Message::Ptr m = createMessage(configAuthorizationRequest);
+        _socket->send(m);
+    }
+    else
     {
         _socket->stop();
-
         msg = tr("Failed connect to host %1 : %2");
         msg = msg.arg(_socket->peerPoint().address().toString())
                  .arg(_socket->peerPoint().port());
@@ -276,14 +287,18 @@ void ConnectionWindow::updatePhonesList()
     ui->btnConnect->setEnabled(ui->listPhones->count());
 }
 
-void ConnectionWindow::command_CloseConnection(const Message::Ptr& message)
-{
-    if (message->type() == Message::Type::Command)
-    {
-        _discartConnect = true;
-        readFromMessage(message, _closeConnection);
-    }
-}
+//void ConnectionWindow::command_CloseConnection(const Message::Ptr& message)
+//{
+//    if (message->type() == Message::Type::Command)
+//    {
+//        data::CloseConnection closeConnection;
+//        readFromMessage(message, closeConnection);
+
+//        QString msg = tr("Connection is closed at the request of the client's Tox"
+//                         ". Remote detail: ") + closeConnection.description;
+//        QMessageBox::information(this, qApp->applicationName(), msg);
+//    }
+//}
 
 void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
 {
@@ -357,6 +372,91 @@ void ConnectionWindow::command_ApplShutdown(const Message::Ptr& message)
         }
     }
     ui->btnConnect->setEnabled(ui->listPhones->count());
+}
+
+void ConnectionWindow::command_ConfigAuthorizationRequest(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            data::ConfigAuthorizationRequest configAuthorizationRequest;
+            readFromMessage(message, configAuthorizationRequest);
+
+            memcpy(toxPublicKey, configAuthorizationRequest.publicKey.constData(),
+                   crypto_box_PUBLICKEYBYTES);
+
+            data::ConfigAuthorization configAuthorization;
+            if (configAuthorizationRequest.needPassword)
+            {
+                // Отправляем пароль
+                bool ok;
+                QByteArray passw = QInputDialog::getText(this, qApp->applicationName(),
+                                                         tr("Password:"), QLineEdit::Password,
+                                                         "", &ok).toUtf8().trimmed();
+                if (!ok)
+                {
+                    _socket->stop();
+                    return;
+                }
+
+                QByteArray passwBuff;
+                {
+                    QDataStream s {&passwBuff, QIODevice::WriteOnly};
+                    s.setVersion(Q_DATA_STREAM_VERSION);
+
+                    QByteArray garbage; garbage.resize(512 - passw.length() - 2 * sizeof(int));
+                    randombytes((uchar*)garbage.constData(), garbage.length());
+
+                    s << passw;
+                    s << garbage;
+                }
+                QByteArray nonce; nonce.resize(crypto_box_NONCEBYTES);
+                randombytes((uchar*)nonce.constData(), crypto_box_NONCEBYTES);
+
+                QByteArray ciphertext;
+                ciphertext.resize(passwBuff.length() + crypto_box_MACBYTES);
+
+                int res = crypto_box_easy((uchar*)ciphertext.constData(),
+                                          (uchar*)passwBuff.constData(), passwBuff.length(),
+                                          (uchar*)nonce.constData(), toxPublicKey, configSecretKey);
+                if (res != 0)
+                {
+                    _socket->stop();
+                    QString msg = tr("Failed encript password");
+                    QMessageBox::critical(this, qApp->applicationName(), msg);
+                    return;
+                }
+                configAuthorization.nonce = nonce;
+                configAuthorization.password = ciphertext;
+            }
+            Message::Ptr m = createMessage(configAuthorization);
+            _socket->send(m);
+
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
+    }
+}
+
+void ConnectionWindow::command_ConfigAuthorization(const Message::Ptr& message)
+{
+    if (message->type() == Message::Type::Answer)
+    {
+        if (message->execStatus() == Message::ExecStatus::Success)
+        {
+            saveGeometry();
+            hide();
+        }
+        else
+        {
+            QString msg = errorDescription(message);
+            QMessageBox::critical(this, qApp->applicationName(), msg);
+        }
+    }
 }
 
 void ConnectionWindow::closeEvent(QCloseEvent* event)

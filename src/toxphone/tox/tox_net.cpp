@@ -733,8 +733,8 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
         data::FriendItem friendItem;
         if (fillFriendItem(friendItem, removeFirendNum))
         {
-            Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(friendItem);
+            toxConfig().send(m);
         }
     }
 
@@ -772,8 +772,8 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
     if (!fillFriendItem(friendItem, phoneFriendInfo.number))
         return;
 
-    Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-    tcp::listener().send(m);
+    Message::Ptr m = createMessage(friendItem);
+    toxConfig().send(m);
 }
 
 void ToxNet::command_FriendAudioChange(const Message::Ptr& message)
@@ -799,8 +799,8 @@ void ToxNet::command_FriendAudioChange(const Message::Ptr& message)
         if (!fillFriendItem(friendItem, friendAudioChange.number))
             return;
 
-        Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(friendItem);
+        toxConfig().send(m);
     }
 }
 
@@ -821,7 +821,7 @@ void ToxNet::command_ToxMessage(const Message::Ptr& message)
 
 void ToxNet::updateFriendList()
 {
-    if (!configConnected())
+    if (!toxConfig().isActive())
         return;
 
     data::FriendList friendList;
@@ -840,13 +840,13 @@ void ToxNet::updateFriendList()
             friendList.list.append(friendItem);
         }
     }
-    Message::Ptr m = createMessage(friendList, Message::Type::Event);
-    tcp::listener().send(m);
+    Message::Ptr m = createMessage(friendList);
+    toxConfig().send(m);
 }
 
 void ToxNet::updateFriendRequests()
 {
-    if (!configConnected())
+    if (!toxConfig().isActive())
         return;
 
     data::FriendRequests friendRequests;
@@ -884,20 +884,20 @@ void ToxNet::updateFriendRequests()
     config::state().reRead();
     config::state().getValue("friend_requests", loadFunc);
 
-    Message::Ptr m = createMessage(friendRequests, Message::Type::Event);
-    tcp::listener().send(m);
+    Message::Ptr m = createMessage(friendRequests);
+    toxConfig().send(m);
 }
 
 void ToxNet::updateDhtStatus()
 {
-    if (!configConnected())
-        return;
+    if (toxConfig().isActive())
+    {
+        data::DhtConnectStatus dhtConnectStatus;
+        dhtConnectStatus.active = _dhtConnected;
 
-    data::DhtConnectStatus dhtConnectStatus;
-    dhtConnectStatus.active = _dhtConnected;
-
-    Message::Ptr m = createMessage(dhtConnectStatus, Message::Type::Event);
-    tcp::listener().send(m);
+        Message::Ptr m = createMessage(dhtConnectStatus);
+        toxConfig().send(m);
+    }
 }
 
 bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
@@ -971,7 +971,7 @@ void ToxNet::tox_friend_name(Tox* tox, uint32_t friend_number,
     log_debug_m << "ToxEvent: friend name changed. "
                 << ToxFriendLog(tox, friend_number);
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
         ToxNet* tn = static_cast<ToxNet*>(user_data);
         data::FriendItem friendItem;
@@ -981,8 +981,8 @@ void ToxNet::tox_friend_name(Tox* tox, uint32_t friend_number,
         friendItem.changeFlag = data::FriendItem::ChangeFlag::Name;
         friendItem.name = QString::fromUtf8(QByteArray::fromRawData((char*)name, length));
 
-        Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(friendItem);
+        toxConfig().send(m);
     }
 }
 
@@ -992,7 +992,7 @@ void ToxNet::tox_friend_status_message(Tox* tox, uint32_t friend_number,
     log_debug_m << "ToxEvent: friend status message changed. "
                 << ToxFriendLog(tox, friend_number);
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
         ToxNet* tn = static_cast<ToxNet*>(user_data);
         data::FriendItem friendItem;
@@ -1002,8 +1002,8 @@ void ToxNet::tox_friend_status_message(Tox* tox, uint32_t friend_number,
         friendItem.changeFlag = data::FriendItem::ChangeFlag::StatusMessage;
         friendItem.statusMessage = QString::fromUtf8((char*)message, length);
 
-        Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(friendItem);
+        toxConfig().send(m);
     }
 }
 
@@ -1085,7 +1085,7 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
     log_debug_m << "ToxEvent: friend " << stat
                 << ToxFriendLog(tox, friend_number);
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
         ToxNet* tn = static_cast<ToxNet*>(user_data);
         data::FriendItem friendItem;
@@ -1095,8 +1095,8 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
         friendItem.changeFlag = data::FriendItem::ChangeFlag::IsConnecnted;
         friendItem.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
 
-        Message::Ptr m = createMessage(friendItem, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(friendItem);
+        toxConfig().send(m);
     }
 }
 

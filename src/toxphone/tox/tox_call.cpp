@@ -203,7 +203,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         {
             log_error_m << "Failed toxav_call: " << toxError(err);
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
                 data::MessageError error;
                 error.description = tr(toxError(err));
@@ -211,7 +211,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
 
                 Message::Ptr answer = message->cloneForAnswer();
                 writeToMessage(error, answer);
-                tcp::listener().send(answer);
+                toxConfig().send(answer);
             }
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
 
@@ -269,7 +269,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         {
             log_error_m << "Failed toxav_answer: " << toxError(err);
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
                 data::MessageError error;
                 error.description = tr(toxError(err));
@@ -277,7 +277,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
 
                 Message::Ptr answer = message->cloneForAnswer();
                 writeToMessage(error, answer);
-                tcp::listener().send(answer);
+                toxConfig().send(answer);
             }
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
 
@@ -341,7 +341,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         {
             log_error_m << "Failed toxav_call_control: " << toxError(err);
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
                 data::MessageError error;
                 error.description = tr(toxError(err));
@@ -349,7 +349,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
 
                 Message::Ptr answer = message->cloneForAnswer();
                 writeToMessage(error, answer);
-                tcp::listener().send(answer);
+                toxConfig().send(answer);
             }
         }
         sendCallState();
@@ -419,11 +419,9 @@ void ToxCall::sendCallState()
 {
     //log_debug_m << "Call sendCallState()";
 
-    Message::Ptr m = createMessage(_callState, Message::Type::Event);
+    Message::Ptr m = createMessage(_callState);
     emit internalMessage(m);
-
-    if (configConnected())
-        tcp::listener().send(m);
+    toxConfig().send(m);
 }
 
 //----------------------------- Tox callback ---------------------------------

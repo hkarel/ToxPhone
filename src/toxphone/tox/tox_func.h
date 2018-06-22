@@ -26,3 +26,5 @@ QByteArray getToxFriendKey(Tox* tox, uint32_t friendNumber);
 // Возвращает номер друга
 uint32_t getToxFriendNum(Tox* tox, const QByteArray& publicKey);
 
+// Возвращает свой PublicKey
+QByteArray getToxPublicKey(Tox* tox);

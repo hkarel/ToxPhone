@@ -45,21 +45,19 @@ private slots:
 
 private:
     //--- Обработчики команд ---
-    void command_CloseConnection(const Message::Ptr&);
+    //void command_CloseConnection(const Message::Ptr&);
     void command_ToxPhoneInfo(const Message::Ptr&);
     void command_ApplShutdown(const Message::Ptr&);
+    void command_ConfigAuthorizationRequest(const Message::Ptr&);
+    void command_ConfigAuthorization(const Message::Ptr&);
 
     void closeEvent(QCloseEvent*) override;
 
 private:
     Ui::ConnectionWindow *ui;
 
-    bool _init = {false};
     FunctionInvoker _funcInvoker;
     tcp::Socket::Ptr _socket;
-
-    bool _discartConnect = {false};
-    data::CloseConnection _closeConnection;
 
     QTimer _requestPhonesTimer;
     QTimer _updatePhonesTimer;

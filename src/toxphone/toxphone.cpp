@@ -386,6 +386,8 @@ int main(int argc, char *argv[])
                       &toxCall(),    SLOT(message(communication::Message::Ptr)))
         chk_connect_q(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
                       &audioDev(),   SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &appl,         SLOT(message(communication::Message::Ptr)))
 
         chk_connect_q(&phoneDiverter(), SIGNAL(attached()),
                       &appl,              SLOT(phoneDiverterAttached()))

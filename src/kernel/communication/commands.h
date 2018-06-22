@@ -146,12 +146,27 @@ extern const QUuidEx DiverterChange;
 */
 extern const QUuidEx DiverterTest;
 
-
 /**
   Расширенная информация по другу. Используется при сохранении настроек
   из конфигуратора и связывает идентификатор друга и номер телефона
 */
 extern const QUuidEx PhoneFriendInfo;
+
+/**
+  Запрос процесса авторизации конфигуратора
+*/
+extern const QUuidEx ConfigAuthorizationRequest;
+
+/**
+  Команда авторизации конфигуратора. Так же используется для сохранения
+  состояния активности и пароля для авторизации.
+*/
+extern const QUuidEx ConfigAuthorization;
+
+/**
+  Сохранение пароля
+*/
+extern const QUuidEx ConfigSavePassword;
 
 
 } // namespace command
@@ -237,7 +252,7 @@ struct FriendRequest : Data<&command::FriendRequest,
 };
 
 struct FriendRequests : Data<&command::FriendRequests,
-                              Message::Type::Event>
+                              Message::Type::Command>
 {
     QVector<FriendRequest> list;
     DECLARE_B_SERIALIZE_FUNC
@@ -245,8 +260,7 @@ struct FriendRequests : Data<&command::FriendRequests,
 
 struct FriendItem : Data<&command::FriendItem,
                           Message::Type::Command,
-                          Message::Type::Answer,
-                          Message::Type::Event>
+                          Message::Type::Answer>
 {
     enum class ChangeFlag : quint32
     {
@@ -294,7 +308,7 @@ struct FriendAudioChange : Data<&command::FriendAudioChange,
 };
 
 struct FriendList : Data<&command::FriendList,
-                          Message::Type::Event>
+                          Message::Type::Command>
 {
     QVector<FriendItem> list;
     DECLARE_B_SERIALIZE_FUNC
@@ -311,7 +325,7 @@ struct RemoveFriend : Data<&command::RemoveFriend,
 };
 
 struct DhtConnectStatus : Data<&command::DhtConnectStatus,
-                                Message::Type::Event>
+                                Message::Type::Command>
 {
     bool active = {false};
     DECLARE_B_SERIALIZE_FUNC
@@ -328,8 +342,7 @@ enum AudioDevType : quint32
 
 struct AudioDevInfo : Data<&command::AudioDevInfo,
                             Message::Type::Command,
-                            Message::Type::Answer,
-                            Message::Type::Event>
+                            Message::Type::Answer>
 {
     quint32      cardIndex;   // Индекс звуковой карты
     AudioDevType type;        // Тип устройства
@@ -362,8 +375,7 @@ struct AudioDevInfo : Data<&command::AudioDevInfo,
 
 struct AudioDevChange : Data<&command::AudioDevChange,
                               Message::Type::Command,
-                              Message::Type::Answer,
-                              Message::Type::Event>
+                              Message::Type::Answer>
 {
     AudioDevChange() = default;
     AudioDevChange(const AudioDevInfo&);
@@ -393,8 +405,7 @@ struct AudioDevChange : Data<&command::AudioDevChange,
 
 struct AudioStreamInfo : Data<&command::AudioStreamInfo,
                                Message::Type::Command,
-                               Message::Type::Answer,
-                               Message::Type::Event>
+                               Message::Type::Answer>
 {
     // Типы потоков
     enum class Type : quint32
@@ -430,8 +441,7 @@ struct AudioStreamInfo : Data<&command::AudioStreamInfo,
 
 struct AudioTest : Data<&command::AudioTest,
                          Message::Type::Command,
-                         Message::Type::Answer,
-                         Message::Type::Event>
+                         Message::Type::Answer>
 {
     bool begin = {false};
     bool end() const {return !begin;}
@@ -443,7 +453,7 @@ struct AudioTest : Data<&command::AudioTest,
 };
 
 struct AudioRecordLevel : Data<&command::AudioRecordLevel,
-                                Message::Type::Event>
+                                Message::Type::Command>
 {
     quint32 max  = {0}; // Максимальное значение уровня звукового сигнала
     quint32 time = {0}; // Время обновления max (в миллисекундах)
@@ -473,7 +483,7 @@ struct ToxCallAction : Data<&command::ToxCallAction,
 };
 
 struct ToxCallState : Data<&command::ToxCallState,
-                            Message::Type::Event>
+                            Message::Type::Command>
 {
     // Направление звонка: входящий/исходящий
     enum class Direction : quint32
@@ -536,8 +546,7 @@ enum class DiverterDefaultMode : quint32
 
 struct DiverterInfo : Data<&command::DiverterInfo,
                             Message::Type::Command,
-                            Message::Type::Answer,
-                            Message::Type::Event>
+                            Message::Type::Answer>
 {
     // Признак активности механизма дивертера
     bool active = {true};
@@ -592,8 +601,7 @@ struct DiverterChange : Data<&command::DiverterChange,
 
 struct DiverterTest : Data<&command::DiverterTest,
                             Message::Type::Command,
-                            Message::Type::Answer,
-                            Message::Type::Event>
+                            Message::Type::Answer>
 {
     bool begin = {false};
     bool end() const {return !begin;}
@@ -614,6 +622,39 @@ struct PhoneFriendInfo : Data<&command::PhoneFriendInfo,
     QString    name;       // Tox- Имя друга
     QString    nameAlias;  // Альтернативное имя друга
     quint32    phoneNumber = {0}; // Число (0-99) для вызова друга с телефона
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ConfigAuthorizationRequest : Data<&command::ConfigAuthorizationRequest,
+                                          Message::Type::Command,
+                                          Message::Type::Answer>
+{
+    // Сессионный ключ
+    QByteArray publicKey;
+
+    // Требование пароля для авторизации, флаг используется в ответе
+    bool needPassword = {false};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ConfigAuthorization : Data<&command::ConfigAuthorization,
+                                   Message::Type::Command,
+                                   Message::Type::Answer>
+{
+    QByteArray nonce;    // Разовый nonce
+    QByteArray password; // Зашифрованный пароль
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct ConfigSavePassword : Data<&command::ConfigSavePassword,
+                                  Message::Type::Command,
+                                  Message::Type::Answer>
+{
+    QByteArray nonce;    // Разовый nonce
+    QByteArray password; // Зашифрованный пароль
 
     DECLARE_B_SERIALIZE_FUNC
 };

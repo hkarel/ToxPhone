@@ -12,6 +12,10 @@
 #include "shared/qt/communication/transport/tcp.h"
 #include "shared/qt/version/version_number.h"
 
+#include <sodium.h>
+#include <string.h>
+
+
 #define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
 #define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
@@ -28,6 +32,10 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
 {
     _stopTimerId = startTimer(1000);
 
+    sodium_memzero(_toxPublicKey, crypto_box_PUBLICKEYBYTES);
+    sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
+    sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
+
     chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
                   this, SLOT(message(communication::Message::Ptr)))
     chk_connect_q(&tcp::listener(), SIGNAL(socketConnected(communication::SocketDescriptor)),
@@ -42,11 +50,15 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxPhoneApplication::command_##COMMAND, this);
 
+    FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(ToxPhoneInfo)
     FUNC_REGISTRATION(ToxCallState)
     FUNC_REGISTRATION(DiverterChange)
     FUNC_REGISTRATION(DiverterTest)
     FUNC_REGISTRATION(PhoneFriendInfo)
+    FUNC_REGISTRATION(ConfigAuthorizationRequest)
+    FUNC_REGISTRATION(ConfigAuthorization)
+    FUNC_REGISTRATION(ConfigSavePassword)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -65,18 +77,6 @@ void ToxPhoneApplication::timerEvent(QTimerEvent* event)
         {
             exit(_exitCode);
             return;
-        }
-        if (!_closeSocketDescriptors.isEmpty())
-        {
-            data::CloseConnection closeConnection;
-            closeConnection.description =
-                tr("Tox a configurator is already connected to this client");
-
-            Message::Ptr m = createMessage(closeConnection);
-            m->destinationSocketDescriptors() = _closeSocketDescriptors;
-            tcp::listener().send(m);
-
-            _closeSocketDescriptors.clear();
         }
     }
 }
@@ -100,46 +100,21 @@ void ToxPhoneApplication::message(const Message::Ptr& message)
     }
 }
 
-void ToxPhoneApplication::socketConnected(SocketDescriptor socketDescriptor)
+void ToxPhoneApplication::socketConnected(SocketDescriptor /*socketDescriptor*/)
 {
-    if (++_configConnectCount > 1)
-    {
-        _closeSocketDescriptors.insert(socketDescriptor);
-        return;
-    }
-    sendToxPhoneInfo(socketDescriptor);
-
-    bool connected = true;
-    configConnected(&connected);
-
-    Message::Ptr m = createMessage(command::IncomingConfigConnection);
-    m->setTag(quint64(socketDescriptor));
-    emit internalMessage(m);
-
-    data::DiverterInfo diverterInfo;
-    fillPhoneDiverter(diverterInfo);
-    m = createMessage(diverterInfo, Message::Type::Event);
-    tcp::listener().send(m);
-
-    data::ToxPhoneAbout toxPhoneAbout;
-    toxPhoneAbout.version = productVersion().vers;
-    toxPhoneAbout.toxcore = VersionNumber(tox_version_major(),
-                                          tox_version_minor(),
-                                          tox_version_patch()).vers;
-    toxPhoneAbout.gitrev = GIT_REVISION;
-    toxPhoneAbout.qtvers = QT_VERSION_STR;
-    m = createMessage(toxPhoneAbout);
-    m->destinationSocketDescriptors().insert(socketDescriptor);
-    tcp::listener().send(m);
+    sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor*/)
+void ToxPhoneApplication::socketDisconnected(SocketDescriptor socketDescriptor)
 {
-    if (--_configConnectCount > 1)
-        return;
-
-    bool connected = false;
-    configConnected(&connected);
+    if (toxConfig().isActive()
+        && toxConfig().socketDescriptor == socketDescriptor)
+    {
+        toxConfig().reset();
+        sodium_memzero(_toxPublicKey, crypto_box_PUBLICKEYBYTES);
+        sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
+        sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
+    }
 
     data::AudioTest audioTest;
     audioTest.begin = false;
@@ -152,7 +127,7 @@ void ToxPhoneApplication::socketDisconnected(SocketDescriptor /*socketDescriptor
     sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
+void ToxPhoneApplication::sendToxPhoneInfo()
 {
     int port = 33601;
     config::base().getValue("config_connection.port", port);
@@ -167,22 +142,39 @@ void ToxPhoneApplication::sendToxPhoneInfo(SocketDescriptor socketDescriptor)
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;
     toxPhoneInfo.applId = _applId;
-    toxPhoneInfo.configConnectCount = _configConnectCount;
+    toxPhoneInfo.configConnectCount = toxConfig().isActive() ? 1: 0;
     for (network::Interface* intf : _netInterfaces)
     {
         toxPhoneInfo.hostPoint = {intf->ip, port};
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
         sendUdpMessageToConfig(intf, port, toxPhoneInfo);
     }
+}
 
-    if (socketDescriptor)
-    {
-        toxPhoneInfo.hostPoint = HostPoint();
-        toxPhoneInfo.isPointToPoint = false;
-        Message::Ptr message = createMessage(toxPhoneInfo);
-        message->destinationSocketDescriptors().insert(socketDescriptor);
-        tcp::listener().send(message);
-    }
+void ToxPhoneApplication::command_IncomingConfigConnection(const Message::Ptr& message)
+{
+    data::DiverterInfo diverterInfo;
+    fillPhoneDiverter(diverterInfo);
+    Message::Ptr m = createMessage(diverterInfo);
+    toxConfig().send(m);
+
+    QString info = "Tox Phone Info";
+    config::state().getValue("info_string", info, false);
+
+    data::ToxPhoneInfo toxPhoneInfo;
+    toxPhoneInfo.info = info;
+    m = createMessage(toxPhoneInfo);
+    toxConfig().send(m);
+
+    data::ToxPhoneAbout toxPhoneAbout;
+    toxPhoneAbout.version = productVersion().vers;
+    toxPhoneAbout.toxcore = VersionNumber(tox_version_major(),
+                                          tox_version_minor(),
+                                          tox_version_patch()).vers;
+    toxPhoneAbout.gitrev = GIT_REVISION;
+    toxPhoneAbout.qtvers = QT_VERSION_STR;
+    m = createMessage(toxPhoneAbout);
+    toxConfig().send(m);
 }
 
 void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
@@ -197,7 +189,9 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
             config::state().setValue("info_string", toxPhoneInfo.info.trimmed());
             config::state().save();
         }
-        sendToxPhoneInfo(message->socketDescriptor());
+        Message::Ptr m = createMessage(toxPhoneInfo);
+        toxConfig().send(m);
+        sendToxPhoneInfo();
         return;
     }
 
@@ -218,7 +212,7 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
     data::ToxPhoneInfo toxPhoneInfo;
     toxPhoneInfo.info = info;
     toxPhoneInfo.applId = _applId;
-    toxPhoneInfo.configConnectCount = _configConnectCount;
+    toxPhoneInfo.configConnectCount = toxConfig().isActive() ? 1: 0;
     for (network::Interface* intf : _netInterfaces)
         if (message->sourcePoint().address().isInSubnet(intf->subnet, intf->subnetPrefixLength))
         {
@@ -322,12 +316,12 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
         }
     }
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
         data::DiverterInfo diverterInfo;
         fillPhoneDiverter(diverterInfo);
-        Message::Ptr m = createMessage(diverterInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(diverterInfo);
+        toxConfig().send(m);
     }
 }
 
@@ -403,8 +397,8 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
 
         data::DiverterInfo diverterInfo;
         fillPhoneDiverter(diverterInfo);
-        Message::Ptr m = createMessage(diverterInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(diverterInfo);
+        toxConfig().send(m);
         return;
     }
     initPhoneDiverter();
@@ -446,6 +440,238 @@ void ToxPhoneApplication::command_PhoneFriendInfo(const Message::Ptr& message)
         _phonesHash[phoneFriendInfo.phoneNumber] = phoneFriendInfo.publicKey;
     else
         _phonesHash.remove(phoneFriendInfo.phoneNumber);
+}
+
+void ToxPhoneApplication::command_ConfigAuthorizationRequest(const Message::Ptr& message)
+{
+    if (toxConfig().isActive())
+    {
+        data::MessageFailed failed;
+        failed.description = tr("Tox a configurator is already connected to this client");
+
+        Message::Ptr answer = message->cloneForAnswer();
+        writeToMessage(failed, answer);
+        toxConfig().send(answer);
+
+        data::CloseConnection closeConnection;
+        closeConnection.description = failed.description;
+
+        Message::Ptr m = createMessage(closeConnection);
+        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        tcp::listener().send(m);
+        return;
+    }
+
+    data::ConfigAuthorizationRequest configAuthorizationRequest;
+    readFromMessage(message, configAuthorizationRequest);
+
+    if (configAuthorizationRequest.publicKey.length() != crypto_box_PUBLICKEYBYTES)
+    {
+        const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
+            "Authorization request error. Invalid public key length: required %1, received %2");
+        log_error_m << QString(msg).arg(crypto_box_PUBLICKEYBYTES)
+                                   .arg(configAuthorizationRequest.publicKey.length());
+
+        data::MessageError error;
+        error.description = tr(msg).arg(crypto_box_PUBLICKEYBYTES)
+                                   .arg(configAuthorizationRequest.publicKey.length());
+
+        Message::Ptr answer = message->cloneForAnswer();
+        writeToMessage(error, answer);
+        toxConfig().send(answer);
+
+        data::CloseConnection closeConnection;
+        closeConnection.description = QString(msg).arg(crypto_box_PUBLICKEYBYTES)
+                                                  .arg(configAuthorizationRequest.publicKey.length());
+
+        Message::Ptr m = createMessage(closeConnection);
+        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        tcp::listener().send(m);
+        return;
+    }
+
+    crypto_box_keypair(_toxPublicKey, _toxSecretKey);
+    memcpy(_configPublicKey, configAuthorizationRequest.publicKey.constData(), crypto_box_PUBLICKEYBYTES);
+
+    QString password;
+    config::state().getValue("config_authorization.password", password, false);
+
+    configAuthorizationRequest.publicKey = QByteArray((char*)_toxPublicKey, crypto_box_PUBLICKEYBYTES);
+    configAuthorizationRequest.needPassword = !password.isEmpty();
+
+    Message::Ptr answer = message->cloneForAnswer();
+    writeToMessage(configAuthorizationRequest, answer);
+    tcp::listener().send(answer);
+}
+
+void ToxPhoneApplication::command_ConfigAuthorization(const Message::Ptr& message)
+{
+    data::ConfigAuthorization configAuthorization;
+    readFromMessage(message, configAuthorization);
+
+    QString password;
+    config::state().getValue("config_authorization.password", password, false);
+
+    data::MessageError error;
+    data::CloseConnection closeConnection;
+
+    if (password.isEmpty() && configAuthorization.password.isEmpty())
+    {
+        // Авторизация без пароля
+    }
+    else if (!password.isEmpty() && !configAuthorization.password.isEmpty())
+    {
+        QByteArray passwBuff; passwBuff.resize(512);
+        int plen = configAuthorization.password.length();
+        int res = crypto_box_open_easy((uchar*)passwBuff.constData(),
+                                       (uchar*)configAuthorization.password.constData(), plen,
+                                       (uchar*)configAuthorization.nonce.constData(),
+                                       _configPublicKey, _toxSecretKey);
+        if (res != 0)
+        {
+            const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
+                                                "Failed decrypt password");
+            error.code = 1;
+            error.description = tr(msg);
+            closeConnection.description = msg;
+            log_error_m << msg;
+        }
+        else
+        {
+            QByteArray passw;
+            {
+                QDataStream s {&passwBuff, QIODevice::ReadOnly};
+                s.setVersion(Q_DATA_STREAM_VERSION);
+                s >> passw;
+            }
+
+            QByteArray hash; hash.resize(crypto_generichash_BYTES);
+            res = crypto_generichash((uchar*)hash.constData(), hash.length(),
+                                     (uchar*)passw.constData(), passw.length(), 0, 0);
+            if (res != 0)
+            {
+                const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
+                                                    "Failed generate password-hash");
+                error.code = 2;
+                error.description = tr(msg);
+                closeConnection.description = msg;
+                log_error_m << msg;
+            }
+            else
+            {
+                if (password != hash.toHex())
+                {
+                    const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
+                        "Authorization failed. Mismatch of passwords. Code error: %1");
+
+                    error.code = 3;
+                    error.description = tr(msg).arg(error.code);
+                    closeConnection.description = QString(msg).arg(error.code);
+                    log_error_m << QString(msg).arg(error.code);
+                }
+            }
+        }
+    }
+    else
+    {
+        const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
+            "Authorization failed. Mismatch of passwords. Code error: %1");
+
+        error.code = 4;
+        error.description = tr(msg).arg(error.code);
+        closeConnection.description = QString(msg).arg(error.code);
+        log_error_m << QString(msg).arg(error.code);
+    }
+    if (error.code != 0)
+    {
+        Message::Ptr answer = message->cloneForAnswer();
+        writeToMessage(error, answer);
+        tcp::listener().send(answer);
+
+        Message::Ptr m = createMessage(closeConnection);
+        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        tcp::listener().send(m);
+        return;
+    }
+
+    toxConfig().socketDescriptor = message->socketDescriptor();
+    toxConfig().socket = tcp::listener().socketByDescriptor(message->socketDescriptor());
+
+    Message::Ptr answer = message->cloneForAnswer();
+    toxConfig().send(answer);
+
+    Message::Ptr m = createMessage(command::IncomingConfigConnection);
+    m->setTag(quint64(message->socketDescriptor()));
+    emit internalMessage(m);
+}
+
+void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message)
+{
+    // Сохранение пароля
+    if (message->type() == Message::Type::Command)
+    {
+        if (!toxConfig().isActive())
+            return;
+
+        if (toxConfig().socketDescriptor != message->socketDescriptor())
+            return;
+
+        data::ConfigSavePassword configSavePassword;
+        readFromMessage(message, configSavePassword);
+
+        if (!configSavePassword.password.isEmpty())
+        {
+            QByteArray passwBuff; passwBuff.resize(512);
+            int plen = configSavePassword.password.length();
+            int res = crypto_box_open_easy((uchar*)passwBuff.constData(),
+                                           (uchar*)configSavePassword.password.constData(), plen,
+                                           (uchar*)configSavePassword.nonce.constData(),
+                                           _configPublicKey, _toxSecretKey);
+            if (res != 0)
+            {
+                data::MessageError error;
+                error.description = tr("Failed decrypt password");
+
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                toxConfig().send(answer);
+                return;
+            }
+
+            QByteArray passw;
+            {
+                QDataStream s {&passwBuff, QIODevice::ReadOnly};
+                s.setVersion(Q_DATA_STREAM_VERSION);
+                s >> passw;
+            }
+
+            QByteArray hash; hash.resize(crypto_generichash_BYTES);
+            res = crypto_generichash((uchar*)hash.constData(), hash.length(),
+                                     (uchar*)passw.constData(), passw.length(), 0, 0);
+            if (res != 0)
+            {
+                data::MessageError error;
+                error.description = tr("Failed generate password-hash");
+
+                Message::Ptr answer = message->cloneForAnswer();
+                writeToMessage(error, answer);
+                toxConfig().send(answer);
+                return;
+            }
+            configSavePassword.password = hash.toHex();
+            config::state().setValue("config_authorization.password",
+                                     string(configSavePassword.password));
+        }
+        else
+        {
+            config::state().remove("config_authorization.password", false);
+        }
+        config::state().save();
+
+        Message::Ptr answer = message->cloneForAnswer();
+        writeToMessage(configSavePassword, answer);
+        toxConfig().send(answer);
+    }
 }
 
 void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
@@ -506,10 +732,10 @@ void ToxPhoneApplication::initPhoneDiverter()
         phoneDiverter().setRingTone(diverterInfo.ringTone);
     }
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
-        Message::Ptr m = createMessage(diverterInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(diverterInfo);
+        toxConfig().send(m);
     }
 }
 

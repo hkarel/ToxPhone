@@ -13,8 +13,12 @@ while true; do
         set +e
         $toxphone &
     fi
-    sleep 60
+    sleep $(($RANDOM % 10 + 60))
 
     res=$(ps axw -o command | grep -P '^/bin/bash.+toxphone-watchdog$' | wc -l)
-    [ "$res" -gt 2 ] && exit 0
+    if [ "$res" -gt 2 ]; then
+        echo "$res" >> /tmp/toxphone-watchdog
+        echo "---"  >> /tmp/toxphone-watchdog
+        exit 0
+    fi
 done

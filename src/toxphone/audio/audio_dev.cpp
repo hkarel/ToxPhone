@@ -501,14 +501,14 @@ void AudioDev::stopRecord()
 
     if (_recordTest)
     {
-        if (configConnected())
+        if (toxConfig().isActive())
         {
             data::AudioTest audioTest;
             audioTest.begin = false;
             audioTest.record = true;
 
-            Message::Ptr m = createMessage(audioTest, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(audioTest);
+            toxConfig().send(m);
         }
         _recordTest = false;
     }
@@ -639,13 +639,13 @@ void AudioDev::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
     Message::Ptr m;
     for (int i = 0; i < _sinkDevices.count(); ++i)
     {
-        m = createMessage(_sinkDevices[i], Message::Type::Event);
-        tcp::listener().send(m);
+        m = createMessage(_sinkDevices[i]);
+        toxConfig().send(m);
     }
     for (int i = 0; i < _sourceDevices.count(); ++i)
     {
-        m = createMessage(_sourceDevices[i], Message::Type::Event);
-        tcp::listener().send(m);
+        m = createMessage(_sourceDevices[i]);
+        toxConfig().send(m);
     }
 
     // Отправляем фиктивные сообщения о создании потоков, чтобы правильно
@@ -656,34 +656,34 @@ void AudioDev::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
         audioStreamInfo = _palybackAudioStreamInfo;
         audioStreamInfo.state = data::AudioStreamInfo::State::Created;
 
-        m = createMessage(audioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        m = createMessage(audioStreamInfo);
+        toxConfig().send(m);
     }
     if (_voiceAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
     {
         audioStreamInfo = _voiceAudioStreamInfo;
         audioStreamInfo.state = data::AudioStreamInfo::State::Created;
 
-        m = createMessage(audioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        m = createMessage(audioStreamInfo);
+        toxConfig().send(m);
     }
     if (_recordAudioStreamInfo.state == data::AudioStreamInfo::State::Changed)
     {
         audioStreamInfo = _recordAudioStreamInfo;
         audioStreamInfo.state = data::AudioStreamInfo::State::Created;
 
-        m = createMessage(audioStreamInfo, Message::Type::Event);
-        tcp::listener().send(m);
+        m = createMessage(audioStreamInfo);
+        toxConfig().send(m);
     }
 
-    m = createMessage(_palybackAudioStreamInfo, Message::Type::Event);
-    tcp::listener().send(m);
+    m = createMessage(_palybackAudioStreamInfo);
+    toxConfig().send(m);
 
-    m = createMessage(_voiceAudioStreamInfo, Message::Type::Event);
-    tcp::listener().send(m);
+    m = createMessage(_voiceAudioStreamInfo);
+    toxConfig().send(m);
 
-    m = createMessage(_recordAudioStreamInfo, Message::Type::Event);
-    tcp::listener().send(m);
+    m = createMessage(_recordAudioStreamInfo);
+    toxConfig().send(m);
 }
 
 void AudioDev::command_AudioDevChange(const Message::Ptr& message)
@@ -754,13 +754,13 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
                 << "; name: "   << audioDevInfo->name;
 
 
-        if (configConnected())
+        if (toxConfig().isActive())
         {
             data::AudioDevChange audioDevChange {*audioDevInfo};
             audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
 
-            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(audioDevChange);
+            toxConfig().send(m);
         }
     }
 
@@ -803,13 +803,13 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
                 << "; volume: " << audioDevInfo->volume
                 << "; name: "   << audioDevInfo->name;
 
-        if (configConnected())
+        if (toxConfig().isActive())
         {
             data::AudioDevChange audioDevChange {*audioDevInfo};
             audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Default;
 
-            Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(audioDevChange);
+            toxConfig().send(m);
         }
     }
 }
@@ -1052,10 +1052,10 @@ void AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List
         updateStartVolume(audioDevInfo);
     }
 
-    if (configConnected())
+    if (toxConfig().isActive())
     {
-        Message::Ptr m = createMessage(*audioDevInfoPtr, Message::Type::Event);
-        tcp::listener().send(m);
+        Message::Ptr m = createMessage(*audioDevInfoPtr);
+        toxConfig().send(m);
     }
 }
 
@@ -1165,13 +1165,13 @@ bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardI
                                          : devices->at(i).index;
         if (devIndex == index)
         {
-            if (configConnected())
+            if (toxConfig().isActive())
             {
                 data::AudioDevChange audioDevChange {devices->at(i)};
                 audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Remove;
 
-                Message::Ptr m = createMessage(audioDevChange, Message::Type::Event);
-                tcp::listener().send(m);
+                Message::Ptr m = createMessage(audioDevChange);
+                toxConfig().send(m);
             }
             isCurrent |= devices->at(i).isCurrent;
             devices->remove(i--);
@@ -1192,16 +1192,16 @@ bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardI
             {
                 (*devices)[i].isCurrent = true;
 
-                if (configConnected())
+                if (toxConfig().isActive())
                 {
-                    Message::Ptr m = createMessage(devices->at(i), Message::Type::Event);
-                    tcp::listener().send(m);
+                    Message::Ptr m = createMessage(devices->at(i));
+                    toxConfig().send(m);
 
                     data::AudioDevChange audioDevChange {devices->at(i)};
                     audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
 
-                    m = createMessage(audioDevChange, Message::Type::Event);
-                    tcp::listener().send(m);
+                    m = createMessage(audioDevChange);
+                    toxConfig().send(m);
                 }
                 isCurrent = true;
                 break;
@@ -1213,16 +1213,16 @@ bool AudioDev::removeDevice(quint32 index, data::AudioDevType type, bool byCardI
             // первое устройство.
             (*devices)[0].isCurrent = true;
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
-                Message::Ptr m = createMessage(devices->at(0), Message::Type::Event);
-                tcp::listener().send(m);
+                Message::Ptr m = createMessage(devices->at(0));
+                toxConfig().send(m);
 
                 data::AudioDevChange audioDevChange {devices->at(0)};
                 audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Current;
 
-                m = createMessage(audioDevChange, Message::Type::Event);
-                tcp::listener().send(m);
+                m = createMessage(audioDevChange);
+                toxConfig().send(m);
             }
         }
     }
@@ -1532,10 +1532,8 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
     */
     config::state().getValue("audio.streams.playback_volume", ad->_palybackAudioStreamInfo.volume);
 
-
-    Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
-    if (configConnected())
-        tcp::listener().send(m);
+    Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo);
+    toxConfig().send(m);
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
@@ -1565,9 +1563,8 @@ void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info
     // Восстанавливаем уровень громкости
     ad->readAudioStreamVolume(ad->_voiceAudioStreamInfo, "voice_volume");
 
-    Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
-    if (configConnected())
-        tcp::listener().send(m);
+    Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo);
+    toxConfig().send(m);
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
@@ -1597,9 +1594,8 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
     // Восстанавливаем уровень громкости
     ad->readAudioStreamVolume(ad->_recordAudioStreamInfo, "record_volume");
 
-    Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
-    if (configConnected())
-        tcp::listener().send(m);
+    Message::Ptr m = createMessage(ad->_recordAudioStreamInfo);
+    toxConfig().send(m);
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
@@ -1639,10 +1635,10 @@ void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* i
         audioStreamInfo->state = data::AudioStreamInfo::State::Changed;
         ad->fillAudioStreamInfo(info, *audioStreamInfo);
 
-        if (configConnected())
+        if (toxConfig().isActive())
         {
-            Message::Ptr m = createMessage(*audioStreamInfo, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(*audioStreamInfo);
+            toxConfig().send(m);
         }
     }
 }
@@ -1675,10 +1671,10 @@ void AudioDev::source_stream_info(pa_context* context, const pa_source_output_in
         audioStreamInfo->state = data::AudioStreamInfo::State::Changed;
         ad->fillAudioStreamInfo(info, *audioStreamInfo);
 
-        if (configConnected())
+        if (toxConfig().isActive())
         {
-            Message::Ptr m = createMessage(*audioStreamInfo, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(*audioStreamInfo);
+            toxConfig().send(m);
         }
     }
 }
@@ -1703,10 +1699,10 @@ void AudioDev::playback_stream_state(pa_stream* stream, void* userdata)
             ad->_palybackAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_palybackAudioStreamInfo.index = -1;
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
-                Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo, Message::Type::Event);
-                tcp::listener().send(m);
+                Message::Ptr m = createMessage(ad->_palybackAudioStreamInfo);
+                toxConfig().send(m);
             }
             break;
 
@@ -1809,14 +1805,14 @@ void AudioDev::playback_stream_drain(pa_stream* stream, int success, void *userd
 
     if (ad->_playbackTest)
     {
-        if (configConnected())
+        if (toxConfig().isActive())
         {
             data::AudioTest audioTest;
             audioTest.begin = false;
             audioTest.playback = true;
 
-            Message::Ptr m = createMessage(audioTest, Message::Type::Event);
-            tcp::listener().send(m);
+            Message::Ptr m = createMessage(audioTest);
+            toxConfig().send(m);
         }
         ad->_playbackTest = false;
     }
@@ -1854,10 +1850,10 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
             ad->_voiceAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_voiceAudioStreamInfo.index = -1;
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
-                Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo, Message::Type::Event);
-                tcp::listener().send(m);
+                Message::Ptr m = createMessage(ad->_voiceAudioStreamInfo);
+                toxConfig().send(m);
             }
             break;
 
@@ -1984,10 +1980,10 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
             ad->_recordAudioStreamInfo.state = data::AudioStreamInfo::State::Terminated;
             ad->_recordAudioStreamInfo.index = -1;
 
-            if (configConnected())
+            if (toxConfig().isActive())
             {
-                Message::Ptr m = createMessage(ad->_recordAudioStreamInfo, Message::Type::Event);
-                tcp::listener().send(m);
+                Message::Ptr m = createMessage(ad->_recordAudioStreamInfo);
+                toxConfig().send(m);
             }
             break;
 
