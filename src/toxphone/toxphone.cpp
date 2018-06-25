@@ -371,14 +371,23 @@ int main(int argc, char *argv[])
 
         qRegisterMetaType<VoiceFrameInfo::Ptr>("VoiceFrameInfo::Ptr");
 
-        chk_connect_q(&toxCall(), SIGNAL(startVoice(VoiceFrameInfo::Ptr)),
-                      &audioDev(),  SLOT(startVoice(VoiceFrameInfo::Ptr)))
+        chk_connect_d(&toxNet(),   SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
 
-        chk_connect_q(&toxCall(), SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &audioDev(),  SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&toxCall(),  SIGNAL(startVoice(VoiceFrameInfo::Ptr)),
+                      &audioDev(),   SLOT(startVoice(VoiceFrameInfo::Ptr)))
 
-        chk_connect_q(&toxCall(), SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &appl,        SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &audioDev(),   SLOT(message(communication::Message::Ptr)))
+
+        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &appl,         SLOT(message(communication::Message::Ptr)))
+
+        chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
+
+        chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &appl,         SLOT(message(communication::Message::Ptr)))
 
         chk_connect_d(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
                       &toxNet(),     SLOT(message(communication::Message::Ptr)))

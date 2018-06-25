@@ -1,4 +1,5 @@
 #include "functions.h"
+#include "shared/safe_singleton.h"
 #include <atomic>
 
 ToxConfig& toxConfig()

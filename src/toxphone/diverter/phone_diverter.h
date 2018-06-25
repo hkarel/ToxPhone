@@ -100,7 +100,7 @@ private:
     unsigned char   _deviceSerialNumber[SERIAL_NUMBER_SIZE + 1];
     //---
 
-    Handset _handset = {Handset::Off};
+    volatile Handset _handset = {Handset::Off};
     volatile bool _dialTone = {false};
 
     PhoneRing _phoneRing;

@@ -771,13 +771,25 @@ void MainWindow::command_ToxCallState(const Message::Ptr& message)
     }
     else // data::ToxCall::Direction::Undefined
     {
-        log_debug << "Call command_ToxCallState() Direction: Undefined";
-
         ui->btnCall->setText(tr(CALL));
-        ui->btnCall->setEnabled(true);
-
         ui->btnEndCall->setText(tr(ENDCALL));
-        ui->btnEndCall->setEnabled(false);
+
+        if (_callState.callState == data::ToxCallState::CallState::IsComplete)
+        {
+            log_debug << "Call command_ToxCallState() "
+                         "Direction: Undefined; CallState: IsComplete";
+
+            ui->btnCall->setEnabled(false);
+            ui->btnEndCall->setEnabled(true);
+        }
+        else if (_callState.callState == data::ToxCallState::CallState::Undefined)
+        {
+            log_debug << "Call command_ToxCallState() "
+                         "Direction: Undefined; CallState: Undefined";
+
+            ui->btnCall->setEnabled(true);
+            ui->btnEndCall->setEnabled(false);
+        }
     }
     updateLabelCallState();
 
@@ -1111,9 +1123,6 @@ void MainWindow::on_btnCall_clicked(bool)
 
 void MainWindow::on_btnEndCall_clicked(bool)
 {
-    if (_callState.direction == data::ToxCallState::Direction::Undefined)
-        return;
-
     data::ToxCallAction toxCallAction;
 
     // Завершить исходящий вызов
@@ -1131,6 +1140,14 @@ void MainWindow::on_btnEndCall_clicked(bool)
         toxCallAction.friendNumber = _callState.friendNumber;
     }
 
+    // Явно прерываем состояние IsComplete и переводим его состояние в Undefined
+    else if (_callState.direction == data::ToxCallState::Direction::Undefined
+             && _callState.callState == data::ToxCallState::CallState::IsComplete)
+    {
+        toxCallAction.action = data::ToxCallAction::Action::End;
+        toxCallAction.friendNumber = _callState.friendNumber;
+    }
+
     // Отклонить входящий вызов
     else if (_callState.direction == data::ToxCallState::Direction::Incoming
              && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
@@ -1139,8 +1156,11 @@ void MainWindow::on_btnEndCall_clicked(bool)
         toxCallAction.friendNumber = _callState.friendNumber;
     }
 
-    Message::Ptr m = createMessage(toxCallAction);
-    _socket->send(m);
+    if (toxCallAction.action != data::ToxCallAction::Action::None)
+    {
+        Message::Ptr m = createMessage(toxCallAction);
+        _socket->send(m);
+    }
 }
 
 void MainWindow::on_splitterFriends_splitterMoved(int pos, int index)
@@ -1456,7 +1476,8 @@ void MainWindow::updateLabelCallState()
     }
     else // data::ToxCall::Direction::Undefined
     {
-        ui->labelCallState->clear();
+        if (_callState.callState == data::ToxCallState::CallState::Undefined)
+            ui->labelCallState->clear();
     }
 }
 

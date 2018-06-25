@@ -1,9 +1,7 @@
 #pragma once
 
-#include "shared/safe_singleton.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/transport/base.h"
-
 #include <QtCore>
 
 struct ToxConfig
@@ -14,8 +12,6 @@ struct ToxConfig
 
     communication::SocketDescriptor socketDescriptor = {-1};
     communication::transport::base::Socket::Ptr socket;
-
-    template<typename T, int> friend T& ::safe_singleton();
 };
 ToxConfig& toxConfig();
 

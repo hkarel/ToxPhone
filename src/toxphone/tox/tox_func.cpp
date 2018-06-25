@@ -1,4 +1,6 @@
 #include "tox_func.h"
+#include "tox_error.h"
+#include "tox_logger.h"
 
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
@@ -9,6 +11,10 @@
 #define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxFunc")
 #define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxFunc")
 #define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxFunc")
+
+namespace {
+const quint64 toxPhoneMessageSignature = *((quint64*)TOX_MESSAGE_SIGNATURE);
+}
 
 QMutex ToxGlobalLock::mutex {QMutex::Recursive};
 
@@ -102,6 +108,64 @@ QByteArray getToxPublicKey(Tox* tox)
 
     tox_self_get_public_key(tox, (uint8_t*)selfPk.constData());
     return selfPk;
+}
+
+bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
+                            const communication::Message::Ptr& message)
+{
+    if ((message->size() + sizeof(toxPhoneMessageSignature) + 1) > TOX_MAX_CUSTOM_PACKET_SIZE)
+    {
+        message->compress();
+        if ((message->size() + sizeof(toxPhoneMessageSignature) + 1) > TOX_MAX_CUSTOM_PACKET_SIZE)
+        {
+            log_error_m << toxError(TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG);
+            return false;
+        }
+    }
+
+    QByteArray buff;
+    buff.reserve(message->size() + sizeof(toxPhoneMessageSignature) + 1);
+    {
+        QDataStream stream {&buff, QIODevice::WriteOnly};
+        stream << quint8(160); // Идентификатор пользовательской tox-команды
+        stream << toxPhoneMessageSignature;
+        message->toDataStream(stream);
+    }
+
+    ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+
+    TOX_ERR_FRIEND_CUSTOM_PACKET err;
+    tox_friend_send_lossless_packet(tox, friendNumber, (uint8_t*)buff.constData(),
+                                    buff.length(), &err);
+    if (err != TOX_ERR_FRIEND_CUSTOM_PACKET_OK)
+    {
+        log_error_m << toxError(err);
+        return false;
+    }
+    return true;
+}
+
+const communication::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
+                                                 const uint8_t* data, size_t length)
+{
+    QByteArray buff = QByteArray::QByteArray::fromRawData((char*)data, length);
+    QDataStream stream {&buff, QIODevice::ReadOnly};
+    quint8 toxCommand;
+    quint64 toxPhoneSign;
+    stream >> toxCommand; (void) toxCommand;
+    stream >> toxPhoneSign;
+    if (toxPhoneSign != toxPhoneMessageSignature)
+    {
+        if (alog::logger().level() == alog::Level::Debug2)
+        {
+            log_debug2_m << "Raw message incompatible signature, discarded"
+                         << ". Message from " << ToxFriendLog(tox, friendNumber);
+        }
+        return communication::Message::Ptr();
+    }
+    communication::Message::Ptr message = communication::Message::fromDataStream(stream);
+    message->setAuxiliary(friendNumber);
+    return std::move(message);
 }
 
 

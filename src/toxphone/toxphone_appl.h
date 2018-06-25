@@ -64,8 +64,15 @@ private:
     void command_ConfigAuthorizationRequest(const Message::Ptr&);
     void command_ConfigAuthorization(const Message::Ptr&);
     void command_ConfigSavePassword(const Message::Ptr&);
+    void command_PlaybackFinish(const Message::Ptr&);
 
     void fillPhoneDiverter(data::DiverterInfo&);
+
+    // Обновляет информацию по дивертеру в конфигураторе
+    void updateConfigDiverterInfo();
+
+    // Возвращает дивертер в состояние согласно базовым установкам
+    void setDiverterToDefaultState();
 
 private:
     int _stopTimerId = {-1};

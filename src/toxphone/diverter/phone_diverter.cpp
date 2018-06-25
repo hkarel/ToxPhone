@@ -148,10 +148,12 @@ void PhoneDiverter::run()
             int counter = usbContinuousBusErrorCounter;
             if (counter > MAX_CONTINUOUS_USB_ERROS)
             {
-                //usb_loop = OFF;
-                //cmd_loop = OFF;
-                //fifoWrite(yealinkDevice, "%s", FIFO_SAY_DEVICE_REMOVED);
-                //continue;
+                if (_handset == Handset::On)
+                {
+                    log_debug_m << "Change handset to OFF";
+                    _handset = Handset::Off;
+                    emit this->handset(_handset);
+                }
                 log_error_m << "Yealink device detached";
                 deviceDetachedEmitted = true;
                 emit detached();
@@ -172,20 +174,13 @@ void PhoneDiverter::run()
                 if (pstnRinging)
                 {
                     break_point
-                    //fifoWrite(yealinkDevice, "%s", FIFO_SAY_PSTN_RING);
                     emit pstnRing();
                 }
             }
 
             if (handset != _handset)
             {
-                //last_handset_state_flag=handset_state_flag;
                 handset = _handset;
-
-                //if (_handsetState == ON)
-                //    fifoWrite(yealinkDevice, "%s", FIFO_SAY_HANDSET_ON);
-                //else
-                //    fifoWrite(yealinkDevice, "%s", FIFO_SAY_HANDSET_OFF);
 
                 if (_handset == Handset::On)
                     log_debug_m << "Change handset to ON";
@@ -194,13 +189,9 @@ void PhoneDiverter::run()
 
                 emit this->handset(_handset);
 
-                //if (ringing_state == ON)
                 if (_phoneRing.isRunning())
                 {
-                    //ringing_state = OFF;
-                    //ringing_mode = OFF;
                     _phoneRing.stop();
-                    //_ringing.setMode(OFF);
                     ringingMode = false;
 
                     if (USB_ERR == usbb2k_ring(_deviceHandle, USB_OFF))
@@ -211,13 +202,10 @@ void PhoneDiverter::run()
             if (_handset == Handset::Off)
             {
                 /* set RING */
-                //if (ringing_state == ON || ringing_mode_flag == ON)
                 if (_phoneRing.isRunning() || ringingMode)
                 {
-                    //if (ringing_mode_flag != ringing_mode)
                     if (ringingMode != _phoneRing.mode())
                     {
-                        //ringing_mode_flag = ringing_mode;
                         ringingMode = _phoneRing.mode();
                         if (ringingMode)
                             usbb2k_ring(_deviceHandle, USB_ON);
@@ -227,7 +215,6 @@ void PhoneDiverter::run()
                 }
             }
 
-            //if (handset_state == ON || pstn_and_usb_joined == ON)
             if (_handset == Handset::On || pstn_and_usb_joined == USB_ON)
             {
                 /* check KEYPRESS */
@@ -246,9 +233,6 @@ void PhoneDiverter::run()
                 }
             }
 
-            //added by simon dible 08-01-07
-            //dial tone functions
-            // modified by dmitry romashko 2007-09-06
             /* set DIALTONE */
             if (_dialTone != dialtone)
             {
@@ -277,27 +261,11 @@ void PhoneDiverter::run()
         hangup_pstn(_deviceHandle);
         usbb2k_switch_mode(_deviceHandle, PSTN_MODE);
 
-        /* that does not work and lock the daemon */
-        /* by the time we get here, the "client" socket is already closed */
-        /*   sprintf(msg,"USB DISCONNECT\n"); */
-        /*   syslog(LOG_INFO,"MMMM 111"); */
-        /*   if (write(client,msg,strlen(msg)) == -1){ */
-        /*     syslog(LOG_ERR,"error writing socket %s", msg); */
-        /*   } */
-
         /* Stop Ringing LOOP */
-        //ringing_state = OFF;
         _phoneRing.stop();
+
         /* Stop ring */
-
         usbb2k_ring(_deviceHandle, USB_OFF);
-
-//        //syslog(LOG_INFO,"USB server shutdown");
-//        log_info << "USB server shutdown";
-//        //this function is not mandatory to be called and valgrind says it leaks. so we don't call it
-//        // pthread_exit(NULL);
-//        return 0;
-
         releaseDevice();
 
     } // while (true)
@@ -549,10 +517,7 @@ void PhoneDiverter::setRing(bool val)
         _phoneRing.start();
     }
     else
-    {
         _phoneRing.stop();
-        //_ringing.setMode(OFF);
-    }
 }
 
 QString PhoneDiverter::ringTone() const

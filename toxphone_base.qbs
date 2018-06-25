@@ -45,6 +45,7 @@ Project {
             "BPROTOCOL_VERSION_LOW=0",
             "BPROTOCOL_VERSION_HIGH=1",
             "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
+            "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
 
         ]

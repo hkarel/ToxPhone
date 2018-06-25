@@ -6,6 +6,7 @@
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
+#include "shared/steady_timer.h"
 #include "shared/qt/thread/qthreadex.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
@@ -42,6 +43,9 @@ private:
     //--- Обработчики команд ---
     void command_IncomingConfigConnection(const Message::Ptr&);
     void command_ToxCallAction(const Message::Ptr&);
+    void command_FriendCallEndCause(const Message::Ptr&);
+    void command_PlaybackFinish(const Message::Ptr&);
+    void command_DiverterHandset(const Message::Ptr&);
 
     void iterateVoiceFrame();
     void endCalling();
@@ -87,6 +91,9 @@ private:
     Message::List _messages;
     QMutex _threadLock;
     QWaitCondition _threadCond;
+
+    steady_timer _sendCallStateTimer;
+    bool _sendCallStateByTimer = {false};
 
     template<typename T, int> friend T& ::safe_singleton();
 };

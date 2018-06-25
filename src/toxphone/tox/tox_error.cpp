@@ -279,12 +279,70 @@ const char* toxError(TOXAV_ERR_SEND_FRAME code)
          */
         case TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED:
             return QT_TRANSLATE_NOOP("ToxError", "Either friend turned off audio or video receiving "
-                                                 "or we turned off sending for the said payload.");
+                                                 "or we turned off sending for the said payload");
         /**
          * Failed to push frame through rtp interface.
          */
         case TOXAV_ERR_SEND_FRAME_RTP_FAILED:
             return QT_TRANSLATE_NOOP("ToxError", "Failed to push frame through rtp interface");
+
+        default:
+            return unknown_error;
+    }
+}
+
+const char* toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
+{
+    switch (code)
+    {
+        /**
+         * The function returned successfully.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_OK:
+            return return_success;
+
+        /**
+         * One of the arguments to the function was NULL when it was not expected.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_NULL:
+            return QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
+                                                 "was NULL when it was not expected");
+        /**
+         * The friend number did not designate a valid friend.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_FOUND:
+            return QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate "
+                                                 "a valid friend");
+        /**
+         * This client is currently not connected to the friend.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_CONNECTED:
+            return QT_TRANSLATE_NOOP("ToxError", "This client is currently not connected "
+                                                 "to the friend");
+        /**
+         * The first byte of data was not in the specified range for the packet type.
+         * This range is 200-254 for lossy, and 160-191 for lossless packets.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_INVALID:
+            return QT_TRANSLATE_NOOP("ToxError", "The first byte of data was not in "
+                                                 "the specified range for the packet type");
+        /**
+         * Attempted to send an empty packet.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_EMPTY:
+            return QT_TRANSLATE_NOOP("ToxError", "Attempted to send an empty packet");
+
+        /**
+         * Packet data length exceeded TOX_MAX_CUSTOM_PACKET_SIZE.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG:
+            return QT_TRANSLATE_NOOP("ToxError", "Packet data length exceeded "
+                                                 "TOX_MAX_CUSTOM_PACKET_SIZE");
+        /**
+         * Packet queue is full.
+         */
+        case TOX_ERR_FRIEND_CUSTOM_PACKET_SENDQ:
+            return QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
 
         default:
             return unknown_error;

@@ -5,6 +5,7 @@
 #include "tox_logger.h"
 #include "common/defines.h"
 #include "common/functions.h"
+#include "diverter/phone_diverter.h"
 
 #include "shared/break_point.h"
 #include "shared/steady_timer.h"
@@ -44,6 +45,9 @@ ToxCall::ToxCall() : QThreadEx(0)
 
     FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(ToxCallAction)
+    FUNC_REGISTRATION(FriendCallEndCause)
+    FUNC_REGISTRATION(PlaybackFinish)
+    FUNC_REGISTRATION(DiverterHandset)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -132,6 +136,12 @@ void ToxCall::run()
         if (!messages.empty())
             continue;
 
+        if (_sendCallStateByTimer && (_sendCallStateTimer.elapsed() > 1000))
+        {
+            _sendCallStateByTimer = false;
+            sendCallState();
+        }
+
         iterationSleepTime -= iterationTimer.elapsed();
         if (iterationSleepTime > 0)
         {
@@ -167,7 +177,10 @@ void ToxCall::message(const communication::Message::Ptr& message)
 
 void ToxCall::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
 {
-    sendCallState();
+    //sendCallState();
+
+    Message::Ptr m = createMessage(_callState);
+    toxConfig().send(m);
 }
 
 void ToxCall::command_ToxCallAction(const Message::Ptr& message)
@@ -182,6 +195,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
                       << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
 
         ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+
         if (_callState.direction != data::ToxCallState::Direction::Undefined)
         {
             log_debug_m << "Current direction of call is not 'Undefined'"
@@ -216,18 +230,14 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
 
             _callState.direction = data::ToxCallState::Direction::Undefined;
-            _callState.callState = data::ToxCallState::CallState::Undefined;
-            _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+            _callState.callState = data::ToxCallState::CallState::IsComplete;
+            _callState.friendNumber = quint32(-1);
             _callState.friendPublicKey.clear();
 
             if (err == TOXAV_ERR_CALL_FRIEND_NOT_FOUND
                 || err == TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED)
             {
                 _callState.callEnd = data::ToxCallState::CallEnd::NotConnected;
-            }
-            else if (err == TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL)
-            {
-                _callState.callEnd = data::ToxCallState::CallEnd::FriendInCall;
             }
             else
                 _callState.callEnd = data::ToxCallState::CallEnd::Error;
@@ -242,6 +252,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
                       << ToxFriendLog(toxav_get_tox(_toxav), toxCallAction.friendNumber);
 
         ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+
         if (!(_callState.direction == data::ToxCallState::Direction::Incoming
               && _callState.callState == data::ToxCallState::CallState::WaitingAnswer))
         {
@@ -282,8 +293,8 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
 
             _callState.direction = data::ToxCallState::Direction::Undefined;
-            _callState.callState = data::ToxCallState::CallState::Undefined;
-            _callState.friendNumber = quint32(-1); // toxCallAction.friendNumber;
+            _callState.callState = data::ToxCallState::CallState::IsComplete;
+            _callState.friendNumber = quint32(-1);
             _callState.friendPublicKey.clear();
 
             if (err == TOXAV_ERR_ANSWER_FRIEND_NOT_FOUND
@@ -297,14 +308,27 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         sendCallState();
     }
 
+    // Явно прерываем состояние IsComplete и переводим его состояние в Undefined
+    else if (toxCallAction.action == data::ToxCallAction::Action::End
+             && _callState.direction == data::ToxCallState::Direction::Undefined
+             && _callState.callState == data::ToxCallState::CallState::IsComplete)
+    {
+        _callState.callState = data::ToxCallState::CallState::Undefined;
+        sendCallState();
+    }
+
     // Отклонить входящий вызов или завершить активный вызов
     else if (toxCallAction.action == data::ToxCallAction::Action::Reject
+             || toxCallAction.action == data::ToxCallAction::Action::HandsetOn
              || toxCallAction.action == data::ToxCallAction::Action::End)
     {
         { //Block for alog::Line
             const char* logStr = "End ";
             if (toxCallAction.action == data::ToxCallAction::Action::Reject)
                 logStr = "Reject ";
+
+            if (toxCallAction.action == data::ToxCallAction::Action::HandsetOn)
+                logStr = "Reject (by HandsetOn) ";
 
             alog::Line logLine = log_verbose_m << logStr;
             if (_callState.direction == data::ToxCallState::Direction::Incoming)
@@ -316,6 +340,7 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         }
 
         ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+
         if (_callState.direction == data::ToxCallState::Direction::Undefined)
         {
             log_debug_m << "Current direction of call already 'Undefined'"
@@ -324,20 +349,41 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         }
         endCalling();
         _callState.direction = data::ToxCallState::Direction::Undefined;
-        _callState.callState = data::ToxCallState::CallState::Undefined;
+        _callState.callState = data::ToxCallState::CallState::IsComplete;
         _callState.friendNumber = toxCallAction.friendNumber;
         _callState.friendPublicKey =
             getToxFriendKey(toxav_get_tox(_toxav), toxCallAction.friendNumber).toHex().toUpper();
 
-        if (toxCallAction.action == data::ToxCallAction::Action::Reject)
-            _callState.callEnd = data::ToxCallState::CallEnd::Reject;
+        if (toxCallAction.action == data::ToxCallAction::Action::Reject
+            || toxCallAction.action == data::ToxCallAction::Action::HandsetOn)
+        {
+            _callState.callEnd = data::ToxCallState::CallEnd::SelfReject;
+        }
         else
             _callState.callEnd = data::ToxCallState::CallEnd::SelfEnd;
 
         TOXAV_ERR_CALL_CONTROL err;
         toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, &err);
 
-        if (err != TOXAV_ERR_CALL_CONTROL_OK)
+        if (err == TOXAV_ERR_CALL_CONTROL_OK)
+        {
+            // Отправляем причину завершения звонка на сторону друга
+            data::FriendCallEndCause friendCallEndCause;
+            if (toxCallAction.action == data::ToxCallAction::Action::Reject)
+            {
+                friendCallEndCause.callEnd = data::FriendCallEndCause::CallEnd::FriendReject;
+            }
+            else if (toxCallAction.action == data::ToxCallAction::Action::HandsetOn)
+            {
+                friendCallEndCause.callEnd = data::FriendCallEndCause::CallEnd::FriendBusy;
+            }
+            else
+                friendCallEndCause.callEnd = data::FriendCallEndCause::CallEnd::FriendEnd;
+
+            Message::Ptr m = createMessage(friendCallEndCause);
+            sendToxLosslessMessage(toxav_get_tox(_toxav), toxCallAction.friendNumber, m);
+        }
+        else
         {
             log_error_m << "Failed toxav_call_control: " << toxError(err);
 
@@ -352,6 +398,62 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
                 toxConfig().send(answer);
             }
         }
+        sendCallState();
+    }
+}
+
+void ToxCall::command_FriendCallEndCause(const Message::Ptr& message)
+{
+    if (_sendCallStateByTimer)
+    {
+        data::FriendCallEndCause friendCallEndCause;
+        readFromMessage(message, friendCallEndCause);
+
+        { //Block for alog::Line
+            alog::Line logLine = log_verbose_m << "Reason the friend ended the call: ";
+            if (friendCallEndCause.callEnd == data::FriendCallEndCause::CallEnd::FriendReject)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::FriendReject;
+                logLine << "reject";
+            }
+            else if (friendCallEndCause.callEnd == data::FriendCallEndCause::CallEnd::FriendBusy)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::FriendBusy;
+                logLine << "busy";
+            }
+            else if (friendCallEndCause.callEnd == data::FriendCallEndCause::CallEnd::FriendEnd)
+            {
+                _callState.callEnd = data::ToxCallState::CallEnd::FriendEnd;
+                logLine << "end";
+            }
+        }
+        _sendCallStateByTimer = false;
+        sendCallState();
+    }
+}
+
+void ToxCall::command_PlaybackFinish(const Message::Ptr& message)
+{
+    data::PlaybackFinish playbackFinish;
+    readFromMessage(message, playbackFinish);
+    (void) playbackFinish;
+
+    if (_callState.callState == data::ToxCallState::CallState::IsComplete)
+    {
+        _callState.callState = data::ToxCallState::CallState::Undefined;
+        sendCallState();
+    }
+}
+
+void ToxCall::command_DiverterHandset(const Message::Ptr& message)
+{
+    data::DiverterHandset diverterHandset;
+    readFromMessage(message, diverterHandset);
+
+    if (_callState.callState == data::ToxCallState::CallState::IsComplete
+        && diverterHandset.on == false /*трубка опущена*/)
+    {
+        _callState.callState = data::ToxCallState::CallState::Undefined;
         sendCallState();
     }
 }
@@ -457,17 +559,42 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
         toxNet().message(m);
         return;
     }
-    log_verbose_m << "Begin incoming call (state: WaitingAnswer). "
-                  << ToxFriendLog(toxav_get_tox(av), friend_number);
 
-    tc->_callState.direction = data::ToxCallState::Direction::Incoming;
-    tc->_callState.callState = data::ToxCallState::CallState::WaitingAnswer;
-    tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
-    tc->_callState.friendNumber = friend_number;
-    tc->_callState.friendPublicKey =
-        getToxFriendKey(toxav_get_tox(tc->_toxav), friend_number).toHex().toUpper();
+    if (tc->_callState.direction != data::ToxCallState::Direction::Undefined
+        || phoneDiverter().handset() == PhoneDiverter::Handset::On)
+    {
+        log_verbose_m << "The line is busy, the incoming call will be rejected. "
+                      << ToxFriendLog(toxav_get_tox(av), friend_number);
 
-    tc->sendCallState();
+        TOXAV_ERR_CALL_CONTROL err;
+        toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
+
+        if (err == TOXAV_ERR_CALL_CONTROL_OK)
+        {
+            // Отправляем причину завершения звонка на сторону друга
+            data::FriendCallEndCause friendCallEndCause;
+            friendCallEndCause.callEnd = data::FriendCallEndCause::CallEnd::FriendBusy;
+
+            Message::Ptr m = createMessage(friendCallEndCause);
+            sendToxLosslessMessage(toxav_get_tox(av), friend_number, m);
+        }
+        else
+            log_error_m << "Failed toxav_call_control: " << toxError(err);
+    }
+    else
+    {
+        log_verbose_m << "Begin incoming call (state: WaitingAnswer). "
+                      << ToxFriendLog(toxav_get_tox(av), friend_number);
+
+        tc->_callState.direction = data::ToxCallState::Direction::Incoming;
+        tc->_callState.callState = data::ToxCallState::CallState::WaitingAnswer;
+        tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
+        tc->_callState.friendNumber = friend_number;
+        tc->_callState.friendPublicKey =
+                getToxFriendKey(toxav_get_tox(tc->_toxav), friend_number).toHex().toUpper();
+
+        tc->sendCallState();
+    }
 }
 
 void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state,
@@ -493,7 +620,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
         }
         tc->endCalling();
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-        tc->_callState.callState = data::ToxCallState::CallState::Undefined;
+        tc->_callState.callState = data::ToxCallState::CallState::IsComplete;
         tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
         tc->_callState.friendNumber = quint32(-1);
         tc->_callState.friendPublicKey.clear();
@@ -516,27 +643,30 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
         }
         tc->endCalling();
         tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-        tc->_callState.callState = data::ToxCallState::CallState::Undefined;
-        tc->_callState.callEnd = data::ToxCallState::CallEnd::FriendEnd;
+        tc->_callState.callState = data::ToxCallState::CallState::IsComplete;
+        tc->_callState.callEnd = data::ToxCallState::CallEnd::FriendReject;
         tc->_callState.friendNumber = quint32(-1);
         tc->_callState.friendPublicKey.clear();
 
-        tc->sendCallState();
+        // Здесь не вызываем сразу sendCallState(), а ждем от друга код причины
+        // завершения вызова.
+        tc->_sendCallStateTimer.reset();
+        tc->_sendCallStateByTimer = true;
     }
 
     if ((state & TOXAV_FRIEND_CALL_STATE_SENDING_A) == TOXAV_FRIEND_CALL_STATE_SENDING_A)
     {
+        /**
+          Используем данное событие как факт того, что друг принял наш вызов
+        */
         log_debug2_m << "ToxAV event: TOXAV_FRIEND_CALL_STATE_SENDING_A";
 
-        // Используем данное событие как факт того, что друг принял наш вызов
         if (tc->_callState.direction == data::ToxCallState::Direction::Outgoing
             && tc->_callState.callState == data::ToxCallState::CallState::WaitingAnswer)
         {
             tc->_skipFirstFrames = 0;
             tc->_callState.callState = data::ToxCallState::CallState::InProgress;
             tc->_callState.callEnd = data::ToxCallState::CallEnd::Undefined;
-
-            //emit tc->stopRingtone();
 
             log_verbose_m << "Accept outgoing call (state: InProgress). "
                           << ToxFriendLog(toxav_get_tox(av), friend_number);
@@ -556,7 +686,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
                     log_error_m << "Failed toxav_call_control: " << toxError(err);
 
                 tc->_callState.direction = data::ToxCallState::Direction::Undefined;
-                tc->_callState.callState = data::ToxCallState::CallState::Undefined;
+                tc->_callState.callState = data::ToxCallState::CallState::IsComplete;
                 tc->_callState.callEnd = data::ToxCallState::CallEnd::Error;
                 //_callState.friendNumber = toxCallAction.friendNumber;
             }

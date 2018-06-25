@@ -229,6 +229,7 @@ bool ToxNet::init()
     tox_callback_file_recv               (_tox, tox_file_recv);
     tox_callback_self_connection_status  (_tox, tox_self_connection_status);
     tox_callback_friend_connection_status(_tox, tox_friend_connection_status);
+    tox_callback_friend_lossless_packet  (_tox, tox_friend_lossless_packet);
 
     return true;
 }
@@ -1099,6 +1100,16 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
         toxConfig().send(m);
     }
 }
+
+void ToxNet::tox_friend_lossless_packet(Tox* tox, uint32_t friend_number,
+                                        const uint8_t* data, size_t length, void* user_data)
+{
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
+    communication::Message::Ptr message = readToxMessage(tox, friend_number, data, length);
+    if (message)
+        emit tn->internalMessage(message);
+}
+
 
 #undef log_error_m
 #undef log_warn_m

@@ -1,8 +1,9 @@
 #include "toxphone_appl.h"
-#include "common/functions.h"
 #include "tox/tox_net.h"
 #include "tox/tox_func.h"
 #include "tox/tox_logger.h"
+#include "common/functions.h"
+#include "audio/audio_dev.h"
 
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
@@ -59,6 +60,7 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
     FUNC_REGISTRATION(ConfigAuthorizationRequest)
     FUNC_REGISTRATION(ConfigAuthorization)
     FUNC_REGISTRATION(ConfigSavePassword)
+    FUNC_REGISTRATION(PlaybackFinish)
     _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
@@ -236,10 +238,12 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
         // Изменяем частоту работы процессора
         if (pipe.open(QIODevice::WriteOnly))
         {
-            const char* command =
-                (_callState.direction == data::ToxCallState::Direction::Undefined)
-                ? "cpufreq-default\n" : "cpufreq-max\n";
-
+            const char* command = "cpufreq-max\n";
+            if (_callState.direction == data::ToxCallState::Direction::Undefined
+                && _callState.callState == data::ToxCallState::CallState::Undefined)
+            {
+                command = "cpufreq-default\n";
+            }
             if (pipe.write(command) == -1)
                 log_error_m << "Failed write command " << command
                             << " to pipe /tmp/toxphone/cpufreq";
@@ -253,6 +257,7 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
     if (!diverterIsActive())
         return;
 
+    // Ожидание ответа на входящий вызов
     if (_callState.direction == data::ToxCallState::Direction::Incoming
         && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
@@ -270,59 +275,62 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
         {
             // Отклонить входящий вызов
             data::ToxCallAction toxCallAction;
-            toxCallAction.action = data::ToxCallAction::Action::Reject;
+            toxCallAction.action = data::ToxCallAction::Action::HandsetOn;
             toxCallAction.friendNumber = _callState.friendNumber;
 
             Message::Ptr m = createMessage(toxCallAction);
             emit internalMessage(m);
         }
     }
-    if (_callState.direction == data::ToxCallState::Direction::Incoming
-        && _callState.callState == data::ToxCallState::CallState::InProgress)
+
+    // Входящий вызов принят
+    else if (_callState.direction == data::ToxCallState::Direction::Incoming
+             && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
         if (phoneDiverter().isRinging())
             phoneDiverter().stopRing();
 
         phoneDiverter().stopDialTone();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Outgoing
-        && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+
+    // Ожидание ответа на исходящий вызов
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing
+             && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
         if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
             phoneDiverter().switchToUsb();
 
         phoneDiverter().stopDialTone();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Outgoing
-        && _callState.callState == data::ToxCallState::CallState::InProgress)
+
+    // Исходящий вызов принят
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing
+             && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
         phoneDiverter().stopDialTone();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Undefined
-        && _callState.callState == data::ToxCallState::CallState::Undefined)
+
+    // Вызов завершен
+    else if (_callState.direction == data::ToxCallState::Direction::Undefined
+             && _callState.callState == data::ToxCallState::CallState::IsComplete)
     {
         if (phoneDiverter().isRinging())
             phoneDiverter().stopRing();
 
-        phoneDiverter().setMode(_diverterDefaultMode);
-        if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
-        {
-            phoneDiverter().startDialTone();
-        }
-        else // PhoneDiverter::Handset::Off
-        {
-            if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
-                phoneDiverter().stopDialTone();
-        }
+        if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
+            phoneDiverter().switchToUsb();
+
+        phoneDiverter().stopDialTone();
     }
 
-    if (toxConfig().isActive())
+    // Механизм вызовов переведен в неопределенное состояние
+    else if (_callState.direction == data::ToxCallState::Direction::Undefined
+             && _callState.callState == data::ToxCallState::CallState::Undefined)
     {
-        data::DiverterInfo diverterInfo;
-        fillPhoneDiverter(diverterInfo);
-        Message::Ptr m = createMessage(diverterInfo);
-        toxConfig().send(m);
+        setDiverterToDefaultState();
+        _diverterPhoneNumber.clear();
     }
+    updateConfigDiverterInfo();
 }
 
 void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
@@ -674,19 +682,29 @@ void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message
     }
 }
 
+void ToxPhoneApplication::command_PlaybackFinish(const Message::Ptr& message)
+{
+    if (_callState.direction == data::ToxCallState::Direction::Undefined
+        && _callState.callState == data::ToxCallState::CallState::Undefined)
+    {
+        setDiverterToDefaultState();
+        _diverterPhoneNumber.clear();
+    }
+}
+
 void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
 {
     YamlConfig::Func loadFunc = [&diverterInfo](YAML::Node& node, bool)
     {
         diverterInfo.active = node["active"].as<bool>(true);
-        string str = node["default_mode"].as<string>("PSTN");
-        utl::trim(str);
-        diverterInfo.defaultMode = (str == "PSTN")
+        string s = node["default_mode"].as<string>("PSTN"); utl::trim(s);
+        diverterInfo.defaultMode = (s == "PSTN")
                                    ? data::DiverterDefaultMode::Pstn
                                    : data::DiverterDefaultMode::Usb;
 
-        str = node["ring_tone"].as<string>("DbDt");
-        diverterInfo.ringTone = QString::fromUtf8(str.c_str()).trimmed();
+        s = node["ring_tone"].as<string>("DbDt"); utl::trim(s);
+        diverterInfo.ringTone = QString::fromUtf8(s.c_str());
+
         return true;
     };
     config::state().getValue("diverter", loadFunc);
@@ -704,6 +722,17 @@ void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
             ? "PSTN" : "USB";
         diverterInfo.ringTone = phoneDiverter().ringTone();
     }
+}
+
+void ToxPhoneApplication::updateConfigDiverterInfo()
+{
+    if (!toxConfig().isActive())
+        return;
+
+    data::DiverterInfo diverterInfo;
+    fillPhoneDiverter(diverterInfo);
+    Message::Ptr m = createMessage(diverterInfo);
+    toxConfig().send(m);
 }
 
 void ToxPhoneApplication::initPhoneDiverter()
@@ -736,6 +765,28 @@ void ToxPhoneApplication::initPhoneDiverter()
     {
         Message::Ptr m = createMessage(diverterInfo);
         toxConfig().send(m);
+    }
+}
+
+void ToxPhoneApplication::setDiverterToDefaultState()
+{
+    if (!diverterIsActive())
+        return;
+
+    if (phoneDiverter().isRinging())
+        phoneDiverter().stopRing();
+
+    if (phoneDiverter().mode() != _diverterDefaultMode)
+        phoneDiverter().setMode(_diverterDefaultMode);
+
+    if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+    {
+        phoneDiverter().startDialTone();
+    }
+    else // PhoneDiverter::Handset::Off
+    {
+        if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
+            phoneDiverter().stopDialTone();
     }
 }
 
@@ -802,8 +853,9 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     if (!diverterIsActive())
         return;
 
-    if (!(_callState.direction == data::ToxCallState::Direction::Undefined
-          && _callState.callState == data::ToxCallState::CallState::Undefined))
+    bool canToCall = _callState.direction == data::ToxCallState::Direction::Undefined
+                     && _callState.callState == data::ToxCallState::CallState::Undefined;
+    if (!canToCall)
         return;
 
     if (val >= 0x00 && val < 0x0a)
@@ -814,7 +866,15 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     {
         // Нажата '*'
         if (_diverterPhoneNumber.isEmpty())
-            phoneDiverter().startDialTone();
+        {
+            if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
+            {
+                phoneDiverter().switchToUsb();
+                updateConfigDiverterInfo();
+            }
+            if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+                phoneDiverter().startDialTone();
+        }
     }
     else if (val == 0x0c)
     {
@@ -832,6 +892,13 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
         {
             log_error_m << "Failed convert phone number "
                         << phoneNumber << " to integer";
+
+            if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
+            {
+                phoneDiverter().stopDialTone();
+                audioDev().playError();
+            }
+            _diverterPhoneNumber.clear();
             return;
         }
 
@@ -840,6 +907,13 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
         {
             log_error_m << "Failed find friend public key in phones-hash list "
                         << "for phone number " << phoneNum;
+
+            if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
+            {
+                phoneDiverter().stopDialTone();
+                audioDev().playError();
+            }
+            _diverterPhoneNumber.clear();
             return;
         }
 
@@ -849,6 +923,13 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
         {
             log_error_m << "Incorrect friend number for friend public key "
                         << friendPubKey;
+
+            if (phoneDiverter().mode() == PhoneDiverter::Mode::Usb)
+            {
+                phoneDiverter().stopDialTone();
+                audioDev().playError();
+            }
+            _diverterPhoneNumber.clear();
             return;
         }
         log_debug_m << "Call phone number: *" << phoneNum
@@ -867,6 +948,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
 void ToxPhoneApplication::phoneDiverterHandset(PhoneDiverter::Handset handset)
 {
     _diverterPhoneNumber.clear();
+
     if (!diverterIsActive())
         return;
 
@@ -901,17 +983,29 @@ void ToxPhoneApplication::phoneDiverterHandset(PhoneDiverter::Handset handset)
         {
             Message::Ptr m = createMessage(toxCallAction);
             emit internalMessage(m);
+            return;
         }
 
-        if (_diverterDefaultMode == PhoneDiverter::Mode::Usb)
-            phoneDiverter().stopDialTone();
-    }
+        if (_callState.direction == data::ToxCallState::Direction::Undefined
+            && _callState.callState == data::ToxCallState::CallState::IsComplete)
+        {
+            data::DiverterHandset diverterHandset;
+            diverterHandset.on = false;
 
-    else if (handset == PhoneDiverter::Handset::On)
+            Message::Ptr m = createMessage(diverterHandset);
+            emit internalMessage(m);
+        }
+        else if (_callState.direction == data::ToxCallState::Direction::Undefined
+                 && _callState.callState == data::ToxCallState::CallState::Undefined)
+        {
+            setDiverterToDefaultState();
+        }
+    }
+    else // PhoneDiverter::Handset::On
     {
         // Принять входящий вызов
         if (_callState.direction == data::ToxCallState::Direction::Incoming
-                 && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+            && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
         {
             data::ToxCallAction toxCallAction;
             toxCallAction.action = data::ToxCallAction::Action::Accept;

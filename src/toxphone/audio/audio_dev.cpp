@@ -94,6 +94,8 @@ AudioDev::AudioDev()
     _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
     _recordAudioStreamInfo.type   = data::AudioStreamInfo::Type::Record;
 
+    _playbackTimer.setSingleShot(true);
+
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &AudioDev::command_##COMMAND, this);
 
@@ -180,17 +182,80 @@ void AudioDev::deinit()
     _paApi = 0;
 }
 
-void AudioDev::startRingtone()
+void AudioDev::playRingtone()
 {
-    startPlayback("sound/ringtone.wav", std::numeric_limits<int>::max());
+    QObject::disconnect(&_playbackTimer, 0, this, 0);
+    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playRingtoneByTimer()));
+    _playbackTimer.start(500);
 }
 
-void AudioDev::startOutgoingCall()
+void AudioDev::playOutgoing()
 {
-    startPlayback("sound/outgoing_call.wav", std::numeric_limits<int>::max());
+    QObject::disconnect(&_playbackTimer, 0, this, 0);
+    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playOutgoingByTimer()));
+    _playbackTimer.start(500);
 }
 
-void AudioDev::startPlayback(const QString& fileName, int cycleCount)
+void AudioDev::playBusy()
+{
+    QObject::disconnect(&_playbackTimer, 0, this, 0);
+    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playBusyByTimer()));
+    _playbackTimer.start(500);
+}
+
+void AudioDev::playFail()
+{
+    QObject::disconnect(&_playbackTimer, 0, this, 0);
+    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playFailByTimer()));
+    _playbackTimer.start(500);
+}
+
+void AudioDev::playError()
+{
+    QObject::disconnect(&_playbackTimer, 0, this, 0);
+    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playErrorByTimer()));
+    _playbackTimer.start(500);
+}
+
+void AudioDev::playFake()
+{
+    // 'Проигрываем' фиктивный звук
+    data::PlaybackFinish playbackFinish;
+    playbackFinish.code = data::PlaybackFinish::Code::Fake;
+
+    Message::Ptr m = createMessage(playbackFinish);
+    emit internalMessage(m);
+}
+
+void AudioDev::playRingtoneByTimer()
+{
+    startPlayback("sound/ringtone.wav", std::numeric_limits<int>::max(),
+                  data::PlaybackFinish::Code::Ringtone);
+}
+
+void AudioDev::playOutgoingByTimer()
+{
+    startPlayback("sound/outgoing_call.wav", std::numeric_limits<int>::max(),
+                  data::PlaybackFinish::Code::Outgoing);
+}
+
+void AudioDev::playBusyByTimer()
+{
+    startPlayback("sound/busy.wav", 15, data::PlaybackFinish::Code::Busy);
+}
+
+void AudioDev::playFailByTimer()
+{
+    startPlayback("sound/fail.wav", 1, data::PlaybackFinish::Code::Fail);
+}
+
+void AudioDev::playErrorByTimer()
+{
+    startPlayback("sound/error.wav", 1, data::PlaybackFinish::Code::Error);
+}
+
+void AudioDev::startPlayback(const QString& fileName, int cycleCount,
+                             data::PlaybackFinish::Code playbackFinishCode)
 {
     QMutexLocker locker(&_streamLock); (void) locker;
 
@@ -268,11 +333,13 @@ void AudioDev::startPlayback(const QString& fileName, int cycleCount)
     }
     _playbackActive = true;
     _playbackCycleCount = cycleCount;
+    _playbackFinish.code = playbackFinishCode;
     log_debug_m << "Playback stream start (file: " << _playbackFile.fileName() << ")";
 }
 
 void AudioDev::stopPlayback()
 {
+    _playbackTimer.stop();
     QMutexLocker locker(&_streamLock); (void) locker;
 
     if (!_playbackActive)
@@ -902,7 +969,7 @@ void AudioDev::command_AudioTest(const Message::Ptr& message)
         if (audioTest.begin)
         {
             stopPlayback();
-            startPlayback("sound/test.wav");
+            startPlayback("sound/test.wav", 1, data::PlaybackFinish::Code::Test);
             _playbackTest = true;
         }
         else
@@ -928,35 +995,87 @@ void AudioDev::command_ToxCallState(const Message::Ptr& message)
     {
         stopAudioTests();
     }
+
     if (_callState.direction == data::ToxCallState::Direction::Incoming
         && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
         if (!diverterIsActive())
-            startRingtone();
+            playRingtone();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Incoming
-        && _callState.callState == data::ToxCallState::CallState::InProgress)
+    else if (_callState.direction == data::ToxCallState::Direction::Incoming
+             && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
         stopPlayback();
         startRecord();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Outgoing
-        && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing
+             && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
     {
-        startOutgoingCall();
+        playOutgoing();
     }
-    if (_callState.direction == data::ToxCallState::Direction::Outgoing
-        && _callState.callState == data::ToxCallState::CallState::InProgress)
+    else if (_callState.direction == data::ToxCallState::Direction::Outgoing
+             && _callState.callState == data::ToxCallState::CallState::InProgress)
     {
         stopPlayback();
         startRecord();
     }
-    if (_callState.direction == data::ToxCallState::Direction:: Undefined
-        && _callState.callState == data::ToxCallState::CallState::Undefined)
+    else if (_callState.direction == data::ToxCallState::Direction::Undefined
+             && _callState.callState == data::ToxCallState::CallState::IsComplete)
     {
-        stopPlayback();
         stopVoice();
         stopRecord();
+
+        if (_callState.callEnd == data::ToxCallState::CallEnd::Undefined
+            || _callState.callEnd == data::ToxCallState::CallEnd::SelfEnd
+            || _callState.callEnd == data::ToxCallState::CallEnd::SelfReject
+            || _callState.callEnd == data::ToxCallState::CallEnd::FriendEnd)
+        {
+            if (_playbackActive)
+            {
+                _emitPlaybackFinish = false;
+                stopPlayback();
+            }
+            playFake();
+        }
+        else if (_callState.callEnd == data::ToxCallState::CallEnd::FriendBusy
+                 || _callState.callEnd == data::ToxCallState::CallEnd::FriendReject)
+        {
+            if (_playbackActive)
+            {
+                _emitPlaybackFinish = false;
+                stopPlayback();
+            }
+            playBusy();
+        }
+        else if (_callState.callEnd == data::ToxCallState::CallEnd::NotConnected)
+        {
+            if (_playbackActive)
+            {
+                _emitPlaybackFinish = false;
+                stopPlayback();
+            }
+            playFail();
+        }
+        else if (_callState.callEnd == data::ToxCallState::CallEnd::Error)
+        {
+            if (_playbackActive)
+            {
+                _emitPlaybackFinish = false;
+                stopPlayback();
+            }
+            playError();
+        }
+        else
+        {
+            stopPlayback();
+        }
+    }
+    else  if (_callState.direction == data::ToxCallState::Direction:: Undefined
+              && _callState.callState == data::ToxCallState::CallState::Undefined)
+    {
+        stopVoice();
+        stopRecord();
+        stopPlayback();
     }
 }
 
@@ -1816,9 +1935,16 @@ void AudioDev::playback_stream_drain(pa_stream* stream, int success, void *userd
         }
         ad->_playbackTest = false;
     }
-
     if (pa_stream_disconnect(stream) < 0)
         log_error_m << "Failed call pa_stream_disconnect()" << paStrError(stream);
+
+    if (ad->_emitPlaybackFinish)
+    {
+        Message::Ptr m = createMessage(ad->_playbackFinish);
+        emit ad->internalMessage(m);
+    }
+    ad->_playbackFinish.code = data::PlaybackFinish::Code::Undefined;
+    ad->_emitPlaybackFinish = true;
 
     pa_stream_unref(stream);
     ad->_playbackStream = 0;

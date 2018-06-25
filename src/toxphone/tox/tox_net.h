@@ -29,6 +29,10 @@ public:
     void deinit();
     Tox* tox() const {return _tox;}
 
+signals:
+    // Используется для отправки сообщения в пределах программы
+    void internalMessage(const communication::Message::Ptr&);
+
 public slots:
     void message(const communication::Message::Ptr&);
 
@@ -84,6 +88,10 @@ private:
     static void tox_friend_connection_status(Tox* tox, uint32_t friend_number,
                                              TOX_CONNECTION connection_status,
                                              void* user_data);
+    static void tox_friend_lossless_packet  (Tox* tox, uint32_t friend_number,
+                                             const uint8_t* data, size_t length,
+                                             void* user_data);
+
 private:
     struct BootstrapNode
     {

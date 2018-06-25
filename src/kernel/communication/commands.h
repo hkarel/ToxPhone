@@ -127,6 +127,11 @@ extern const QUuidEx ToxCallAction;
 extern const QUuidEx ToxCallState;
 
 /**
+  Команда возвращает причину по которой друг завершил звонок
+*/
+extern const QUuidEx FriendCallEndCause;
+
+/**
   Вспомогательная команда, используется для отправки tox-сообщения
 */
 extern const QUuidEx ToxMessage;
@@ -168,6 +173,15 @@ extern const QUuidEx ConfigAuthorization;
 */
 extern const QUuidEx ConfigSavePassword;
 
+/**
+  Информирует модули программы о том, что воспроизведение звука завершено
+*/
+extern const QUuidEx PlaybackFinish;
+
+/**
+  Информирует модули программы о том, телефонная трубка поднята или опущена
+*/
+extern const QUuidEx DiverterHandset;
 
 } // namespace command
 
@@ -499,6 +513,9 @@ struct ToxCallState : Data<&command::ToxCallState,
         Undefined     = 0,
         WaitingAnswer = 1, // Процесс установки соединения
         InProgress    = 2, // Соединение установлено
+        IsComplete    = 3  // Используется для совершения дополнительных
+                           // действий после того как звонок завершен,
+                           // например для проигрывания звуков.
     };
 
     // Состояние завершения соединения. Сейчас предполагается, что состояние
@@ -511,9 +528,10 @@ struct ToxCallState : Data<&command::ToxCallState,
         SelfEnd      = 1,  // Звонок удачно завершен пользователем
         FriendEnd    = 2,  // Звонок удачно завершен другом
         NotConnected = 3,  // Друг не подключен
-        FriendInCall = 4,  // Друг находиться в состоянии звонка, то есть линия
+        FriendBusy   = 4,  // Друг находиться в состоянии звонка, то есть линия
                            // занята.
-        Reject       = 5,  // Пользователь отклонил входящий вызов
+        SelfReject   = 5,  // Пользователь отклонил входящий вызов
+        FriendReject = 6,  // Друг отклонил входящий вызов
         Error        = 10  // В процессе звонка произошла какая-то ошибка
     };
 
@@ -527,6 +545,22 @@ struct ToxCallState : Data<&command::ToxCallState,
     DECLARE_B_SERIALIZE_FUNC
 };
 
+struct FriendCallEndCause : Data<&command::FriendCallEndCause,
+                                  Message::Type::Command>
+{
+    enum class CallEnd : quint32
+    {
+        Undefined    = 0,
+        FriendEnd    = 1,  // Звонок удачно завершен другом
+        FriendBusy   = 2,  // Друг находиться в состоянии звонка, то есть линия
+                           // занята.
+        FriendReject = 3,  // Друг отклонил входящий вызов
+        Error        = 10  // В процессе звонка произошла какая-то ошибка
+    };
+    CallEnd callEnd = {CallEnd::Undefined};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
 
 struct ToxMessage : Data<&command::ToxMessage,
                           Message::Type::Command>
@@ -656,6 +690,35 @@ struct ConfigSavePassword : Data<&command::ConfigSavePassword,
     QByteArray nonce;    // Разовый nonce
     QByteArray password; // Зашифрованный пароль
 
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct PlaybackFinish : Data<&command::PlaybackFinish,
+                              Message::Type::Command>
+{
+    // Код звука, который был воспроизведен через playback-механизм
+    enum class Code : quint32
+    {
+        Undefined = 0,
+        Ringtone  = 1,
+        Outgoing  = 2,
+        Busy      = 3,
+        Fail      = 4,
+        Error     = 5,
+        Test      = 6,
+        Fake      = 10 // Используется в том случае, когда никакой звук
+                       // не проигрывается, но сообщение PlaybackFinish
+                       // все равно нужно отправить.
+    };
+    Code code = {Code::Undefined};
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct DiverterHandset : Data<&command::DiverterHandset,
+                               Message::Type::Command>
+{
+    bool on = {false};
     DECLARE_B_SERIALIZE_FUNC
 };
 

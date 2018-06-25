@@ -9,6 +9,7 @@
 #include "common/voice_frame.h"
 #include "common/voice_filters.h"
 #include "kernel/communication/commands.h"
+#include "diverter/phone_diverter.h"
 
 #include "shared/_list.h"
 #include "shared/defmac.h"
@@ -35,17 +36,34 @@ public:
     bool stop(unsigned long time = ULONG_MAX);
     void terminate() {}
 
+signals:
+    // Используется для отправки сообщения в пределах программы
+    void internalMessage(const communication::Message::Ptr&);
+
 public slots:
     void message(const communication::Message::Ptr&);
 
-    // Старт проигрывания звука звонка
-    void startRingtone();
+    // Проигрывания звука звонка
+    void playRingtone();
 
-    // Старт проигрывания звука исходящего вызова
-    void startOutgoingCall();
+    // Проигрывания звука исходящего вызова
+    void playOutgoing();
+
+    // Проигрывания звука "занято"
+    void playBusy();
+
+    // Проигрывания звука "неудача"
+    void playFail();
+
+    // Проигрывания звука "ошибка"
+    void playError();
+
+    // Используется для эмитирования сообщения завершения проигрывания звука
+    void playFake();
 
     // Старт/стоп воспроизведения звуков
-    void startPlayback(const QString& fileName, int cycleCount = 1);
+    void startPlayback(const QString& fileName, int cycleCount = 1,
+                       data::PlaybackFinish::Code playbackFinishCode = data::PlaybackFinish::Code::Undefined);
     void stopPlayback();
 
     // Старт/стоп воспроизведения голоса
@@ -56,14 +74,18 @@ public slots:
     void startRecord();
     void stopRecord();
 
-    // Признак активности звука звонка
-    //bool ringtoneActive() const {return _ringtoneActive;}
-
     // Признак активности воспроизведения голосового потока
     bool voiceActive() const {return _voiceActive;}
 
     // Признак активности записи голосового потока
     bool recordActive() const {return _recordActive;}
+
+private slots:
+    void playRingtoneByTimer();
+    void playOutgoingByTimer();
+    void playBusyByTimer();
+    void playFailByTimer();
+    void playErrorByTimer();
 
 private:
     Q_OBJECT
@@ -184,6 +206,10 @@ private:
 
     atomic_int _playbackCycleCount = {1};
     WavFile _playbackFile;
+    QTimer _playbackTimer;
+
+    data::PlaybackFinish _playbackFinish;
+    atomic_bool _emitPlaybackFinish = {true};
 
     // Индикатор состояния звонка
     data::ToxCallState _callState;
