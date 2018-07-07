@@ -4,6 +4,10 @@
 # Performs the watchdog-function when ToxPhone is started in user mode
 #
 
+# Disable multiple launch of script
+min_pid=$(ps axw -o pid,command | grep -P '^\s*\d+\s+/bin/bash.+toxphone-watchdog$' | cut -f1 -d' ' | sort | head -n1)
+[ -n "$min_pid" -a  "$min_pid" != "$$" ] && exit 0;
+
 toxphone=/opt/toxphone/toxphone
 while true; do
     res=$(ps axw -o command | grep -P "^/opt/toxphone/(toxphone\$|toxphone )" | grep -v 'grep')
@@ -13,12 +17,5 @@ while true; do
         set +e
         $toxphone &
     fi
-    sleep $(($RANDOM % 10 + 60))
-
-    res=$(ps axw -o command | grep -P '^/bin/bash.+toxphone-watchdog$' | wc -l)
-    if [ "$res" -gt 2 ]; then
-        echo "$res" >> /tmp/toxphone-watchdog
-        echo "---"  >> /tmp/toxphone-watchdog
-        exit 0
-    fi
+    sleep 60
 done
