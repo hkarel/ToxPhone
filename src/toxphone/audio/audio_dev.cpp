@@ -625,7 +625,6 @@ void AudioDev::readAudioStreamVolume(data::AudioStreamInfo& streamInfo, const ch
         config::state().getValue(key, personalVolume, false);
         if (personalVolume)
         {
-            //key = "phones." + _callState.friendPublicKey + ".audio_streams.playback_volume";
             key = "phones." + string(_callState.friendPublicKey) + ".audio_streams." + confKey;
             if (!config::state().getValue(key, streamInfo.volume, false))
                 personalVolume = false;
@@ -1200,22 +1199,6 @@ void AudioDev::updateStartVolume(const data::AudioDevInfo& audioDevInfo)
         QMetaObject::invokeMethod(this, "message", Qt::QueuedConnection,
                                   Q_ARG(communication::Message::Ptr, m));
     }
-
-//    quint32 currentVolume = audioDevInfo.volume;
-//    audioDevChange.value += (currentVolume < audioDevInfo.volumeSteps) ? 1 : -1;
-//    Message::Ptr m1 = createMessage(audioDevChange);
-
-//    audioDevChange.value = currentVolume;
-//    Message::Ptr m2 = createMessage(audioDevChange);
-
-//    { //Block for QMutexLocker
-//        QMutexLocker locker(&_streamLock); (void) locker;
-//        _updateStartVolume.enqueue(m1);
-//        _updateStartVolume.enqueue(m2);
-//    }
-//    QMetaObject::invokeMethod(&_updateStartVolumeTimer, "start", Qt::QueuedConnection);
-//    message(m);
-
 }
 
 void AudioDev::fillAudioStreamInfo(const pa_sink_input_info* info,
@@ -1355,6 +1338,7 @@ void AudioDev::context_state(pa_context* context, void* userdata)
     log_debug2_m << "context_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     switch (pa_context_get_state(context))
     {
         case PA_CONTEXT_UNCONNECTED:
@@ -1419,6 +1403,7 @@ void AudioDev::context_subscribe(pa_context* context, pa_subscription_event_type
     log_debug2_m << "context_subscribe()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     switch (type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK)
     {
         case PA_SUBSCRIPTION_EVENT_CARD:
@@ -1851,6 +1836,7 @@ void AudioDev::playback_stream_started(pa_stream* stream, void* userdata)
 void AudioDev::playback_stream_write(pa_stream* stream, size_t nbytes, void* userdata)
 {
     //log_debug2_m << "playback_stream_write()";
+
     AudioDev* ad = static_cast<AudioDev*>(userdata);
 
     void* data;
@@ -1958,6 +1944,7 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
     log_debug2_m << "voice_stream_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     pa_context* context;
     uint32_t index;
     const pa_buffer_attr* attr = 0;
@@ -2088,6 +2075,7 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
     log_debug2_m << "record_stream_state()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata);
+
     pa_context* context;
     uint32_t index;
     const pa_buffer_attr* attr = 0;
@@ -2176,6 +2164,7 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
     //log_debug2_m << "record_stream_read()";
 
     AudioDev* ad = static_cast<AudioDev*>(userdata); (void) ad;
+
     const void* data;
     while (pa_stream_readable_size(stream) > 0)
     {
