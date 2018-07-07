@@ -694,17 +694,23 @@ void ToxPhoneApplication::command_PlaybackFinish(const Message::Ptr& message)
 
 void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
 {
-    YamlConfig::Func loadFunc = [&diverterInfo](YAML::Node& node, bool)
+    YamlConfig::Func loadFunc =
+        [&diverterInfo](YamlConfig* conf, YAML::Node& node, bool logWarn)
     {
-        diverterInfo.active = node["active"].as<bool>(true);
-        string s = node["default_mode"].as<string>("PSTN"); utl::trim(s);
-        diverterInfo.defaultMode = (s == "PSTN")
+        if (!node.IsMap())
+            return false;
+
+        diverterInfo.active = false;
+        conf->getValue(node, "active", diverterInfo.active, logWarn);
+
+        QString defaultMode = "PSTN";
+        conf->getValue(node, "default_mode", defaultMode, logWarn);
+        diverterInfo.defaultMode = (defaultMode == "PSTN")
                                    ? data::DiverterDefaultMode::Pstn
                                    : data::DiverterDefaultMode::Usb;
 
-        s = node["ring_tone"].as<string>("DbDt"); utl::trim(s);
-        diverterInfo.ringTone = QString::fromUtf8(s.c_str());
-
+        diverterInfo.ringTone = "DbDt";
+        conf->getValue(node, "ring_tone", diverterInfo.ringTone, logWarn);
         return true;
     };
     config::state().getValue("diverter", loadFunc);
@@ -792,7 +798,7 @@ void ToxPhoneApplication::setDiverterToDefaultState()
 
 void ToxPhoneApplication::phoneDiverterAttached()
 {
-    YamlConfig::Func loadFunc = [this](YAML::Node& phones, bool)
+    YamlConfig::Func loadFunc = [this](YamlConfig* conf, YAML::Node& phones, bool)
     {
         for(auto  it = phones.begin(); it != phones.end(); ++it)
         {
@@ -815,9 +821,9 @@ void ToxPhoneApplication::phoneDiverterAttached()
             }
             */
 
-            YAML::Node val = it->second;
-            quint32 phoneNumber = val["phone_number"].as<int>(0);
-            _phonesHash[phoneNumber] = publicKey;
+            quint32 phoneNumber = 0;
+            if (conf->getValue(it->second, "phone_number", phoneNumber, false))
+                _phonesHash[phoneNumber] = publicKey;
         }
         return true;
     };

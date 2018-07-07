@@ -193,6 +193,9 @@ void MainWindow::socketDisconnected(communication::SocketDescriptor)
     }
     ui->listFriendRequests->clear();
 
+    ui->lineRequestToxId->clear();
+    ui->txtRequestMessage->clear();
+
     ui->cboxAudioPlayback->clear();
     ui->cboxAudioRecord->clear();
     _sinkDevices.clear();

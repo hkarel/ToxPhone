@@ -122,8 +122,6 @@ void helpInfo(/*const char * binary*/)
     log_info << "  -h this help";
 }
 
-void testRingBuffer();
-
 int main(int argc, char *argv[])
 {
     // Устанавливаем в качестве разделителя целой и дробной части символ '.',

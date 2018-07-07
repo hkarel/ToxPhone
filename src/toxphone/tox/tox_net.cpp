@@ -75,14 +75,22 @@ bool ToxNet::init()
 
     _bootstrapNodes.clear();
 
-    YamlConfig::Func bootstrapFunc = [this](YAML::Node& nodes, bool)
+    YamlConfig::Func bootstrapFunc = [this](YamlConfig* conf,
+                                            YAML::Node& nodes, bool logWarn)
     {
         for (const YAML::Node& node : nodes)
         {
             BootstrapNode bn;
-            bn.address = QString::fromStdString(node["address"].as<string>());
+            conf->getValue(node, "name", bn.name, false);
+            conf->getValue(node, "address", bn.address, logWarn);
+            if (bn.address.isEmpty())
+            {
+                log_error_m << "Bootstrap nodes load: Empty address";
+                continue;
+            }
 
-            int port = node["port"].as<int>(0);
+            int port = 0;
+            conf->getValue(node, "port", port, logWarn);
             if (port < 1 || port > 65535)
             {
                 log_error_m << "Bootstrap nodes load"
@@ -93,7 +101,7 @@ bool ToxNet::init()
             }
             bn.port = port;
 
-            bn.publicKey = QString::fromStdString(node["public_key"].as<string>());
+            conf->getValue(node, "public_key", bn.publicKey, logWarn);
             if (bn.publicKey.length() < (TOX_PUBLIC_KEY_SIZE * 2))
             {
                 log_error_m << "Bootstrap nodes load"
@@ -101,8 +109,6 @@ bool ToxNet::init()
                             << ". Node " << bn.address << " will be skipped";
                 continue;
             }
-            bn.name = QString::fromStdString(node["name"].as<string>());
-
             _bootstrapNodes.append(bn);
         }
         return true;
@@ -624,7 +630,6 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
             error.code = 1;
         }
     }
-    //config::state().reRead();
     config::state().remove("friend_requests." + string(publicKey));
     config::state().save();
 
@@ -705,22 +710,29 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
 
     QByteArray removePubKey;
     quint32 phoneNumber = quint32(-1);
-    YAML::Node phones = config::state().getNode("phones");
-    for(auto  it = phones.begin(); it != phones.end(); ++it)
-    {
-        QByteArray publicKey = it->first.as<string>("").c_str();
-        if (publicKey.isEmpty())
-            continue;
 
-        YAML::Node val = it->second;
-        phoneNumber = val["phone_number"].as<int>(0);
-        if (phoneNumber == phoneFriendInfo.phoneNumber
-            && publicKey != phoneFriendInfo.publicKey)
+    YamlConfig::Func getPhones = [&](YamlConfig* conf, YAML::Node& phones, bool)
+    {
+        for(auto  it = phones.begin(); it != phones.end(); ++it)
         {
-            removePubKey = publicKey;
-            break;
+            QByteArray publicKey = it->first.as<string>("").c_str();
+            if (publicKey.isEmpty())
+                continue;
+
+            phoneNumber = quint32(-1);
+            conf->getValue(it->second, "phone_number", phoneNumber, false);
+
+            if (phoneNumber == phoneFriendInfo.phoneNumber
+                && publicKey != phoneFriendInfo.publicKey)
+            {
+                removePubKey = publicKey;
+                break;
+            }
         }
-    }
+        return true;
+    };
+    config::state().getValue("phones", getPhones);
+
     if (!removePubKey.isEmpty())
     {
         config::state().remove("phones." + string(removePubKey) + ".phone_number");
@@ -739,8 +751,11 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
         }
     }
 
-    YamlConfig::Func saveFunc = [&phoneFriendInfo](YAML::Node& node, bool)
+    YamlConfig::Func saveFunc = [&phoneFriendInfo](YamlConfig*, YAML::Node& node, bool)
     {
+        if (node.IsDefined() && !node.IsMap())
+            node = YAML::Node();
+
         node["friend_name"] = phoneFriendInfo.name.toUtf8().constData();
         if (!phoneFriendInfo.nameAlias.trimmed().isEmpty())
             node["friend_alias"] = phoneFriendInfo.nameAlias.trimmed().toUtf8().constData();
@@ -754,12 +769,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
 
         return true;
     };
-    if (phoneFriendInfo.phoneNumber == 0
-        && phoneFriendInfo.nameAlias.trimmed().isEmpty())
-        config::state().remove  ("phones." + string(phoneFriendInfo.publicKey));
-    else
-        config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
-
+    config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
     config::state().save();
 
     log_verbose_m << "Phone number " << phoneFriendInfo.phoneNumber
@@ -851,8 +861,12 @@ void ToxNet::updateFriendRequests()
         return;
 
     data::FriendRequests friendRequests;
-    YamlConfig::Func loadFunc = [&friendRequests](YAML::Node& friend_requests, bool)
+    YamlConfig::Func loadFunc =
+        [&friendRequests](YamlConfig* conf, YAML::Node& friend_requests, bool logWarn)
     {
+        if (!friend_requests.IsMap())
+            return false;
+
         for(auto  it = friend_requests.begin(); it != friend_requests.end(); ++it)
         {
             QString publicKey = QString::fromStdString(it->first.as<string>(""));
@@ -872,11 +886,10 @@ void ToxNet::updateFriendRequests()
                 continue;
             }
 
-            YAML::Node val = it->second;
             data::FriendRequest friendRequest;
             friendRequest.publicKey = publicKey.toLatin1();
-            friendRequest.message   = QString::fromUtf8(val["message"].as<string>("").c_str());
-            friendRequest.dateTime  = QString::fromUtf8(val["date_time"].as<string>("").c_str());
+            conf->getValue(it->second, "message",   friendRequest.message,  logWarn);
+            conf->getValue(it->second, "date_time", friendRequest.dateTime, logWarn);
 
             friendRequests.list.append(friendRequest);
         }
@@ -922,17 +935,16 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
             tox_friend_get_connection_status(_tox, friendNumber, 0);
         item.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
     }
-    YamlConfig::Func loadFunc = [&item](YAML::Node& node, bool)
+    YamlConfig::Func loadFunc = [&item](YamlConfig* conf, YAML::Node& node, bool)
     {
-        string s = node["friend_alias"].as<string>("");
-        item.nameAlias = QString::fromUtf8(s.c_str()).trimmed();
-        item.phoneNumber = node["phone_number"].as<int>(0);
+        conf->getValue(node, "friend_alias", item.nameAlias, false);
+        conf->getValue(node, "phone_number", item.phoneNumber, false);
+        conf->getValue(node, "audio_streams.active", item.personalVolumes, false);
+        conf->getValue(node, "echo_mute", item.echoMute, false);
         return true;
     };
     string confKey = "phones." + string(item.publicKey);
     config::state().getValue(confKey, loadFunc, false);
-    config::state().getValue(confKey + ".audio_streams.active", item.personalVolumes, false);
-    config::state().getValue(confKey + ".echo_mute", item.echoMute, false);
     return true;
 }
 
@@ -951,15 +963,21 @@ void ToxNet::tox_friend_request(Tox* tox, const uint8_t* pub_key,
     string message {(char*)msg, length};
     string date_time = QDateTime::currentDateTime().toString("yyyy.MM.dd hh.mm.ss").toStdString();
 
-    YamlConfig::Func saveFunc = [&](YAML::Node& node, bool)
+    YamlConfig::Func saveFunc = [&](YamlConfig*, YAML::Node& node, bool)
     {
+        if (node.IsDefined() && !node.IsMap())
+            node = YAML::Node();
+
         node["message"] = message;
         node["date_time"] = date_time;
         return true;
     };
     config::state().setValue("friend_requests." + public_key, saveFunc);
-    YAML::Node node = config::state().getNode("friend_requests");
-    node.SetStyle(YAML::EmitterStyle::Block);
+    { //Block for YamlConfigLock
+        YamlConfigLock lock(config::state()); (void) lock;
+        YAML::Node node = config::state().getNode("friend_requests");
+        node.SetStyle(YAML::EmitterStyle::Block);
+    }
     config::state().save();
 
     ToxNet* tn = static_cast<ToxNet*>(user_data);

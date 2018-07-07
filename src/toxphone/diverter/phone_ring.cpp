@@ -47,7 +47,7 @@ QString PhoneRing::tone() const
 void PhoneRing::setTone(const QString& val)
 {
     SpinLocker locker(_toneLock); (void) locker;
-    _tone = val;
+    _tone = val.trimmed();
 }
 
 void PhoneRing::run()
