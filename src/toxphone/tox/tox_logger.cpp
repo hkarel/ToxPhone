@@ -25,7 +25,7 @@ void logger_callback_log(Logger *log, logger_cb *function, void *context, void *
     asm ("logger_callback_log");
 
 void logger_write(
-    const Logger* log, LOGGER_LEVEL level, const char* file, int line, const char* func,
+    const Logger* log, Logger_Level level, const char* file, int line, const char* func,
     const char* format, ...)
     asm ("logger_write");
 
@@ -48,7 +48,7 @@ void logger_callback_log(Logger *log, logger_cb *function, void *context, void *
 }
 
 void logger_write(
-    const Logger* log, LOGGER_LEVEL level, const char* file, int line, const char* func,
+    const Logger* log, Logger_Level level, const char* file, int line, const char* func,
     const char* format, ...)
 {
     (void) log;

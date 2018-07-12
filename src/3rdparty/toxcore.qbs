@@ -36,8 +36,12 @@ Project {
             //toxPrefix + "toxcore/logger.c",
 
             toxPrefix + "toxcore/logger.h",
+            toxPrefix + "toxcore/mono_time.c",
+            toxPrefix + "toxcore/mono_time.h",
             toxPrefix + "toxcore/network.c",
             toxPrefix + "toxcore/network.h",
+            toxPrefix + "toxcore/state.c",
+            toxPrefix + "toxcore/state.h",
             toxPrefix + "toxcore/util.c",
             toxPrefix + "toxcore/util.h",
         ]
@@ -48,6 +52,8 @@ Project {
         id: toxdht
         name: "ToxDHT"
         targetName: "toxdht"
+
+        Depends { name: "ToxNetwork" }
 
         files: [
             toxPrefix + "toxcore/DHT.c",
@@ -109,6 +115,7 @@ Project {
         targetName: "toxmessenger"
 
         Depends { name: "ToxNetCrypto" }
+        Depends { name: "ToxNetwork" }
         Depends { name: "ToxFriends" }
 
         files: [
@@ -249,5 +256,4 @@ Project {
             toxPrefix + "toxcore/logger.c",
         ]
     }
-
 }

@@ -26,7 +26,7 @@ Product {
     cpp.defines: [
         "USE_IPV6=1",
         "TCP_SERVER_USE_EPOLL",
-        "MIN_LOGGER_LEVEL=0",
+        "MIN_LOGGER_LEVEL=2",
     ]
 
     property var warnFlags: [
