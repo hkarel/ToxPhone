@@ -700,7 +700,7 @@ void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
         if (!node.IsMap())
             return false;
 
-        diverterInfo.active = false;
+        diverterInfo.active = true;
         conf->getValue(node, "active", diverterInfo.active, logWarn);
 
         QString defaultMode = "PSTN";
