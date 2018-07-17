@@ -71,7 +71,7 @@ private slots:
     void on_sliderStreamVoice_sliderReleased();
     void on_sliderStreamRecord_sliderReleased();
 
-    void on_cboxUseDiverter_stateChanged(int state);
+    void on_cboxUseDiverter_toggled(bool state);
 
     void on_rbtnDiverterPSTN_clicked(bool);
     void on_rbtnDiverterUSB_clicked(bool);

@@ -1334,10 +1334,26 @@ void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
     slider->setValue(current);
 }
 
-void MainWindow::on_cboxUseDiverter_stateChanged(int state)
+void MainWindow::on_cboxUseDiverter_toggled(bool state)
 {
+    if (!state)
+    {
+        QString msg = tr("Are you sure you want to turn off the phone diverter?\n"
+                         "If turn off this option, it will be impossible "
+                         "to make and receive calls through a landline phone.");
+        int res = QMessageBox::question(this, qApp->applicationName(), msg,
+                                        QMessageBox::Yes|QMessageBox::No,
+                                        QMessageBox::No);
+        if (res == QMessageBox::No)
+        {
+            ui->cboxUseDiverter->blockSignals(true);
+            ui->cboxUseDiverter->setChecked(true);
+            ui->cboxUseDiverter->blockSignals(false);
+            return;
+        }
+    }
     data::DiverterChange diverterChange;
-    diverterChange.active = (state != Qt::Unchecked);
+    diverterChange.active = state;
     diverterChange.changeFlag = data::DiverterChange::ChangeFlag::Active;
 
     Message::Ptr m = createMessage(diverterChange);
