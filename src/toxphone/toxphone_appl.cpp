@@ -611,6 +611,8 @@ void ToxPhoneApplication::command_ConfigAuthorization(const Message::Ptr& messag
     Message::Ptr m = createMessage(command::IncomingConfigConnection);
     m->setTag(quint64(message->socketDescriptor()));
     emit internalMessage(m);
+
+    sendToxPhoneInfo();
 }
 
 void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message)
