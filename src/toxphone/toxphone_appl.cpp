@@ -459,7 +459,7 @@ void ToxPhoneApplication::command_ConfigAuthorizationRequest(const Message::Ptr&
 
         Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(failed, answer);
-        toxConfig().send(answer);
+        tcp::listener().send(answer);
 
         data::CloseConnection closeConnection;
         closeConnection.description = failed.description;

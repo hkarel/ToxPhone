@@ -432,7 +432,6 @@ void ConnectionWindow::command_ConfigAuthorizationRequest(const Message::Ptr& me
             }
             Message::Ptr m = createMessage(configAuthorization);
             _socket->send(m);
-
         }
         else
         {
