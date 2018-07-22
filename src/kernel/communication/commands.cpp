@@ -113,6 +113,8 @@ bserial::RawVector ToxProfile::toRaw() const
     stream << toxId;
     stream << name;
     stream << status;
+    B_SERIALIZE_V2(stream)
+    stream << avatar;
     B_SERIALIZE_RETURN
 }
 
@@ -122,6 +124,8 @@ void ToxProfile::fromRaw(const bserial::RawVector& vect)
     stream >> toxId;
     stream >> name;
     stream >> status;
+    B_DESERIALIZE_V2(vect, stream)
+    stream >> avatar;
     B_DESERIALIZE_END
 }
 
@@ -191,6 +195,8 @@ bserial::RawVector FriendItem::toRaw() const
     B_SERIALIZE_V2(stream)
     stream << personalVolumes;
     stream << echoMute;
+    B_SERIALIZE_V3(stream)
+    stream << avatar;
     B_SERIALIZE_RETURN
 }
 
@@ -210,6 +216,8 @@ void FriendItem::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_V2(vect, stream)
     stream >> personalVolumes;
     stream >> echoMute;
+    B_DESERIALIZE_V3(vect, stream)
+    stream >> avatar;
     B_DESERIALIZE_END
 }
 

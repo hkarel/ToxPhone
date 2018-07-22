@@ -44,6 +44,8 @@ Project {
             "Q_DATA_STREAM_VERSION=QDataStream::Qt_4_8",
             "BPROTOCOL_VERSION_LOW=0",
             "BPROTOCOL_VERSION_HIGH=1",
+            //"UDP_LONGSIG=1",
+            //"UDP_SIGNATURE=\"TOXPHONE\"",
             "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",

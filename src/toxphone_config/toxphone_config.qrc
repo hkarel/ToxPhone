@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/connection_lock.png</file>
+        <file>resources/avatar_default.svg</file>
+        <file>resources/offline.png</file>
+        <file>resources/online.png</file>
+    </qresource>
+</RCC>

@@ -35,7 +35,13 @@ void ConnectionWidget::setConfigConnectCount(int val)
 {
     _configConnectCount = val;
     if (_configConnectCount != 0)
-        ui->labelConnectCount->setText("X");
+    {
+        QPixmap pixmap = QPixmap("://resources/connection_lock.png");
+        int size = 20;
+        if (pixmap.height() > size || pixmap.width() > size)
+            pixmap = pixmap.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        ui->labelConnectCount->setPixmap(pixmap);
+    }
     else
         ui->labelConnectCount->clear();
 }

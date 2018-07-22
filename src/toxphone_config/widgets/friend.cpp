@@ -35,61 +35,34 @@ void FriendWidget::setProperties(const data::FriendItem& val)
     else
         ui->labelPhoneNumber->clear();
 
-//    switch (_properties.changeFlag)
-//    {
-//        case data::FriendItem::ChangeFlag::Name:
-//            fw->setName(friendItem.name);
-//            break;
-//        case data::FriendItem::ChangeFlag::StatusMessage:
-//            fw->setStatusMessage(friendItem.statusMessage);
-//            break;
-//        case data::FriendItem::ChangeFlag::IsConnecnted:
-//            fw->setConnectStatus(friendItem.isConnecnted);
-//            break;
-//        default:
-//            break;
-//    }
-
-    if (_properties.isConnecnted)
-        ui->labelOnlineStatus->setText("O");
-    else
-        ui->labelOnlineStatus->setText("X");
-}
-
-//QString FriendWidget::name() const
-//{
-//    return ui->labelFriendName->text();
-//}
-
-//void FriendWidget::setName(const QString& val)
-//{
-//    QString ss = ui->labelFriendName->text();
-
-//    ui->labelFriendName->setText(val);
-//}
-
-//void FriendWidget::setStatusMessage(const QString& val)
-//{
-//    ui->labelFriendStatus->setText(val);
-//}
-
-//QByteArray FriendWidget::publicKey() const
-//{
-//    return _publicKey;
-//}
-
-//void FriendWidget::setPublicKey(const QByteArray& val)
-//{
-//    _publicKey = val;
-
-//}
-
-//void FriendWidget::setConnectStatus(bool val)
-//{
-//    _isConnected = val;
-//    if (_isConnected)
+//    if (_properties.isConnecnted)
 //        ui->labelOnlineStatus->setText("O");
 //    else
 //        ui->labelOnlineStatus->setText("X");
 
-//}
+    QPixmap onlineStatus;
+    if (_properties.isConnecnted)
+        onlineStatus = QPixmap("://resources/online.png");
+    else
+        onlineStatus = QPixmap("://resources/offline.png");
+
+    int onlineStatusSize = 15;
+    if (onlineStatus.height() > onlineStatusSize || onlineStatus.width() > onlineStatusSize)
+        onlineStatus = onlineStatus.scaled(onlineStatusSize, onlineStatusSize,
+                                           Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    ui->labelOnlineStatus->setPixmap(onlineStatus);
+
+    QPixmap avatar;
+    int avatarSize = 40;
+    if (_properties.avatar.isEmpty())
+    {
+        avatarSize = 28;
+        avatar = QPixmap("://resources/avatar_default.svg");
+    }
+    else
+        avatar.loadFromData(_properties.avatar);
+
+    if (avatar.height() > avatarSize || avatar.width() > avatarSize)
+        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    ui->labelAvatar->setPixmap(avatar);
+}

@@ -141,9 +141,9 @@ Product {
         "tox/tox_logger.h",
         "tox/tox_net.cpp",
         "tox/tox_net.h",
+        "toxphone.cpp",
         "toxphone_appl.cpp",
         "toxphone_appl.h",
-        "toxphone.cpp",
     ]
 
 //    property var test: {

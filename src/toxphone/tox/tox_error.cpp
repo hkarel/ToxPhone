@@ -348,3 +348,116 @@ const char* toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
             return unknown_error;
     }
 }
+
+const char* toxError(TOX_ERR_FILE_SEND code)
+{
+    switch (code)
+    {
+        /**
+         * The function returned successfully.
+         */
+        case TOX_ERR_FILE_SEND_OK:
+            return return_success;
+
+        /**
+         * One of the arguments to the function was NULL when it was not expected.
+         */
+        case TOX_ERR_FILE_SEND_NULL:
+            return QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
+                                                 "was NULL when it was not expected");
+        /**
+         * The friend_number passed did not designate a valid friend.
+         */
+        case TOX_ERR_FILE_SEND_FRIEND_NOT_FOUND:
+            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
+                                                 "did not designate a valid friend");
+        /**
+         * This client is currently not connected to the friend.
+         */
+        case TOX_ERR_FILE_SEND_FRIEND_NOT_CONNECTED:
+            return QT_TRANSLATE_NOOP("ToxError", "This client is currently "
+                                                 "not connected to the friend");
+        /**
+         * Filename length exceeded TOX_MAX_FILENAME_LENGTH bytes.
+         */
+        case TOX_ERR_FILE_SEND_NAME_TOO_LONG:
+            return QT_TRANSLATE_NOOP("ToxError", "Filename length exceeded "
+                                                 "TOX_MAX_FILENAME_LENGTH bytes");
+        /**
+         * Too many ongoing transfers. The maximum number of concurrent file transfers
+         * is 256 per friend per direction (sending and receiving).
+         */
+        case TOX_ERR_FILE_SEND_TOO_MANY:
+            return QT_TRANSLATE_NOOP("ToxError", "Too many ongoing transfers");
+
+        default:
+            return unknown_error;
+    }
+}
+
+const char* toxError(TOX_ERR_FILE_SEND_CHUNK code)
+{
+    switch (code)
+    {
+        /**
+         * The function returned successfully.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_OK:
+            return return_success;
+
+        /**
+         * The length parameter was non-zero, but data was NULL.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_NULL:
+            return QT_TRANSLATE_NOOP("ToxError", "The length parameter was non-zero, "
+                                                 "but data was NULL");
+        /**
+         * The friend_number passed did not designate a valid friend.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_FRIEND_NOT_FOUND:
+            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
+                                                 "did not designate a valid friend");
+        /**
+         * This client is currently not connected to the friend.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_FRIEND_NOT_CONNECTED:
+            return QT_TRANSLATE_NOOP("ToxError", "");
+
+        /**
+         * No file transfer with the given file number was found for the given friend.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_NOT_FOUND:
+            return QT_TRANSLATE_NOOP("ToxError", "No file transfer with the given "
+                                                 "file number was found for the given friend");
+        /**
+         * File transfer was found but isn't in a transferring state: (paused, done,
+         * broken, etc...) (happens only when not called from the request chunk callback).
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_NOT_TRANSFERRING:
+            return QT_TRANSLATE_NOOP("ToxError", "File transfer was found but "
+                                                 "isn't in a transferring state: "
+                                                 "(paused, done, broken, etc...)");
+        /**
+         * Attempted to send more or less data than requested. The requested data size is
+         * adjusted according to maximum transmission unit and the expected end of
+         * the file. Trying to send less or more than requested will return this error.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_INVALID_LENGTH:
+            return QT_TRANSLATE_NOOP("ToxError", "Attempted to send more or less "
+                                                 "data than requested");
+        /**
+         * Packet queue is full.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_SENDQ:
+            return QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
+
+        /**
+         * Position parameter was wrong.
+         */
+        case TOX_ERR_FILE_SEND_CHUNK_WRONG_POSITION:
+            return QT_TRANSLATE_NOOP("ToxError", "Position parameter was wrong");
+
+        default:
+            return unknown_error;
+    }
+}

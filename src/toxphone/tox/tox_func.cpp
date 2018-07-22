@@ -99,7 +99,7 @@ uint32_t getToxFriendNum(Tox* tox, const QByteArray& publicKey)
 }
 
 
-QByteArray getToxPublicKey(Tox* tox)
+QByteArray getToxSelfPublicKey(Tox* tox)
 {
     QByteArray selfPk;
     selfPk.resize(TOX_PUBLIC_KEY_SIZE);

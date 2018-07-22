@@ -7,7 +7,7 @@ Product {
     consoleApplication: false
     destinationDirectory: "./bin"
 
-    name: "ToxPhone (Config)"
+    name: "ToxPhone (config)"
     targetName: "toxphone-config"
 
     Depends { name: "cpp" }
@@ -63,6 +63,13 @@ Product {
     ]
 
     cpp.staticLibraries: lib.sodium.staticLibrariesPaths(product)
+
+    Group {
+        name: "resources"
+        files: [
+            "toxphone_config.qrc",
+        ]
+    }
 
     Group {
         name: "widgets"

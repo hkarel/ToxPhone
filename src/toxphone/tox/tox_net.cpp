@@ -41,8 +41,9 @@ ToxNet& toxNet()
 
 ToxNet::ToxNet() : QThreadEx(0)
 {
-    _configPath = "/var/opt/toxphone/state";
-    _configFile = _configPath + "/toxphone.tox";
+    _avatarPath = "/var/opt/toxphone/avatars/";
+    _configPath = "/var/opt/toxphone/state/";
+    _configFile = _configPath + "toxphone.tox";
 
     chk_connect_d(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
                   this, SLOT(message(communication::Message::Ptr)))
@@ -184,8 +185,6 @@ bool ToxNet::init()
         }
         _savedState = file.readAll();
         file.close();
-
-
     }
     if (!_savedState.isEmpty())
     {
@@ -227,14 +226,31 @@ bool ToxNet::init()
         if (!setUserProfile("toxphone_user", "Toxing on ToxPhone"))
             return false;
 
+    QByteArray selfPubKey = getToxSelfPublicKey(_tox);
+    QString avatarFile = _avatarPath + selfPubKey.toHex().toUpper();
+    if (QFile::exists(avatarFile))
+    {
+        QFile file {avatarFile};
+        if (file.open(QIODevice::ReadOnly))
+        {
+            _avatar = file.readAll();
+            file.close();
+        }
+        else
+            log_error_m << "Failed open a tox avatar file " << avatarFile;
+    }
+
     // Assign Tox callback
     tox_callback_friend_request          (_tox, tox_friend_request);
     tox_callback_friend_name             (_tox, tox_friend_name);
     tox_callback_friend_status_message   (_tox, tox_friend_status_message);
     tox_callback_friend_message          (_tox, tox_friend_message);
-    tox_callback_file_recv               (_tox, tox_file_recv);
     tox_callback_self_connection_status  (_tox, tox_self_connection_status);
     tox_callback_friend_connection_status(_tox, tox_friend_connection_status);
+    tox_callback_file_recv_control       (_tox, tox_file_recv_control);
+    tox_callback_file_recv               (_tox, tox_file_recv);
+    tox_callback_file_recv_chunk         (_tox, tox_file_recv_chunk);
+    tox_callback_file_chunk_request      (_tox, tox_file_chunk_request);
     tox_callback_friend_lossless_packet  (_tox, tox_friend_lossless_packet);
 
     return true;
@@ -278,7 +294,7 @@ void ToxNet::updateBootstrap()
 
 bool ToxNet::saveState()
 {
-    QString configTmp = _configPath + "/.tox";
+    QString configTmp = _configPath + ".tox";
 
     size_t size = tox_get_savedata_size(_tox);
     QByteArray data;
@@ -320,10 +336,132 @@ bool ToxNet::saveState()
     return true;
 }
 
+bool ToxNet::saveAvatar(const QByteArray& avatar, const QString& avatarFile)
+{
+    if (avatar.isEmpty())
+    {
+        if (QFile::exists(avatarFile))
+            if (!QFile::remove(avatarFile))
+            {
+                log_error_m << "Failed remove tox avatar file " << avatarFile;
+                return false;
+            }
+        return true;
+    }
+
+    qsrand(std::time(0));
+    QString avatarFileTmp = avatarFile + ".tmp" + QString::number(qrand());
+
+    QFile file {avatarFileTmp};
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        log_error_m << "Failed open a temporary file " << avatarFileTmp << " to save tox avatar";
+        file.remove();
+        return false;
+    }
+    int writeRes = file.write(avatar);
+    file.close();
+    if (writeRes == -1)
+    {
+        log_error_m << "Failed write tox avatar to temporary file " << avatarFileTmp;
+        file.remove();
+        return false;
+    }
+    if (QFile::exists(avatarFile))
+        if (!QFile::remove(avatarFile))
+        {
+            log_error_m << "Failed remove tox avatar file " << avatarFile;
+            file.remove();
+            return false;
+        }
+
+    if (!file.rename(avatarFile))
+    {
+        log_error_m << "Failed rename temporary tox avatar file " << avatarFileTmp
+                    << " to " << avatarFile;
+        return false;
+    }
+    return true;
+}
+
+QByteArray ToxNet::avatarHash(const QString& avatarFile)
+{
+    QFile file {avatarFile};
+    if (!file.exists())
+        return QByteArray();
+
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        log_error_m << "Failed open a tox avatar file " << avatarFile;
+        return QByteArray();
+    }
+    QByteArray data = file.readAll();
+    file.close();
+
+    uint8_t avatarHash[TOX_HASH_LENGTH];
+    tox_hash(avatarHash, (uint8_t*)data.data(), data.size());
+
+    return QByteArray((char*)avatarHash, TOX_HASH_LENGTH);
+}
+
+void ToxNet::sendAvatar(uint32_t friendNumber)
+{
+    static_assert(TOX_HASH_LENGTH <= TOX_FILE_ID_LENGTH,
+                  "TOX_HASH_LENGTH > TOX_FILE_ID_LENGTH!");
+
+    if (_avatar.isEmpty())
+    {
+        tox_file_send(_tox, friendNumber, TOX_FILE_KIND_AVATAR, 0, 0, 0, 0, 0);
+        return;
+    }
+
+    uint8_t avatarHash[TOX_HASH_LENGTH];
+    tox_hash(avatarHash, (uint8_t*)_avatar.data(), _avatar.size());
+
+    TOX_ERR_FILE_SEND err;
+    uint32_t fileNumber = tox_file_send(_tox, friendNumber, TOX_FILE_KIND_AVATAR,
+                                        _avatar.size(), avatarHash, 0, 0, &err);
+    if (err != TOX_ERR_FILE_SEND_OK)
+    {
+        log_error_m << "Failed tox_file_send: " << toxError(err);
+        return;
+    }
+
+    TransferData* td = _sendAvatars.add();
+    td->friendNumber = friendNumber;
+    td->fileNumber = fileNumber;
+    td->size = _avatar.size();
+    td->data = _avatar;
+    _sendAvatars.sort();
+}
+
+void ToxNet::stopSendAvatars()
+{
+    for(TransferData* fd : _sendAvatars)
+        tox_file_control(_tox, fd->friendNumber, fd->fileNumber, TOX_FILE_CONTROL_CANCEL, 0);
+
+    _sendAvatars.clear();
+}
+
+void ToxNet::broadcastSendAvatars()
+{
+    if (uint32_t friendCount = tox_self_get_friend_list_size(_tox))
+    {
+        QVector<uint32_t> ids;
+        ids.resize(friendCount);
+        tox_self_get_friend_list(_tox, ids.data());
+
+        for (uint32_t i = 0; i < friendCount; ++i)
+            sendAvatar(ids[i]);
+    }
+}
+
 bool ToxNet::setUserProfile(const QString& name, const QString& status)
 {
     QByteArray userName = name.toUtf8();
     QByteArray userStatus = status.toUtf8();
+
+    ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
 
     if (!tox_self_set_name(_tox, (const uint8_t*)userName.constData(), userName.length(), 0))
     {
@@ -382,6 +520,18 @@ void ToxNet::run()
         // на выполнение tox_iterate()
         iterationSleepTime = int(tox_iteration_interval(_tox));
         iterationTimer.reset();
+
+        if (_avatarNeedUpdate == 1)
+        {
+            stopSendAvatars();
+        }
+        else if (_avatarNeedUpdate == 5)
+        {
+            broadcastSendAvatars();
+            _avatarNeedUpdate = 0;
+        }
+        if (_avatarNeedUpdate > 0)
+            ++_avatarNeedUpdate;
 
         { //Block for QMutexLocker
             QMutexLocker locker(&_threadLock); (void) locker;
@@ -457,6 +607,8 @@ void ToxNet::command_IncomingConfigConnection(const Message::Ptr& message)
         tox_self_get_address(_tox, (uint8_t*)data.constData());
         toxProfile.toxId = data.toHex().toUpper();
 
+        toxProfile.avatar = _avatar;
+
         Message::Ptr m = createMessage(toxProfile);
         m->destinationSocketDescriptors().insert(socketDescr);
         tcp::listener().send(m);
@@ -472,18 +624,34 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
     readFromMessage(message, toxProfile);
 
     Message::Ptr answer = message->cloneForAnswer();
-    if (setUserProfile(toxProfile.name, toxProfile.status))
-    {
+
+    data::MessageError error;
+    if (!setUserProfile(toxProfile.name, toxProfile.status))
+        error.code = 2;
+
+    if (error.code == 0)
         if (!saveState())
         {
-            data::MessageError error;
+            error.code = 1;
             error.description = tr(error_save_tox_state);
-            writeToMessage(error, answer);
         }
-    }
-    else
+
+    if (error.code == 0)
+        if (_avatar.toHex().toUpper() != toxProfile.avatar.toHex().toUpper())
+        {
+            QByteArray selfPubKey = getToxSelfPublicKey(_tox);
+            QString avatarFile = _avatarPath + selfPubKey.toHex().toUpper();
+            if (saveAvatar(toxProfile.avatar, avatarFile))
+            {
+                _avatar = toxProfile.avatar;
+                _avatarNeedUpdate = 1;
+            }
+            else
+                error.code = 3;
+        }
+
+    if (error.code > 1)
     {
-        data::MessageError error;
         error.description = tr("An error occurred when saved profile");
         writeToMessage(error, answer);
     }
@@ -752,13 +920,13 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
         config::state().remove("phones." + string(removePubKey) + ".phone_number");
         config::state().save();
         QByteArray removePk = QByteArray::fromHex(removePubKey);
-        quint32 removeFirendNum = getToxFriendNum(_tox, removePk);
+        quint32 removeFriendNum = getToxFriendNum(_tox, removePk);
 
         log_verbose_m << "Remove duplicate phone number " << phoneNumber
-                      << " for "<< ToxFriendLog(_tox, removeFirendNum);
+                      << " for "<< ToxFriendLog(_tox, removeFriendNum);
 
         data::FriendItem friendItem;
-        if (fillFriendItem(friendItem, removeFirendNum))
+        if (fillFriendItem(friendItem, removeFriendNum))
         {
             Message::Ptr m = createMessage(friendItem);
             toxConfig().send(m);
@@ -949,6 +1117,20 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
             tox_friend_get_connection_status(_tox, friendNumber, 0);
         item.isConnecnted = (connection_status != TOX_CONNECTION_NONE);
     }
+
+    QString avatarFile = _avatarPath + item.publicKey;
+    QFile file {avatarFile};
+    if (file.exists())
+    {
+        if (file.open(QIODevice::ReadOnly))
+        {
+            item.avatar = file.readAll();
+            file.close();
+        }
+        else
+            log_error_m << "Failed open a avatar file " << avatarFile;
+    }
+
     YamlConfig::Func loadFunc = [&item](YamlConfig* conf, YAML::Node& node, bool)
     {
         conf->getValue(node, "friend_alias", item.nameAlias, false);
@@ -1045,35 +1227,11 @@ void ToxNet::tox_friend_message(Tox* tox, uint32_t friend_number, TOX_MESSAGE_TY
 {
     if (type == TOX_MESSAGE_TYPE_NORMAL)
     {
-        ToxNet* tn = static_cast<ToxNet*>(user_data);
-
         data::ToxMessage toxMessage;
         toxMessage.friendNumber = friend_number;
         toxMessage.text = QByteArray(tox_chat_responce_message);
 
-        Message::Ptr m = createMessage(toxMessage);
-        tn->message(m);
-    }
-}
-
-void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_number,
-                           uint32_t kind, uint64_t file_size, const uint8_t *filename,
-                           size_t filename_length, void* user_data)
-{
-    if (kind == TOX_FILE_KIND_AVATAR)
-        log_debug_m << "ToxEvent: friend send avatar. Event discarded. "
-                    << ToxFriendLog(tox, friend_number);
-
-    tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_CANCEL, 0);
-
-    if (kind != TOX_FILE_KIND_AVATAR)
-    {
         ToxNet* tn = static_cast<ToxNet*>(user_data);
-
-        data::ToxMessage toxMessage;
-        toxMessage.friendNumber = friend_number;
-        toxMessage.text = QByteArray(tox_transfer_data_message);
-
         Message::Ptr m = createMessage(toxMessage);
         tn->message(m);
     }
@@ -1082,8 +1240,6 @@ void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_numbe
 void ToxNet::tox_self_connection_status(Tox* tox, TOX_CONNECTION connection_status,
                                         void* user_data)
 {
-    ToxNet* tn = static_cast<ToxNet*>(user_data);
-
     if (connection_status == TOX_CONNECTION_TCP)
         log_verbose_m << "Connected to DHT through TCP";
     else if (connection_status == TOX_CONNECTION_UDP)
@@ -1091,6 +1247,7 @@ void ToxNet::tox_self_connection_status(Tox* tox, TOX_CONNECTION connection_stat
     else
         log_verbose_m << "Disconnected from DHT";
 
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
     if (connection_status != TOX_CONNECTION_NONE)
         log_debug_m << "Update bootstrap counter: " << tn->_updateBootstrapCounter;
 
@@ -1101,6 +1258,8 @@ void ToxNet::tox_self_connection_status(Tox* tox, TOX_CONNECTION connection_stat
 void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
                                           TOX_CONNECTION connection_status, void* user_data)
 {
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
+
     const char* stat;
     switch (connection_status)
     {
@@ -1118,9 +1277,25 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
     log_debug_m << "ToxEvent: friend " << stat
                 << ToxFriendLog(tox, friend_number);
 
+    if (connection_status != TOX_CONNECTION_NONE
+        && tn->_connectionStatusSet.find(friend_number) == tn->_connectionStatusSet.end())
+    {
+        tn->_connectionStatusSet.insert(friend_number);
+        tn->sendAvatar(friend_number);
+    }
+    if (connection_status == TOX_CONNECTION_NONE)
+    {
+        tn->_connectionStatusSet.erase(friend_number);
+        auto remove = [friend_number](TransferData* td) -> bool
+        {
+            return (td->friendNumber == friend_number);
+        };
+        tn->_sendAvatars.removeCond(remove);
+        tn->_recvAvatars.removeCond(remove);
+    }
+
     if (toxConfig().isActive())
     {
-        ToxNet* tn = static_cast<ToxNet*>(user_data);
         data::FriendItem friendItem;
         if (!tn->fillFriendItem(friendItem, friend_number))
             return;
@@ -1130,6 +1305,167 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
 
         Message::Ptr m = createMessage(friendItem);
         toxConfig().send(m);
+    }
+}
+
+void ToxNet::tox_file_recv_control(Tox* tox, uint32_t friend_number, uint32_t file_number,
+                                   TOX_FILE_CONTROL control, void* user_data)
+{
+    if (control == TOX_FILE_CONTROL_CANCEL)
+    {
+        ToxNet* tn = static_cast<ToxNet*>(user_data);
+        if (lst::FindResult fr = tn->_recvAvatars.findRef(TransferData{friend_number, file_number}))
+            tn->_recvAvatars.remove(fr.index());
+    }
+    else if (control == TOX_FILE_CONTROL_RESUME)
+    {
+        //break_point
+    }
+}
+
+void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_number,
+                           uint32_t kind, uint64_t file_size, const uint8_t *filename,
+                           size_t filename_length, void* user_data)
+{
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
+    if (kind == TOX_FILE_KIND_AVATAR)
+    {
+        QByteArray friendPk = getToxFriendKey(tox, friend_number).toHex().toUpper();
+        QString avatarFile = tn->_avatarPath + friendPk;
+
+        // Обновляем аватар
+        if ((file_size != 0) && QFile::exists(avatarFile))
+        {
+            uint8_t fileId[TOX_HASH_LENGTH];
+            tox_file_get_file_id(tox, friend_number, file_number, fileId, 0);
+
+            QByteArray hash1 = tn->avatarHash(avatarFile).toHex().toUpper();
+            QByteArray hash2 = QByteArray::fromRawData((char*)fileId, TOX_HASH_LENGTH)
+                                                       .toHex().toUpper();
+            if (!hash1.isEmpty() && (hash1 == hash2))
+            {
+                // Хеши аватаров совпадают, ничего не делаем
+            }
+            else
+            {
+                // Закачиваем аватар
+                TransferData* td = tn->_recvAvatars.add();
+                td->friendNumber = friend_number;
+                td->fileNumber = file_number;
+                td->size = file_size;
+                tn->_recvAvatars.sort();
+
+                tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_RESUME, 0);
+                return;
+            }
+        }
+
+        // Закачиваем аватар
+        else if ((file_size != 0) && !QFile::exists(avatarFile))
+        {
+            TransferData* td = tn->_recvAvatars.add();
+            td->friendNumber = friend_number;
+            td->fileNumber = file_number;
+            td->size = file_size;
+            tn->_recvAvatars.sort();
+
+            tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_RESUME, 0);
+            return;
+        }
+
+        // Удаляем аватар
+        else if ((file_size == 0) && QFile::exists(avatarFile))
+        {
+            tn->saveAvatar(QByteArray(), avatarFile);
+            if (toxConfig().isActive())
+            {
+                data::FriendItem friendItem;
+                if (tn->fillFriendItem(friendItem, friend_number))
+                {
+                    Message::Ptr m = createMessage(friendItem);
+                    toxConfig().send(m);
+                }
+            }
+        }
+    }
+    else
+    {
+        data::ToxMessage toxMessage;
+        toxMessage.friendNumber = friend_number;
+        toxMessage.text = QByteArray(tox_transfer_data_message);
+
+        Message::Ptr m = createMessage(toxMessage);
+        tn->message(m);
+    }
+
+    // По умолчанию отменяем передачу
+    tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_CANCEL, 0);
+}
+
+void ToxNet::tox_file_recv_chunk(Tox* tox, uint32_t friend_number, uint32_t file_number,
+                                 uint64_t position, const uint8_t* data, size_t length,
+                                 void* user_data)
+{
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
+    if (lst::FindResult fr = tn->_recvAvatars.findRef(TransferData{friend_number, file_number}))
+    {
+        if (length == 0)
+        {
+            tn->_recvAvatars.remove(fr.index());
+            return;
+        }
+
+        TransferData* td = tn->_recvAvatars.item(fr.index());
+        td->data.append(QByteArray::fromRawData((char*)data, length));
+        if (td->data.size() == int(td->size))
+        {
+            QByteArray friendPk = getToxFriendKey(tox, friend_number).toHex().toUpper();
+            QString avatarFile = tn->_avatarPath + friendPk;
+
+            tn->saveAvatar(td->data, avatarFile);
+            tn->_recvAvatars.remove(fr.index());
+
+            if (toxConfig().isActive())
+            {
+                data::FriendItem friendItem;
+                if (tn->fillFriendItem(friendItem, friend_number))
+                {
+                    Message::Ptr m = createMessage(friendItem);
+                    toxConfig().send(m);
+                }
+            }
+        }
+    }
+}
+
+void ToxNet::tox_file_chunk_request(Tox* tox, uint32_t friend_number, uint32_t file_number,
+                                    uint64_t position, size_t length, void* user_data)
+{
+    ToxNet* tn = static_cast<ToxNet*>(user_data);
+    if (lst::FindResult fr = tn->_sendAvatars.findRef(TransferData{friend_number, file_number}))
+    {
+        if (length == 0)
+        {
+            tn->_sendAvatars.remove(fr.index());
+            return;
+        }
+
+        TOX_ERR_FILE_SEND_CHUNK err;
+        if (int(position + length) > tn->_avatar.size())
+        {
+            tox_file_send_chunk(tox, friend_number, file_number, position, 0, 0, &err);
+            if (err != TOX_ERR_FILE_SEND_CHUNK_OK)
+                log_error_m << "Failed tox_file_send_chunk: " << toxError(err);
+            return;
+        }
+
+        TransferData* td = tn->_sendAvatars.item(fr.index());
+        const char* data = td->data.constData() + position;
+
+        tox_file_send_chunk(tox, friend_number, file_number,
+                            position, (uint8_t*)data, length, &err);
+        if (err != TOX_ERR_FILE_SEND_CHUNK_OK)
+            log_error_m << "Failed tox_file_send_chunk: " << toxError(err);
     }
 }
 

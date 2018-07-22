@@ -339,9 +339,9 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
-
+        //QSize sz = cw->sizeHint();
         QListWidgetItem* lwi = new QListWidgetItem();
-        lwi->setSizeHint(cw->sizeHint());
+        lwi->setSizeHint(cw->minimumSize());
         ui->listPhones->addItem(lwi);
         ui->listPhones->setItemWidget(lwi, cw);
     }

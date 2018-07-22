@@ -8,4 +8,6 @@ const char* toxError(TOXAV_ERR_ANSWER);
 const char* toxError(TOXAV_ERR_CALL_CONTROL);
 const char* toxError(TOXAV_ERR_SEND_FRAME);
 const char* toxError(TOX_ERR_FRIEND_CUSTOM_PACKET);
+const char* toxError(TOX_ERR_FILE_SEND);
+const char* toxError(TOX_ERR_FILE_SEND_CHUNK);
 

@@ -239,7 +239,7 @@ struct ToxProfile : Data<&command::ToxProfile,
     QByteArray toxId;
     QString    name;
     QString    status;
-
+    QByteArray avatar;
     DECLARE_B_SERIALIZE_FUNC
 };
 
@@ -289,6 +289,7 @@ struct FriendItem : Data<&command::FriendItem,
     QString    name;           // Имя друга
     QString    statusMessage;  // Статус-сообщение
     bool       isConnecnted;   // Признак подключения к сети
+    QByteArray avatar;
 
     /** Дополнительные параметры для ToxPhone **/
     QString nameAlias;         // Альтернативное имя друга

@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>99</width>
-    <height>48</height>
+    <width>221</width>
+    <height>44</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>44</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Form</string>
@@ -18,7 +24,7 @@
     <number>6</number>
    </property>
    <property name="leftMargin">
-    <number>3</number>
+    <number>4</number>
    </property>
    <property name="topMargin">
     <number>4</number>
@@ -32,7 +38,7 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <property name="spacing">
-      <number>4</number>
+      <number>0</number>
      </property>
      <item>
       <widget class="QLabel" name="labelInfo">
@@ -46,26 +52,41 @@
        <property name="text">
         <string>HostPoint</string>
        </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
     <widget class="QLabel" name="labelConnectCount">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="minimumSize">
       <size>
-       <width>20</width>
+       <width>22</width>
        <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
-       <width>20</width>
+       <width>22</width>
        <height>16777215</height>
       </size>
      </property>
      <property name="text">
       <string>X</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::NoTextInteraction</set>
      </property>
     </widget>
    </item>

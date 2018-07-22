@@ -7,7 +7,9 @@
 
 #include <QLabel>
 #include <QSlider>
+#include <QPixmap>
 #include <QListWidget>
+#include <QPushButton>
 #include <QMainWindow>
 
 using namespace std;
@@ -83,9 +85,12 @@ private slots:
 
     void on_labelCopyright_linkActivated(const QString& link);
 
+    void labelAvatar_clicked();
+    void btnDeleteAvatar_clicked(bool);
     void updateLabelCallState();
 
 private:
+    bool eventFilter(QObject*, QEvent*) override;
     void closeEvent(QCloseEvent*) override;
 
     //--- Обработчики команд ---
@@ -133,8 +138,10 @@ private:
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;
 
-    // Сессионный публичный ключ Tox-клиента
-    //QByteArray _toxPublicKey;
+    // Кнопка для удаления аватара
+    QPushButton* _btnDeleteAvatar = {0};
+    QPixmap _avatar;
+    //bool _avatarIsEmpty = {true};
 
     int _tabRrequestsIndex = {0};
 };

@@ -28,7 +28,7 @@ QByteArray getToxFriendKey(Tox* tox, uint32_t friendNumber);
 uint32_t getToxFriendNum(Tox* tox, const QByteArray& publicKey);
 
 // Возвращает свой PublicKey
-QByteArray getToxPublicKey(Tox* tox);
+QByteArray getToxSelfPublicKey(Tox* tox);
 
 // Отправляем сообщение Message через tox-механизм пользовательских сообщений
 bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,

@@ -17,6 +17,7 @@ mkdir -p $package_dir/etc/systemd/system
 mkdir -p $package_dir/opt/toxphone/autorun
 mkdir -p $package_dir/opt/toxphone/lib
 mkdir -p $package_dir/opt/toxphone/sound
+mkdir -p $package_dir/var/opt/toxphone/avatars
 mkdir -p $package_dir/var/opt/toxphone/log
 mkdir -p $package_dir/var/opt/toxphone/state
 mkdir -p $package_dir/lib/udev/rules.d
