@@ -345,23 +345,37 @@ void ToxNet::run()
     Message::List messages;
     steady_timer iterationTimer;
     int iterationSleepTime;
+    int updateBootstrapAttempt = 0;
 
     while (true)
     {
         CHECK_THREAD_STOP
 
         if (tox_self_get_connection_status(_tox) == TOX_CONNECTION_NONE)
+        {
             ++_updateBootstrapCounter;
-
+            if (updateBootstrapAttempt > 10)
+            {
+                updateBootstrapAttempt = 0;
+                _updateBootstrapCounter = -1200;
+            }
+        }
         if (_updateBootstrapCounter > 30)
         {
             updateBootstrap();
             _updateBootstrapCounter = 0;
+            ++updateBootstrapAttempt;
         }
 
         { //Block for ToxGlobalLock
             ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
             tox_iterate(_tox, this);
+        }
+
+        if (tox_self_get_connection_status(_tox) != TOX_CONNECTION_NONE)
+        {
+            _updateBootstrapCounter = 0;
+            updateBootstrapAttempt = 0;
         }
 
         // Параметр iterationSleepTime вычисляется с учетом времени потраченного

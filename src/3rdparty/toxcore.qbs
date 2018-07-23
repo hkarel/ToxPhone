@@ -148,9 +148,9 @@ Project {
         Depends { name: "ToxGroup" }
 
         files: [
-            toxPrefix + "toxcore/tox_api.c",
             toxPrefix + "toxcore/tox.c",
             toxPrefix + "toxcore/tox.h",
+            toxPrefix + "toxcore/tox_api.c",
 
             // :: Audio/Video Library
             toxPrefix + "toxav/audio.c",
