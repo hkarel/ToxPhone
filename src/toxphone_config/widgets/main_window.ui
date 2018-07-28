@@ -365,7 +365,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Call</string>
+                 <string>Call </string>
                 </property>
                </widget>
               </item>

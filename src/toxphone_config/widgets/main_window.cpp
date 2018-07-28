@@ -769,7 +769,7 @@ void MainWindow::command_ToxCallAction(const Message::Ptr& message)
 
 void MainWindow::command_ToxCallState(const Message::Ptr& message)
 {
-    const char* CALL    = QT_TRANSLATE_NOOP("MainWindow", "Call");
+    const char* CALL    = QT_TRANSLATE_NOOP("MainWindow", "Call ");
     const char* ENDCALL = QT_TRANSLATE_NOOP("MainWindow", "End call");
     const char* ACCEPT  = QT_TRANSLATE_NOOP("MainWindow", "Accept");
     const char* REJECT  = QT_TRANSLATE_NOOP("MainWindow", "Reject");
