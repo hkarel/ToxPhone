@@ -645,6 +645,7 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
             {
                 _avatar = toxProfile.avatar;
                 _avatarNeedUpdate = 1;
+                log_debug_m << "Own avatar updated";
             }
             else
                 error.code = 3;
@@ -1345,6 +1346,8 @@ void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_numbe
             if (!hash1.isEmpty() && (hash1 == hash2))
             {
                 // Хеши аватаров совпадают, ничего не делаем
+                log_debug_m << "Hashes of avatar is equal. "
+                            << ToxFriendLog(tox, friend_number);
             }
             else
             {
@@ -1376,7 +1379,9 @@ void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_numbe
         // Удаляем аватар
         else if ((file_size == 0) && QFile::exists(avatarFile))
         {
-            tn->saveAvatar(QByteArray(), avatarFile);
+            if (tn->saveAvatar(QByteArray(), avatarFile))
+                log_debug_m << "Avatar deleted. " << ToxFriendLog(tox, friend_number);
+
             if (toxConfig().isActive())
             {
                 data::FriendItem friendItem;
@@ -1422,7 +1427,9 @@ void ToxNet::tox_file_recv_chunk(Tox* tox, uint32_t friend_number, uint32_t file
             QByteArray friendPk = getToxFriendKey(tox, friend_number).toHex().toUpper();
             QString avatarFile = tn->_avatarPath + friendPk;
 
-            tn->saveAvatar(td->data, avatarFile);
+            if (tn->saveAvatar(td->data, avatarFile))
+                log_debug_m << "Avatar updated. " << ToxFriendLog(tox, friend_number);
+
             tn->_recvAvatars.remove(fr.index());
 
             if (toxConfig().isActive())
