@@ -22,6 +22,9 @@ public:
     void setProperties(const data::FriendItem&);
 
 private:
+    void setAvatar(QPixmap avatar, bool roundCorner);
+
+private:
     Ui::FriendWidget *ui;
     data::FriendItem _properties;
 };

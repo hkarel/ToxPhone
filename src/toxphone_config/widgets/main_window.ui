@@ -65,14 +65,14 @@
             <widget class="QLabel" name="labelAvatar">
              <property name="minimumSize">
               <size>
-               <width>128</width>
-               <height>128</height>
+               <width>130</width>
+               <height>130</height>
               </size>
              </property>
              <property name="maximumSize">
               <size>
-               <width>128</width>
-               <height>128</height>
+               <width>130</width>
+               <height>130</height>
               </size>
              </property>
              <property name="frameShape">

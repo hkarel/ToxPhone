@@ -125,6 +125,7 @@ private:
     QString friendCalling(quint32 friendNumber);
 
     void aboutClear();
+    void setAvatar(QPixmap, bool roundCorner);
 
 private:
     Ui::MainWindow *ui;
@@ -141,7 +142,6 @@ private:
     // Кнопка для удаления аватара
     QPushButton* _btnDeleteAvatar = {0};
     QPixmap _avatar;
-    //bool _avatarIsEmpty = {true};
 
     int _tabRrequestsIndex = {0};
 };

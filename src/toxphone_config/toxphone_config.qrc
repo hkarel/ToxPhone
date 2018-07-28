@@ -4,5 +4,6 @@
         <file>resources/avatar_default.svg</file>
         <file>resources/offline.png</file>
         <file>resources/online.png</file>
+        <file>resources/avatar_mask.svg</file>
     </qresource>
 </RCC>

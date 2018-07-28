@@ -16,6 +16,8 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDesktopServices>
+#include <QBitmap>
+#include <QPainter>
 #include <limits>
 #include <unistd.h>
 
@@ -122,9 +124,9 @@ bool MainWindow::init(const tcp::Socket::Ptr& socket)
     chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
                   this, SLOT(socketDisconnected(communication::SocketDescriptor)))
 
-    int x = 0;
-    int y = ui->labelAvatar->height() * 4. / 5 + 2;
-    int w = ui->labelAvatar->width();
+    int x = 20;
+    int y = ui->labelAvatar->height() * 4. / 5 - 1;
+    int w = ui->labelAvatar->width() - x * 2;
     int h = ui->labelAvatar->height() / 5;
     _btnDeleteAvatar->setGeometry(x, y, w, h);
     _btnDeleteAvatar->setVisible(false);
@@ -293,7 +295,7 @@ void MainWindow::command_ToxProfile(const Message::Ptr& message)
         if (avatar.height() > avatarSize || avatar.width() > avatarSize)
             avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-        ui->labelAvatar->setPixmap(avatar);
+        setAvatar(avatar, !_avatar.isNull());
     }
 
     // Если Answer - значит мы отправляли команду на сервер с новыми значениями
@@ -1565,18 +1567,20 @@ void MainWindow::labelAvatar_clicked()
     avatarSize = 128;
     if (avatar.height() > avatarSize || avatar.width() > avatarSize)
         avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    ui->labelAvatar->setPixmap(avatar);
+
+    setAvatar(avatar, true);
 }
 
 void MainWindow::btnDeleteAvatar_clicked(bool)
 {
     _avatar = QPixmap();
     int avatarSize = 100;
-    QPixmap avatar = QPixmap("://resources/avatar_default.svg");
+    QPixmap avatar {"://resources/avatar_default.svg"};
 
     if (avatar.height() > avatarSize || avatar.width() > avatarSize)
         avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    ui->labelAvatar->setPixmap(avatar);
+
+    setAvatar(avatar, false);
     _btnDeleteAvatar->setVisible(false);
 }
 
@@ -1616,6 +1620,31 @@ void MainWindow::aboutClear()
     ui->labelGitrev->clear();
     ui->labelBprotocolVers->clear();
     ui->labelQtVersion->clear();
+}
+
+void MainWindow::setAvatar(QPixmap avatar, bool roundCorner)
+{
+    if (!roundCorner)
+    {
+        ui->labelAvatar->setPixmap(avatar);
+        return;
+    }
+
+    QPixmap mask {"://resources/avatar_mask.svg"};
+    mask = mask.scaled(avatar.width() + 2, avatar.height() + 2,
+                       Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap renderTarget {avatar.width() + 2, avatar.height() + 2};
+    renderTarget.fill(Qt::transparent);
+    {
+        QPainter p(&renderTarget);
+        p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        p.drawPixmap(1, 1, avatar);
+        p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        p.drawPixmap(0, 0, mask);
+        p.end();
+    }
+    ui->labelAvatar->setPixmap(renderTarget);
 }
 
 void MainWindow::on_labelCopyright_linkActivated(const QString& link)

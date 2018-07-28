@@ -1,6 +1,9 @@
 #include "friend.h"
 #include "ui_friend.h"
 
+#include <QBitmap>
+#include <QPainter>
+
 FriendWidget::FriendWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::FriendWidget)
@@ -53,7 +56,7 @@ void FriendWidget::setProperties(const data::FriendItem& val)
     ui->labelOnlineStatus->setPixmap(onlineStatus);
 
     QPixmap avatar;
-    int avatarSize = 40;
+    int avatarSize = 42;
     if (_properties.avatar.isEmpty())
     {
         avatarSize = 28;
@@ -64,5 +67,32 @@ void FriendWidget::setProperties(const data::FriendItem& val)
 
     if (avatar.height() > avatarSize || avatar.width() > avatarSize)
         avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    ui->labelAvatar->setPixmap(avatar);
+
+    setAvatar(avatar, (avatarSize == 42));
 }
+
+void FriendWidget::setAvatar(QPixmap avatar, bool roundCorner)
+{
+    if (!roundCorner)
+    {
+        ui->labelAvatar->setPixmap(avatar);
+        return;
+    }
+
+    QPixmap mask {"://resources/avatar_mask.svg"};
+    mask = mask.scaled(avatar.width() + 2, avatar.height() + 2,
+                       Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    QPixmap renderTarget {avatar.width() + 2, avatar.height() + 2};
+    renderTarget.fill(Qt::transparent);
+    {
+        QPainter p(&renderTarget);
+        p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+        p.drawPixmap(1, 1, avatar);
+        p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        p.drawPixmap(0, 0, mask);
+        p.end();
+    }
+    ui->labelAvatar->setPixmap(renderTarget);
+}
+
