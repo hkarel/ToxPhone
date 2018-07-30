@@ -49,14 +49,7 @@ Project {
             "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
-
         ]
-
-        if (qbs.targetOS.contains("windows")
-            && qbs.toolchain && qbs.toolchain.contains("mingw"))
-            def.push("CONFIG_DIR=\".config/toxphone\"");
-        else
-            def.push("CONFIG_DIR=\"toxphone\"");
 
         if (qbs.buildVariant === "release")
             def.push("NDEBUG");
