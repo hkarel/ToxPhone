@@ -208,7 +208,8 @@ $QBS build \
     --no-install \
     qbs.buildVariant:$build_mode \
     project.printPackegeBuildInfo:true \
-    profile:toxphone $build_subdir
+    config:$build_subdir \
+    profile:toxphone
 
 
 if [ "$build_deb_package" != "yes" ]; then

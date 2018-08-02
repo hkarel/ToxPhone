@@ -1,7 +1,7 @@
 import qbs
 import qbs.File
 import "qbs/imports/QbsUtl/qbsutl.js" as QbsUtl
-import "qbs/imports/Probes/OsProbe.qbs" as OsProbe
+import "qbs/imports/ProbExt/OsProbe.qbs" as OsProbe
 
 Project {
     minimumQbsVersion: "1.10.0"
@@ -17,30 +17,34 @@ Project {
     readonly property string osName: osProbe.osName
     readonly property string osVersion: osProbe.osVersion
 
+    readonly property var projectVersion: projectProbe.projectVersion
+    readonly property string projectGitRevision: projectProbe.projectGitRevision
+
     OsProbe {
         id: osProbe
     }
     Probe {
         id: projectProbe
-        property string projectBuildDirectory: project.buildDirectory
         property var projectVersion;
         property string projectGitRevision;
+
+        readonly property string projectBuildDirectory: project.buildDirectory
+        readonly property string projectSourceDirectory: project.sourceDirectory
         configure: {
-            projectVersion = QbsUtl.getVersions(sourceDirectory + "/VERSION");
-            projectGitRevision = QbsUtl.gitRevision(sourceDirectory);
+            projectVersion = QbsUtl.getVersions(projectSourceDirectory + "/VERSION");
+            projectGitRevision = QbsUtl.gitRevision(projectSourceDirectory);
             if (File.exists(projectBuildDirectory + "/package_build_info"))
                 File.remove(projectBuildDirectory + "/package_build_info")
         }
     }
 
     property var cppDefines: {
-        var version = projectProbe.projectVersion;
         var def = [
-            "VERSION_PROJECT=" + version[0],
-            "VERSION_PROJECT_MAJOR=" + version[1],
-            "VERSION_PROJECT_MINOR=" + version[2],
-            "VERSION_PROJECT_PATCH=" + version[3],
-            "GIT_REVISION=\"" + projectProbe.projectGitRevision + "\"",
+            "VERSION_PROJECT=" + projectVersion[0],
+            "VERSION_PROJECT_MAJOR=" + projectVersion[1],
+            "VERSION_PROJECT_MINOR=" + projectVersion[2],
+            "VERSION_PROJECT_PATCH=" + projectVersion[3],
+            "GIT_REVISION=\"" + projectGitRevision + "\"",
             "Q_DATA_STREAM_VERSION=QDataStream::Qt_4_8",
             "BPROTOCOL_VERSION_LOW=0",
             "BPROTOCOL_VERSION_HIGH=1",

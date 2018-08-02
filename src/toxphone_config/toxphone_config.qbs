@@ -1,6 +1,6 @@
 import qbs
 import QbsUtl
-import GccUtl
+import ProbExt
 
 Product {
     type: "application"
@@ -11,6 +11,7 @@ Product {
     targetName: "toxphone-config"
 
     Depends { name: "cpp" }
+    Depends { name: "cppstdlib" }
     Depends { name: "lib.sodium" }
     Depends { name: "Yaml" }
     Depends { name: "SharedLib" }
@@ -28,13 +29,9 @@ Product {
     lib.sodium.version:   project.sodiumVersion
     lib.sodium.useSystem: project.useSystemSodium
 
-    Probe {
-        id: pruductProbe
-        property string compilerLibraryPath
-        configure: {
-            lib.sodium.probe();
-            compilerLibraryPath = GccUtl.compilerLibraryPath(cpp.compilerPath);
-        }
+    ProbExt.LibValidationProbe {
+        id: libValidation
+        checkingLibs: [lib.sodium]
     }
 
     cpp.defines: project.cppDefines
@@ -50,7 +47,7 @@ Product {
     )
 
     //cpp.rpaths: [
-    //    pruductProbe.compilerLibraryPath,
+    //    cppstdlib.path,
     //    "$ORIGIN/../lib",
     //]
 
@@ -95,14 +92,6 @@ Product {
             "password_window.ui",
         ]
     }
-
-//
-//     Group {
-//         name: "resources"
-//         files: [
-//             "27fretail.qrc",
-//         ]
-//     }
 
     files: [
         "toxphone_config.cpp",

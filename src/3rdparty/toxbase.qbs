@@ -1,6 +1,7 @@
 import qbs
 import GccUtl
 import QbsUtl
+import ProbExt
 
 Product {
     type: "staticlibrary"
@@ -8,18 +9,15 @@ Product {
     destinationDirectory: "./lib"
 
     Depends { name: "cpp" }
+    Depends { name: "cppstdlib" }
     Depends { name: "lib.sodium" }
 
     lib.sodium.version:   project.sodiumVersion
     lib.sodium.useSystem: project.useSystemSodium
 
-    Probe {
-        id: baseProbe
-        property string compilerLibraryPath
-        configure: {
-            lib.sodium.probe();
-            compilerLibraryPath = GccUtl.compilerLibraryPath(cpp.compilerPath);
-        }
+    ProbExt.LibValidationProbe {
+        id: libValidation
+        checkingLibs: [lib.sodium]
     }
 
     cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
@@ -108,7 +106,7 @@ Product {
     )
 
     cpp.rpaths: QbsUtl.concatPaths(
-        baseProbe.compilerLibraryPath,
+        cppstdlib.path,
         lib.sodium.libraryPath,
         "$ORIGIN/../lib"
     )

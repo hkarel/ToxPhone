@@ -11,7 +11,7 @@
 #include "kernel/communication/commands.h"
 #include "diverter/phone_diverter.h"
 
-#include "shared/_list.h"
+#include "shared/list.h"
 #include "shared/defmac.h"
 #include "shared/safe_singleton.h"
 #include "shared/qt/communication/message.h"

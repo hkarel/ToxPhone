@@ -2,7 +2,7 @@ import qbs
 import qbs.File
 import qbs.TextFile
 import QbsUtl
-import GccUtl
+import ProbExt
 
 Product {
     type: "application"
@@ -13,6 +13,7 @@ Product {
     condition: !qbs.toolchain.contains("mingw")
 
     Depends { name: "cpp" }
+    Depends { name: "cppstdlib" }
     Depends { name: "lib.sodium" }
     Depends { name: "Yaml" }
     Depends { name: "SharedLib" }
@@ -29,22 +30,26 @@ Product {
         id: productProbe
         readonly property bool printPackegeBuildInfo: project.printPackegeBuildInfo
         readonly property string projectBuildDirectory: project.buildDirectory
-        property string compilerLibraryPath
+        readonly property var libSodium: lib.sodium
         configure: {
-            lib.sodium.probe();
-            compilerLibraryPath = GccUtl.compilerLibraryPath(cpp.compilerPath);
             if (printPackegeBuildInfo) {
-                var file = new TextFile(projectBuildDirectory + "/package_build_info", TextFile.WriteOnly);
+                var file = new TextFile(projectBuildDirectory + "/package_build_info",
+                                        TextFile.WriteOnly);
                 try {
-                    var libSodium = lib.sodium.dynamicLibraries;
-                    for (var i in libSodium)
-                        file.writeLine(lib.sodium.libraryPath + "/lib" + libSodium[i] + ".so*");
+                    for (var i in libSodium.dynamicLibraries) {
+                        file.writeLine(libSodium.libraryPath
+                                       + "/lib" + libSodium.dynamicLibraries[i] + ".so*");
+                    }
                 }
                 finally {
                     file.close();
                 }
             }
         }
+    }
+    ProbExt.LibValidationProbe {
+        id: libValidation
+        checkingLibs: [lib.sodium]
     }
 
     cpp.defines: {
@@ -70,7 +75,7 @@ Product {
     )
 
     cpp.rpaths: QbsUtl.concatPaths(
-        productProbe.compilerLibraryPath,
+        cppstdlib.path,
         lib.sodium.libraryPath,
         "/opt/toxphone/lib"
         //"$ORIGIN/../lib"
