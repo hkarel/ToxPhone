@@ -103,7 +103,9 @@ do
             exit 1
             ;;
         *)  # No more options
-            break
+            #break
+            echo "Error: Unknown option: $1" >&2
+            exit 1
             ;;
     esac
 done

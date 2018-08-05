@@ -189,6 +189,7 @@ Project {
         name: "DHT_Bootstrap"
         targetName: "dht-bootstrap"
 
+        Depends { name: "ToxCore" }
         Depends { name: "ToxCrypto" }
         Depends { name: "ToxNetwork" }
         Depends { name: "ToxNetCrypto" }
@@ -207,6 +208,8 @@ Project {
             toxPrefix + "other/DHT_bootstrap.c",
             toxPrefix + "other/bootstrap_node_packets.c",
             toxPrefix + "other/bootstrap_node_packets.h",
+            toxPrefix + "testing/misc_tools.c",
+            toxPrefix + "testing/misc_tools.h",
 
             // Реализация оригинального логгера
             toxPrefix + "toxcore/logger.c",

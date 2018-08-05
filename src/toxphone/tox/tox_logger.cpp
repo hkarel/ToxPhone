@@ -36,7 +36,7 @@ Logger *logger_new(void)
 
 void logger_kill(Logger *log)
 {
-    (void) log;
+    free(log);
 }
 
 void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
@@ -61,7 +61,7 @@ void logger_write(
     char buff[1024] = {0};
     switch (level)
     {
-        case LOG_TRACE:
+        case LOGGER_LEVEL_TRACE:
             if (alog::logger().level() == alog::Level::Debug2)
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
@@ -69,7 +69,7 @@ void logger_write(
             }
             break;
 
-        case LOG_DEBUG:
+        case LOGGER_LEVEL_DEBUG:
             if (alog::logger().level() >= alog::Level::Debug)
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
@@ -77,14 +77,14 @@ void logger_write(
             }
             break;
 
-        case LOG_WARNING:
+        case LOGGER_LEVEL_WARNING:
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
                 alog::logger().warn_f(file, func, line, "ToxCore") << buff;
             }
             break;
 
-        case LOG_ERROR:
+        case LOGGER_LEVEL_ERROR:
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
                 alog::logger().error_f(file, func, line, "ToxCore") << buff;
@@ -93,7 +93,7 @@ void logger_write(
 
         default:
             {
-                // LOG_INFO
+                // LOGGER_LEVEL_INFO
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
                 alog::logger().info_f(file, func, line, "ToxCore") << buff;
             }
