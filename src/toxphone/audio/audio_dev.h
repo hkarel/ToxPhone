@@ -7,7 +7,6 @@
 
 #include "audio/wav_file.h"
 #include "common/voice_frame.h"
-#include "common/voice_filters.h"
 #include "kernel/communication/commands.h"
 #include "diverter/phone_diverter.h"
 
@@ -97,6 +96,7 @@ private:
     void command_IncomingConfigConnection(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);
     void command_AudioStreamInfo(const Message::Ptr&);
+    void command_AudioNoise(const Message::Ptr&);
     void command_AudioTest(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
 
@@ -195,8 +195,6 @@ private:
     atomic_bool _playbackActive = {false};
     atomic_bool _voiceActive = {false};
     atomic_bool _recordActive = {false};
-
-    VoiceFilters _voiceFilters;
 
     size_t _voiceBytes = {0};
     size_t _recordBytes = {0};

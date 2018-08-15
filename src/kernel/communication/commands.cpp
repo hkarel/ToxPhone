@@ -27,6 +27,7 @@ REGISTRY_COMMAND_SINGLPROC(DhtConnectStatus,           "b17a2b17-fbae-4be6-a28e-
 REGISTRY_COMMAND_SINGLPROC(AudioDevInfo,               "1560a37b-529c-4233-8596-5f4e5076a359")
 REGISTRY_COMMAND_SINGLPROC(AudioDevChange,             "f305679b-ba1d-47d6-9769-f16c30dec6bf")
 REGISTRY_COMMAND_SINGLPROC(AudioStreamInfo,            "e8a04218-3d9e-4bd1-b25f-0543829d85f0")
+REGISTRY_COMMAND_SINGLPROC(AudioNoise,                 "496fc84b-3ac2-40f0-8e61-e34cd2008c04")
 REGISTRY_COMMAND_SINGLPROC(AudioTest,                  "eadfcffd-c78e-4320-bd6b-8e3fcd300edb")
 REGISTRY_COMMAND_SINGLPROC(AudioRecordLevel,           "5accc4e1-e489-42aa-b016-2532e3cbd471")
 REGISTRY_COMMAND_SINGLPROC(ToxCallAction,              "d29c17b2-ff6d-4ea9-bc5c-dcfb0ee55162")
@@ -194,7 +195,7 @@ bserial::RawVector FriendItem::toRaw() const
     /** Персональные аудио-установки **/
     B_SERIALIZE_V2(stream)
     stream << personalVolumes;
-    stream << echoMute;
+    stream << echoCancel;
     B_SERIALIZE_V3(stream)
     stream << avatar;
     B_SERIALIZE_RETURN
@@ -215,7 +216,7 @@ void FriendItem::fromRaw(const bserial::RawVector& vect)
     /** Персональные аудио-установки **/
     B_DESERIALIZE_V2(vect, stream)
     stream >> personalVolumes;
-    stream >> echoMute;
+    stream >> echoCancel;
     B_DESERIALIZE_V3(vect, stream)
     stream >> avatar;
     B_DESERIALIZE_END
@@ -396,6 +397,26 @@ void AudioStreamInfo::fromRaw(const bserial::RawVector& vect)
     stream >> channels;
     stream >> volume;
     stream >> volumeSteps;
+    B_DESERIALIZE_END
+}
+
+bserial::RawVector AudioNoise::toRaw() const
+{
+    B_SERIALIZE_V1(stream)
+    stream << type;
+    stream << publicKey;
+    stream << number;
+    stream << value;
+    B_SERIALIZE_RETURN
+}
+
+void AudioNoise::fromRaw(const bserial::RawVector& vect)
+{
+    B_DESERIALIZE_V1(vect, stream)
+    stream >> type;
+    stream >> publicKey;
+    stream >> number;
+    stream >> value;
     B_DESERIALIZE_END
 }
 

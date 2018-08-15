@@ -107,6 +107,11 @@ extern const QUuidEx AudioDevChange;
 extern const QUuidEx AudioStreamInfo;
 
 /**
+  Команда управляет опциями эхо- и шумо-подавления
+*/
+extern const QUuidEx AudioNoise;
+
+/**
   Команда для запуска/остановки аудио-тестов
 */
 extern const QUuidEx AudioTest;
@@ -298,7 +303,7 @@ struct FriendItem : Data<&command::FriendItem,
     /** Персональные аудио-установки **/
     bool personalVolumes = {false}; // Признак использования персональных
                                     // установок для звуковых потоков
-    bool echoMute = {false};        // Признак использования системы эхоподавления
+    bool echoCancel = {false};      // Признак использования системы эхоподавления
 
     DECLARE_B_SERIALIZE_FUNC
 };
@@ -312,7 +317,7 @@ struct FriendAudioChange : Data<&command::FriendAudioChange,
         None        = 0,
         PersVolumes = 1, // Изменен признак использования персональных установок
                          // для звуковых потоков.
-        EchoMute    = 2, // Изменен признак использования системы эхоподавления
+        EchoCancel  = 2, // Изменен признак использования системы эхоподавления
     };
     ChangeFlag changeFlag = {ChangeFlag::None};
     QByteArray publicKey; // Tox- Идентификатор друга
@@ -425,10 +430,10 @@ struct AudioStreamInfo : Data<&command::AudioStreamInfo,
     // Типы потоков
     enum class Type : quint32
     {
-        Undefined  = 0,
-        Playback   = 1,
-        Voice      = 2,
-        Record     = 3
+        Undefined = 0,
+        Playback  = 1,
+        Voice     = 2,
+        Record    = 3
     };
 
     // Состояния потоков
@@ -450,6 +455,25 @@ struct AudioStreamInfo : Data<&command::AudioStreamInfo,
     quint8  channels = {2};    // Количество каналов
     quint32 volume = {0};      // Текущий уровень громкости (для первого канала)
     quint32 volumeSteps = {0}; // Количество шагов уровня громкости
+
+    DECLARE_B_SERIALIZE_FUNC
+};
+
+struct AudioNoise : Data<&command::AudioNoise,
+                          Message::Type::Command,
+                          Message::Type::Answer>
+{
+    enum class Type : quint32
+    {
+        None   = 0,
+        Voice  = 1, // Подавление шума во входящем аудио-потоке
+        Record = 2, // Подавление шума в исходящем аудио-потоке
+        Echo   = 3  // Подавление эха в исходящем аудио-потоке
+    };
+    Type       type = {Type::None};
+    QByteArray publicKey;     // Tox- Идентификатор друга
+    quint32    number = (-1); // Tox- Числовой идентификатор друга
+    qint32     value;         // Зачение изменяемого параметра
 
     DECLARE_B_SERIALIZE_FUNC
 };

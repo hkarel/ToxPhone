@@ -18,7 +18,6 @@ VoiceFrameInfo::VoiceFrameInfo(quint32 latency,
       bufferSize(bufferSize)
 {}
 
-
 VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* vfi, bool reset)
 {
     static VoiceFrameInfo::Ptr voiceFrameInfo;
@@ -33,12 +32,12 @@ VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* vfi, bool reset)
     return voiceFrameInfo;
 }
 
-RingBuffer& recordRingBuff()
+RingBuffer& recordRBuff_1()
 {
     return ::safe_singleton<RingBuffer, 0>();
 }
 
-RingBuffer& filterRingBuff()
+RingBuffer& recordRBuff_2()
 {
     return ::safe_singleton<RingBuffer, 1>();
 }
@@ -57,7 +56,7 @@ VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
     return voiceFrameInfo;
 }
 
-RingBuffer& voiceRingBuff()
+RingBuffer& voiceRBuff()
 {
-    return ::safe_singleton<RingBuffer, 2>();
+    return ::safe_singleton<RingBuffer, 3>();
 }

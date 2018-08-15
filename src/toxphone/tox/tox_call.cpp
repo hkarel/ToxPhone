@@ -5,6 +5,7 @@
 #include "tox_logger.h"
 #include "common/defines.h"
 #include "common/functions.h"
+#include "common/voice_filters.h"
 #include "diverter/phone_diverter.h"
 
 #include "shared/break_point.h"
@@ -473,7 +474,7 @@ void ToxCall::iterateVoiceFrame()
     char data[4000];
     quint32 dataSize = voiceFrameInfo->bufferSize;
 
-    if (filterRingBuff().read(data, dataSize))
+    if (recordRBuff_2().read(data, dataSize))
     {
         _recordBytes += dataSize;
 
@@ -782,7 +783,7 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
         return;
     }
 
-    if (voiceRingBuff().write((char*)pcm, bufferSize))
+    if (voiceRBuff().write((char*)pcm, bufferSize))
         tc->_voiceBytes += bufferSize;
 }
 

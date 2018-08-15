@@ -13,3 +13,6 @@
 [submodule "src/3rdparty/toxcore"]
 	path = src/3rdparty/toxcore
     url = https://github.com/hkarel/c-toxcore.git
+[submodule "src/3rdparty/rnnoise"]
+	path = src/3rdparty/rnnoise
+	url = https://github.com/xiph/rnnoise.git

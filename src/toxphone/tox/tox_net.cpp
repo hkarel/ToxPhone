@@ -1137,7 +1137,7 @@ bool ToxNet::fillFriendItem(data::FriendItem& item, uint32_t friendNumber)
         conf->getValue(node, "friend_alias", item.nameAlias, false);
         conf->getValue(node, "phone_number", item.phoneNumber, false);
         conf->getValue(node, "audio_streams.active", item.personalVolumes, false);
-        conf->getValue(node, "echo_mute", item.echoMute, false);
+        conf->getValue(node, "echo_cancel", item.echoCancel, false);
         return true;
     };
     string confKey = "phones." + string(item.publicKey);

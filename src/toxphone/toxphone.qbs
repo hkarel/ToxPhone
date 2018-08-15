@@ -21,6 +21,8 @@ Product {
     Depends { name: "ToxNetwork" }
     Depends { name: "ToxCore" }
     Depends { name: "FilterAudio" }
+    //Depends { name: "Celt" }
+    Depends { name: "RNNoise" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
     lib.sodium.version:   project.sodiumVersion

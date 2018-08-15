@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>805</width>
-    <height>627</height>
+    <width>798</width>
+    <height>595</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -36,7 +36,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="tabProfile">
        <attribute name="title">
@@ -829,13 +829,32 @@
             <layout class="QGridLayout" name="gridLayout">
              <item row="1" column="1">
               <widget class="QSlider" name="sliderAudioPlayback">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="cboxAudioPlayback"/>
+              <widget class="QComboBox" name="cboxAudioPlayback">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>25</height>
+                </size>
+               </property>
+              </widget>
              </item>
              <item row="0" column="0">
               <widget class="QLabel" name="label_5">
@@ -860,7 +879,7 @@
              <item row="0" column="2">
               <widget class="QPushButton" name="btnPlaybackTest">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -868,7 +887,7 @@
                <property name="minimumSize">
                 <size>
                  <width>80</width>
-                 <height>0</height>
+                 <height>25</height>
                 </size>
                </property>
                <property name="text">
@@ -896,6 +915,18 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btnPlaybackAsDefault">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>25</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Set device as default</string>
                  </property>
@@ -940,6 +971,12 @@
              </item>
              <item row="1" column="1">
               <widget class="QSlider" name="sliderAudioRecord">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="orientation">
                 <enum>Qt::Horizontal</enum>
                </property>
@@ -956,7 +993,20 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="cboxAudioRecord"/>
+              <widget class="QComboBox" name="cboxAudioRecord">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>25</height>
+                </size>
+               </property>
+              </widget>
              </item>
              <item row="2" column="0">
               <widget class="QLabel" name="label_9">
@@ -970,10 +1020,16 @@
              </item>
              <item row="2" column="2">
               <widget class="QPushButton" name="btnRecordTest">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="minimumSize">
                 <size>
                  <width>80</width>
-                 <height>0</height>
+                 <height>25</height>
                 </size>
                </property>
                <property name="text">
@@ -1065,6 +1121,12 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btnRecordAsDefault">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>25</height>
+                  </size>
+                 </property>
                  <property name="text">
                   <string>Set device as default</string>
                  </property>
@@ -1146,6 +1208,27 @@
                </property>
               </widget>
              </item>
+             <item row="4" column="1">
+              <widget class="QCheckBox" name="chkNoiseRecord">
+               <property name="text">
+                <string>Noise suppression for output stream (record)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QCheckBox" name="chkNoiseVolume">
+               <property name="text">
+                <string>Noise suppression for input stream (voice)</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QCheckBox" name="chkEchoCancel">
+               <property name="text">
+                <string>Echo cancellation</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
           </layout>
@@ -1172,7 +1255,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_21">
         <item>
-         <widget class="QCheckBox" name="cboxUseDiverter">
+         <widget class="QCheckBox" name="chkUseDiverter">
           <property name="text">
            <string>Use diverter</string>
           </property>

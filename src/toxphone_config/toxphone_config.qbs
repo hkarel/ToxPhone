@@ -7,7 +7,7 @@ Product {
     consoleApplication: false
     destinationDirectory: "./bin"
 
-    name: "ToxPhone (config)"
+    name: "ToxPhone (Config)"
     targetName: "toxphone-config"
 
     Depends { name: "cpp" }
