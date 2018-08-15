@@ -34,8 +34,11 @@ struct VoiceFrameInfo
 };
 
 VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
-RingBuffer& recordRingBuff();
-RingBuffer& filterRingBuff();
+RingBuffer& firstRecordRB();
+RingBuffer& secondRecordRB();
 
 VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* = 0, bool reset = false);
-RingBuffer& voiceRingBuff();
+RingBuffer& firstVoiceRB();
+RingBuffer& secondVoiceRB();
+
+

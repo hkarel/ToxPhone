@@ -78,6 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(AudioDevInfo)
     FUNC_REGISTRATION(AudioDevChange)
     FUNC_REGISTRATION(AudioStreamInfo)
+    FUNC_REGISTRATION(AudioNoise)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(AudioRecordLevel)
     FUNC_REGISTRATION(ToxCallAction)
@@ -720,6 +721,25 @@ void MainWindow::command_AudioStreamInfo(const Message::Ptr& message)
     }
 }
 
+void MainWindow::command_AudioNoise(const Message::Ptr& message)
+{
+    data::AudioNoise audioNoise;
+    readFromMessage(message, audioNoise);
+
+    if (audioNoise.type == data::AudioNoise::Type::Voice)
+    {
+        ui->chkNoiseVolume->setChecked(audioNoise.value > 0);
+    }
+    else if (audioNoise.type == data::AudioNoise::Type::Record)
+    {
+        ui->chkNoiseRecord->setChecked(audioNoise.value > 0);
+    }
+    else if (audioNoise.type == data::AudioNoise::Type::Echo)
+    {
+        ui->chkEchoCancel->setChecked(audioNoise.value > 0);
+    }
+}
+
 void MainWindow::command_AudioTest(const Message::Ptr& message)
 {
 
@@ -859,9 +879,9 @@ void MainWindow::command_DiverterInfo(const Message::Ptr& message)
     data::DiverterInfo diverterInfo;
     readFromMessage(message, diverterInfo);
 
-    ui->cboxUseDiverter->blockSignals(true);
-    ui->cboxUseDiverter->setChecked(diverterInfo.active);
-    ui->cboxUseDiverter->blockSignals(false);
+    ui->chkUseDiverter->blockSignals(true);
+    ui->chkUseDiverter->setChecked(diverterInfo.active);
+    ui->chkUseDiverter->blockSignals(false);
 
     if (diverterInfo.defaultMode == data::DiverterDefaultMode::Pstn)
         ui->rbtnDiverterPSTN->setChecked(true);
@@ -1401,6 +1421,36 @@ void MainWindow::on_sliderStreamRecord_sliderReleased()
     _socket->send(m);
 }
 
+void MainWindow::on_chkNoiseVolume_clicked(bool)
+{
+    data::AudioNoise audioNoise;
+    audioNoise.type = data::AudioNoise::Type::Voice;
+    audioNoise.value = ui->chkNoiseVolume->isChecked();
+
+    Message::Ptr m = createMessage(audioNoise);
+    _socket->send(m);
+}
+
+void MainWindow::on_chkNoiseRecord_clicked(bool)
+{
+    data::AudioNoise audioNoise;
+    audioNoise.type = data::AudioNoise::Type::Record;
+    audioNoise.value = ui->chkNoiseRecord->isChecked();
+
+    Message::Ptr m = createMessage(audioNoise);
+    _socket->send(m);
+}
+
+void MainWindow::on_chkEchoCancel_clicked(bool)
+{
+    data::AudioNoise audioNoise;
+    audioNoise.type = data::AudioNoise::Type::Echo;
+    audioNoise.value = ui->chkEchoCancel->isChecked();
+
+    Message::Ptr m = createMessage(audioNoise);
+    _socket->send(m);
+}
+
 void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
 {
     slider->setMinimum(base);
@@ -1408,7 +1458,7 @@ void MainWindow::setSliderLevel(QSlider* slider, int base, int current, int max)
     slider->setValue(current);
 }
 
-void MainWindow::on_cboxUseDiverter_toggled(bool state)
+void MainWindow::on_chkUseDiverter_toggled(bool state)
 {
     if (!state)
     {
@@ -1420,9 +1470,9 @@ void MainWindow::on_cboxUseDiverter_toggled(bool state)
                                         QMessageBox::No);
         if (res == QMessageBox::No)
         {
-            ui->cboxUseDiverter->blockSignals(true);
-            ui->cboxUseDiverter->setChecked(true);
-            ui->cboxUseDiverter->blockSignals(false);
+            ui->chkUseDiverter->blockSignals(true);
+            ui->chkUseDiverter->setChecked(true);
+            ui->chkUseDiverter->blockSignals(false);
             return;
         }
     }

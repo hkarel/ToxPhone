@@ -1,6 +1,7 @@
 #include "audio_dev.h"
 #include "toxphone_appl.h"
 #include "common/functions.h"
+#include "common/voice_filters.h"
 
 #include "shared/break_point.h"
 #include "shared/simple_ptr.h"
@@ -46,7 +47,7 @@ static string paStrError(pa_stream* stream)
     return string("; Error: ") + pa_strerror(pa_context_errno(pa_stream_get_context(stream)));
 }
 
-static void initChannelsVolune(const data::AudioStreamInfo& asi, pa_cvolume& volume)
+static void initChannelsVolume(const data::AudioStreamInfo& asi, pa_cvolume& volume)
 {
     volume.channels = asi.channels;
     for (quint8 i = 0; i < volume.channels; ++i)
@@ -102,6 +103,7 @@ AudioDev::AudioDev()
     FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(AudioDevChange)
     FUNC_REGISTRATION(AudioStreamInfo)
+    FUNC_REGISTRATION(AudioNoise)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
@@ -322,8 +324,8 @@ void AudioDev::startPlayback(const QString& fileName, int cycleCount,
     pa_stream_set_suspended_callback(_playbackStream, playback_stream_suspended, this);
     pa_stream_set_moved_callback    (_playbackStream, playback_stream_moved, this);
 
-    QByteArray devNameByff;
-    const char* devName = currentDeviceName(_sinkDevices, devNameByff);
+    QByteArray devNameBuff;
+    const char* devName = currentDeviceName(_sinkDevices, devNameBuff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_NOFLAGS);
     if (pa_stream_connect_playback(_playbackStream, devName, 0, flags, 0, 0) < 0)
     {
@@ -420,8 +422,8 @@ void AudioDev::startVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
     paBuffAttr.minreq    = uint32_t(-1);
     paBuffAttr.fragsize  = uint32_t(-1);
 
-    QByteArray devNameByff;
-    const char* devName = currentDeviceName(_sinkDevices, devNameByff);
+    QByteArray devNameBuff;
+    const char* devName = currentDeviceName(_sinkDevices, devNameBuff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
                                                 |PA_STREAM_ADJUST_LATENCY
                                                 |PA_STREAM_AUTO_TIMING_UPDATE);
@@ -432,6 +434,7 @@ void AudioDev::startVoice(const VoiceFrameInfo::Ptr& voiceFrameInfo)
                     << paStrError(_voiceStream);
         return;
     }
+    voiceFilters().start();
     _voiceActive = true;
     log_debug_m << "Voice stream start";
 }
@@ -456,10 +459,12 @@ void AudioDev::stopVoice()
     pa_stream_unref(_voiceStream);
     _voiceStream = 0;
 
-    log_debug_m << "Voice ring buffer available: "
-                << voiceRingBuff().available();
+    log_debug_m << "First voice ring buffer available: " << firstVoiceRB().available();
+    log_debug_m << "Second voice ring buffer available: " << secondVoiceRB().available();
 
-    voiceRingBuff().reset();
+    voiceFilters().stop();
+    firstVoiceRB().reset();
+    secondVoiceRB().reset();
     getVoiceFrameInfo(0, true);
 
     log_debug_m << "Voice bytes (processed): " << _voiceBytes;
@@ -507,9 +512,7 @@ void AudioDev::startRecord()
         return;
     }
 
-    quint32 latency = 20000;
-    //latency = 10000;
-
+    quint32 latency = 20000; /* в микросекундах */
     quint32 bufferSize = pa_usec_to_bytes(latency, &paSampleSpec);
     quint32 sampleSize = pa_sample_size(&paSampleSpec);
     quint32 sampleCount = bufferSize / (sampleSize * paSampleSpec.channels);
@@ -540,8 +543,8 @@ void AudioDev::startRecord()
     paBuffAttr.minreq    = uint32_t(-1);
     paBuffAttr.fragsize  = pa_usec_to_bytes(latency, &paSampleSpec);
 
-    QByteArray devNameByff;
-    const char* devName = currentDeviceName(_sourceDevices, devNameByff);
+    QByteArray devNameBuff;
+    const char* devName = currentDeviceName(_sourceDevices, devNameBuff);
     pa_stream_flags_t flags = pa_stream_flags_t(PA_STREAM_INTERPOLATE_TIMING
                                                 |PA_STREAM_ADJUST_LATENCY
                                                 |PA_STREAM_AUTO_TIMING_UPDATE);
@@ -552,7 +555,7 @@ void AudioDev::startRecord()
                     << paStrError(_recordStream);
         return;
     }
-    _voiceFilters.start();
+    voiceFilters().start();
     _recordActive = true;
     log_debug_m << "Record stream start";
 }
@@ -591,11 +594,12 @@ void AudioDev::stopRecord()
     pa_stream_unref(_recordStream);
     _recordStream = 0;
 
-    log_debug_m << "Record ring buffer available: "
-                << recordRingBuff().available();
+    log_debug_m << "First record ring buffer available: " << firstRecordRB().available();
+    log_debug_m << "Second record ring buffer available: "   << secondRecordRB().available();
 
-    _voiceFilters.stop();
-    recordRingBuff().reset();
+    voiceFilters().stop();
+    firstRecordRB().reset();
+    secondRecordRB().reset();
     getRecordFrameInfo(0, true);
 
     log_debug_m << "Record bytes (processed): " << _recordBytes;
@@ -750,6 +754,40 @@ void AudioDev::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
 
     m = createMessage(_recordAudioStreamInfo);
     toxConfig().send(m);
+
+    { //Block for data::AudioNoise
+        bool value = true;
+        config::state().getValue("audio.streams.voice_noise", value);
+
+        data::AudioNoise audioNoise;
+        audioNoise.type = data::AudioNoise::Type::Voice;
+        audioNoise.value = value;
+
+        m = createMessage(audioNoise);
+        toxConfig().send(m);
+    }
+    { //Block for data::AudioNoise
+        bool value = false;
+        config::state().getValue("audio.streams.record_noise", value);
+
+        data::AudioNoise audioNoise;
+        audioNoise.type = data::AudioNoise::Type::Record;
+        audioNoise.value = value;
+
+        m = createMessage(audioNoise);
+        toxConfig().send(m);
+    }
+    { //Block for data::AudioNoise
+        bool value = false;
+        config::state().getValue("audio.streams.echo_cancel", value);
+
+        data::AudioNoise audioNoise;
+        audioNoise.type = data::AudioNoise::Type::Echo;
+        audioNoise.value = value;
+
+        m = createMessage(audioNoise);
+        toxConfig().send(m);
+    }
 }
 
 void AudioDev::command_AudioDevChange(const Message::Ptr& message)
@@ -897,7 +935,7 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
             log_debug2_m << "Set playback stream volume: " << _palybackAudioStreamInfo.volume
                          << "; index: " << _palybackAudioStreamInfo.index;
 
-            initChannelsVolune(_palybackAudioStreamInfo, volume);
+            initChannelsVolume(_palybackAudioStreamInfo, volume);
             if (O_PTR(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
@@ -919,7 +957,7 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
             log_debug2_m << "Set voice stream volume: " << _voiceAudioStreamInfo.volume
                          << "; index: " << _voiceAudioStreamInfo.index;
 
-            initChannelsVolune(_voiceAudioStreamInfo, volume);
+            initChannelsVolume(_voiceAudioStreamInfo, volume);
             if (O_PTR(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
@@ -934,7 +972,7 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
             log_debug2_m << "Set record stream volume: " << _recordAudioStreamInfo.volume
                          << "; index: " << _recordAudioStreamInfo.index;
 
-            initChannelsVolune(_recordAudioStreamInfo, volume);
+            initChannelsVolume(_recordAudioStreamInfo, volume);
             if (O_PTR(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
@@ -944,6 +982,26 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                 log_error_m << "Failed call pa_context_set_source_output_volume()" << paStrError(_paContext);
         }
     }
+}
+
+void AudioDev::command_AudioNoise(const Message::Ptr& message)
+{
+    data::AudioNoise audioNoise;
+    readFromMessage(message, audioNoise);
+
+    if (audioNoise.type == data::AudioNoise::Type::Voice)
+    {
+        config::state().setValue("audio.streams.voice_noise", bool(audioNoise.value > 0));
+    }
+    else if (audioNoise.type == data::AudioNoise::Type::Record)
+    {
+        config::state().setValue("audio.streams.record_noise", bool(audioNoise.value > 0));
+    }
+    else if (audioNoise.type == data::AudioNoise::Type::Echo)
+    {
+        config::state().setValue("audio.streams.echo_cancel", bool(audioNoise.value > 0));
+    }
+    config::state().save();
 }
 
 void AudioDev::command_AudioTest(const Message::Ptr& message)
@@ -980,9 +1038,21 @@ void AudioDev::command_AudioTest(const Message::Ptr& message)
         {
             startRecord();
             _recordTest = true;
+
+            /*** Отладка эхоподавления ***/
+            //VoiceFrameInfo::Ptr voiceFrameInfo = getRecordFrameInfo();
+            //startVoice(voiceFrameInfo);
+            /***/
+
         }
         else
+        {
             stopRecord();
+
+            /*** Отладка эхоподавления ***/
+            //stopVoice();
+            /***/
+        }
     }
 }
 
@@ -1981,10 +2051,13 @@ void AudioDev::voice_stream_state(pa_stream* stream, void* userdata)
 
             if (VoiceFrameInfo::Ptr voiceFrameInfo = getVoiceFrameInfo())
             {
-                size_t rbuffSize = 8 * voiceFrameInfo->bufferSize;
-                voiceRingBuff().init(rbuffSize);
+                firstVoiceRB().init(8 * voiceFrameInfo->bufferSize);
+                log_debug_m  << "Initialization a noise ring buffer"
+                             << "; size: " << firstVoiceRB().size();
+
+                secondVoiceRB().init(8 * voiceFrameInfo->bufferSize);
                 log_debug_m  << "Initialization a voice ring buffer"
-                             << "; size: " << rbuffSize;
+                             << "; size: " << secondVoiceRB().size();
             }
             else
                 log_error_m << "Failed get VoiceFrameInfo for voice";
@@ -2041,7 +2114,7 @@ void AudioDev::voice_stream_write(pa_stream* stream, size_t nbytes, void* userda
         return;
     }
 
-    if (voiceRingBuff().read((char*)data, nbytes))
+    if (secondVoiceRB().read((char*)data, nbytes))
         ad->_voiceBytes += nbytes;
     else
         memset(data, 0, nbytes);
@@ -2112,9 +2185,13 @@ void AudioDev::record_stream_state(pa_stream* stream, void* userdata)
 
             if (VoiceFrameInfo::Ptr voiceFrameInfo = getRecordFrameInfo())
             {
-                recordRingBuff().init(5 * voiceFrameInfo->bufferSize);
+                firstRecordRB().init(5 * voiceFrameInfo->bufferSize);
                 log_debug_m  << "Initialization a record ring buffer"
-                             << "; size: " << recordRingBuff().size();
+                             << "; size: " << firstRecordRB().size();
+
+                secondRecordRB().init(5 * voiceFrameInfo->bufferSize);
+                log_debug_m  << "Initialization a echo ring buffer"
+                             << "; size: " << secondRecordRB().size();
             }
             else
                 log_error_m << "Failed get VoiceFrameInfo for record";
@@ -2180,8 +2257,8 @@ void AudioDev::record_stream_read(pa_stream* stream, size_t nbytes, void* userda
             {
                 ad->_recordBytes += nbytes;
 
-                if (recordRingBuff().write((char*)data, nbytes))
-                    ad->_voiceFilters.bufferUpdated();
+                if (firstRecordRB().write((char*)data, nbytes))
+                    voiceFilters().bufferUpdated();
                 else
                     log_error_m << "Failed write data to recordVoiceRBuff"
                                 << ". Data size: " << nbytes;
