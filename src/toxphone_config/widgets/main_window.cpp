@@ -726,18 +726,15 @@ void MainWindow::command_AudioNoise(const Message::Ptr& message)
     data::AudioNoise audioNoise;
     readFromMessage(message, audioNoise);
 
-    if (audioNoise.type == data::AudioNoise::Type::Voice)
-    {
-        ui->chkNoiseVolume->setChecked(audioNoise.value > 0);
-    }
-    else if (audioNoise.type == data::AudioNoise::Type::Record)
-    {
-        ui->chkNoiseRecord->setChecked(audioNoise.value > 0);
-    }
-    else if (audioNoise.type == data::AudioNoise::Type::Echo)
-    {
-        ui->chkEchoCancel->setChecked(audioNoise.value > 0);
-    }
+    int index = 1;
+    if (audioNoise.filterType == data::AudioNoise::FilterType::None)
+        index = 0;
+    if (audioNoise.filterType == data::AudioNoise::FilterType::RNNoise)
+        index = 2;
+
+    ui->cboxNoiseFilter->blockSignals(true);
+    ui->cboxNoiseFilter->setCurrentIndex(index);
+    ui->cboxNoiseFilter->blockSignals(false);
 }
 
 void MainWindow::command_AudioTest(const Message::Ptr& message)
@@ -1421,31 +1418,13 @@ void MainWindow::on_sliderStreamRecord_sliderReleased()
     _socket->send(m);
 }
 
-void MainWindow::on_chkNoiseVolume_clicked(bool)
+void MainWindow::on_cboxNoiseFilter_currentIndexChanged(int index)
 {
     data::AudioNoise audioNoise;
-    audioNoise.type = data::AudioNoise::Type::Voice;
-    audioNoise.value = ui->chkNoiseVolume->isChecked();
-
-    Message::Ptr m = createMessage(audioNoise);
-    _socket->send(m);
-}
-
-void MainWindow::on_chkNoiseRecord_clicked(bool)
-{
-    data::AudioNoise audioNoise;
-    audioNoise.type = data::AudioNoise::Type::Record;
-    audioNoise.value = ui->chkNoiseRecord->isChecked();
-
-    Message::Ptr m = createMessage(audioNoise);
-    _socket->send(m);
-}
-
-void MainWindow::on_chkEchoCancel_clicked(bool)
-{
-    data::AudioNoise audioNoise;
-    audioNoise.type = data::AudioNoise::Type::Echo;
-    audioNoise.value = ui->chkEchoCancel->isChecked();
+    if (index == 0)
+        audioNoise.filterType = data::AudioNoise::FilterType::None;
+    else if (index == 2)
+        audioNoise.filterType = data::AudioNoise::FilterType::RNNoise;
 
     Message::Ptr m = createMessage(audioNoise);
     _socket->send(m);

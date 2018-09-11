@@ -403,20 +403,18 @@ void AudioStreamInfo::fromRaw(const bserial::RawVector& vect)
 bserial::RawVector AudioNoise::toRaw() const
 {
     B_SERIALIZE_V1(stream)
-    stream << type;
+    stream << filterType;
     stream << publicKey;
     stream << number;
-    stream << value;
     B_SERIALIZE_RETURN
 }
 
 void AudioNoise::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
-    stream >> type;
+    stream >> filterType;
     stream >> publicKey;
     stream >> number;
-    stream >> value;
     B_DESERIALIZE_END
 }
 

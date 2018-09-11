@@ -73,9 +73,7 @@ private slots:
     void on_sliderStreamVoice_sliderReleased();
     void on_sliderStreamRecord_sliderReleased();
 
-    void on_chkNoiseVolume_clicked(bool);
-    void on_chkNoiseRecord_clicked(bool);
-    void on_chkEchoCancel_clicked(bool);
+    void on_cboxNoiseFilter_currentIndexChanged(int index);
 
     void on_chkUseDiverter_toggled(bool state);
 

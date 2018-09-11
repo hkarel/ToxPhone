@@ -3,6 +3,7 @@
 #include "tox/tox_call.h"
 #include "audio/audio_dev.h"
 #include "common/voice_frame.h"
+#include "common/voice_filters.h"
 #include "diverter/phone_diverter.h"
 #include "kernel/communication/commands.h"
 
@@ -387,14 +388,16 @@ int main(int argc, char *argv[])
         chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
                       &appl,         SLOT(message(communication::Message::Ptr)))
 
-        chk_connect_d(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxNet(),     SLOT(message(communication::Message::Ptr)))
-        chk_connect_d(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
-        chk_connect_q(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &audioDev(),   SLOT(message(communication::Message::Ptr)))
-        chk_connect_q(&appl,       SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &appl,         SLOT(message(communication::Message::Ptr)))
+        chk_connect_d(&appl,             SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxNet(),          SLOT(message(communication::Message::Ptr)))
+        chk_connect_d(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &toxCall(),         SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &audioDev(),        SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &voiceFilters(),    SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
+                      &appl,              SLOT(message(communication::Message::Ptr)))
 
         chk_connect_q(&phoneDiverter(), SIGNAL(attached()),
                       &appl,              SLOT(phoneDiverterAttached()))

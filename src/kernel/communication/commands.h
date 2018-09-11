@@ -107,7 +107,7 @@ extern const QUuidEx AudioDevChange;
 extern const QUuidEx AudioStreamInfo;
 
 /**
-  Команда управляет опциями эхо- и шумо-подавления
+  Команда управляет опциями шумо-подавления
 */
 extern const QUuidEx AudioNoise;
 
@@ -463,17 +463,17 @@ struct AudioNoise : Data<&command::AudioNoise,
                           Message::Type::Command,
                           Message::Type::Answer>
 {
-    enum class Type : quint32
+    enum class FilterType : quint32
     {
-        None   = 0,
-        Voice  = 1, // Подавление шума во входящем аудио-потоке
-        Record = 2, // Подавление шума в исходящем аудио-потоке
-        Echo   = 3  // Подавление эха в исходящем аудио-потоке
+        None    = 0,
+        WebRtc  = 1, // Подавление шума с использованием библиотеки webrtc
+        RNNoise = 2  // Подавление шума с использованием библиотеки rnnoise
     };
-    Type       type = {Type::None};
+    FilterType filterType = {FilterType::WebRtc};
+
+    /** Зарезервировано для будущего использования **/
     QByteArray publicKey;     // Tox- Идентификатор друга
     quint32    number = (-1); // Tox- Числовой идентификатор друга
-    qint32     value;         // Зачение изменяемого параметра
 
     DECLARE_B_SERIALIZE_FUNC
 };

@@ -103,7 +103,6 @@ AudioDev::AudioDev()
     FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(AudioDevChange)
     FUNC_REGISTRATION(AudioStreamInfo)
-    FUNC_REGISTRATION(AudioNoise)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(ToxCallState)
     _funcInvoker.sort();
@@ -243,7 +242,7 @@ void AudioDev::playOutgoingByTimer()
 
 void AudioDev::playBusyByTimer()
 {
-    startPlayback("sound/busy.wav", 15, data::PlaybackFinish::Code::Busy);
+    startPlayback("sound/busy.wav", 8, data::PlaybackFinish::Code::Busy);
 }
 
 void AudioDev::playFailByTimer()
@@ -754,40 +753,6 @@ void AudioDev::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
 
     m = createMessage(_recordAudioStreamInfo);
     toxConfig().send(m);
-
-    { //Block for data::AudioNoise
-        bool value = true;
-        config::state().getValue("audio.streams.voice_noise", value);
-
-        data::AudioNoise audioNoise;
-        audioNoise.type = data::AudioNoise::Type::Voice;
-        audioNoise.value = value;
-
-        m = createMessage(audioNoise);
-        toxConfig().send(m);
-    }
-    { //Block for data::AudioNoise
-        bool value = false;
-        config::state().getValue("audio.streams.record_noise", value);
-
-        data::AudioNoise audioNoise;
-        audioNoise.type = data::AudioNoise::Type::Record;
-        audioNoise.value = value;
-
-        m = createMessage(audioNoise);
-        toxConfig().send(m);
-    }
-    { //Block for data::AudioNoise
-        bool value = false;
-        config::state().getValue("audio.streams.echo_cancel", value);
-
-        data::AudioNoise audioNoise;
-        audioNoise.type = data::AudioNoise::Type::Echo;
-        audioNoise.value = value;
-
-        m = createMessage(audioNoise);
-        toxConfig().send(m);
-    }
 }
 
 void AudioDev::command_AudioDevChange(const Message::Ptr& message)
@@ -982,26 +947,6 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                 log_error_m << "Failed call pa_context_set_source_output_volume()" << paStrError(_paContext);
         }
     }
-}
-
-void AudioDev::command_AudioNoise(const Message::Ptr& message)
-{
-    data::AudioNoise audioNoise;
-    readFromMessage(message, audioNoise);
-
-    if (audioNoise.type == data::AudioNoise::Type::Voice)
-    {
-        config::state().setValue("audio.streams.voice_noise", bool(audioNoise.value > 0));
-    }
-    else if (audioNoise.type == data::AudioNoise::Type::Record)
-    {
-        config::state().setValue("audio.streams.record_noise", bool(audioNoise.value > 0));
-    }
-    else if (audioNoise.type == data::AudioNoise::Type::Echo)
-    {
-        config::state().setValue("audio.streams.echo_cancel", bool(audioNoise.value > 0));
-    }
-    config::state().save();
 }
 
 void AudioDev::command_AudioTest(const Message::Ptr& message)

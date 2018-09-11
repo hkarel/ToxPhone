@@ -2,13 +2,18 @@
 #include "voice_frame.h"
 #include "toxphone_appl.h"
 #include "common/functions.h"
-#include "kernel/communication/commands.h"
 
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/config/config.h"
 #include "shared/qt/communication/message.h"
+#include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
+
+#include <string>
+
+using namespace std;
 
 extern "C" {
 #include "filter_audio.h"
@@ -24,47 +29,24 @@ extern "C" {
 
 #define RNNOISE_FRAME_SIZE 480
 
-void rnNoiseFilter(DenoiseState* ds, int16_t* data)
-{
-    float channel[RNNOISE_FRAME_SIZE];
-
-    float* c = channel;
-    int16_t* d = data;
-    for (int i = 0; i < RNNOISE_FRAME_SIZE; ++i)
-        *c++ = *d++;
-
-    rnnoise_process_frame(ds, channel, channel);
-
-    c = channel;
-    d = data;
-    for (int i = 0; i < RNNOISE_FRAME_SIZE; ++i)
-        *d++ = *c++;
-}
-
-static quint32 getDataSize(const VoiceFrameInfo::Ptr& vfi)
-{
-    switch (vfi->latency)
-    {
-        case 40000:
-            return vfi->bufferSize / 4;
-
-        case 20000:
-            return vfi->bufferSize / 2;
-
-        case 10000:
-            return vfi->bufferSize;
-
-        case 5000:
-            return vfi->bufferSize * 2;
-
-        default:
-            return vfi->bufferSize;
-    }
-}
-
 VoiceFilters& voiceFilters()
 {
     return ::safe_singleton<VoiceFilters, 0>();
+}
+
+VoiceFilters::VoiceFilters()
+{
+    chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
+                  this, SLOT(message(communication::Message::Ptr)))
+
+    #define FUNC_REGISTRATION(COMMAND) \
+        _funcInvoker.registration(command:: COMMAND, &VoiceFilters::command_##COMMAND, this);
+
+    FUNC_REGISTRATION(IncomingConfigConnection)
+    FUNC_REGISTRATION(AudioNoise)
+    _funcInvoker.sort();
+
+    #undef FUNC_REGISTRATION
 }
 
 void VoiceFilters::wake()
@@ -98,49 +80,93 @@ void VoiceFilters::run()
         ToxPhoneApplication::stop(1);
         return;
     }
-    quint32 recordDataSize = getDataSize(recordFrameInfo);
 
-    // Для двух каналов
-    recordDataSize = RNNOISE_FRAME_SIZE * recordFrameInfo->sampleSize; // * 2;
-
-    Filter_Audio* noiseFilter = new_filter_audio(recordFrameInfo->samplingRate);
-    if (!noiseFilter)
+    Filter_Audio* webrtcFilter = new_filter_audio(recordFrameInfo->samplingRate);
+    if (!webrtcFilter)
     {
         log_error_m << "Failed call new_filter_audio() for noise filter";
         ToxPhoneApplication::stop(1);
         return;
     }
-    enable_disable_filters(noiseFilter, 0, 1, 0, 0);
+    enable_disable_filters(webrtcFilter, 0, 1, 0, 0);
 
+    DenoiseState* rnnoiseFilter = rnnoise_create();
+    data::AudioNoise::FilterType filterType = data::AudioNoise::FilterType::WebRtc;
+    quint32 recordDataSize = 0;
     char data[4000];
-    //VoiceFrameInfo::Ptr voiceFrameInfo;
-    //quint32 voiceDataSize;
-    DenoiseState* denoiseState = rnnoise_create();
+
+    _filterChanged = true;
 
     while (true)
     {
         if (threadStop())
             break;
 
+        if (_filterChanged)
+        {
+            filterType = rereadFilterType();
+            if (filterType == data::AudioNoise::FilterType::WebRtc)
+            {
+                log_verbose_m << "Using WebRtc noise suppression";
+                switch (recordFrameInfo->latency)
+                {
+                    case 40000:
+                        recordDataSize = recordFrameInfo->bufferSize / 4;
+
+                    case 20000:
+                        recordDataSize = recordFrameInfo->bufferSize / 2;
+
+                    case 10000:
+                        recordDataSize = recordFrameInfo->bufferSize;
+
+                    case 5000:
+                        recordDataSize = recordFrameInfo->bufferSize * 2;
+
+                    default:
+                        recordDataSize = recordFrameInfo->bufferSize;
+                }
+            }
+            else if (filterType == data::AudioNoise::FilterType::RNNoise)
+            {
+                log_verbose_m << "Using RNNoise noise suppression";
+                recordDataSize = RNNOISE_FRAME_SIZE * recordFrameInfo->sampleSize;
+            }
+            else
+            {
+                log_verbose_m << "Not used noise suppression";
+                recordDataSize = recordFrameInfo->bufferSize;
+            }
+            _filterChanged = false;
+        }
+
         if (recordRBuff_1().read(data, recordDataSize))
         {
             int16_t* pcm = (int16_t*)data;
-//            rnNoiseFilter(denoiseState, pcm);
-
-            if (filter_audio(noiseFilter, pcm, recordDataSize / sizeof(int16_t)) < 0)
+            if (filterType == data::AudioNoise::FilterType::WebRtc)
             {
-                log_error_m << "Failed call filter_audio() for noise filter";
+                if (filter_audio(webrtcFilter, pcm, recordDataSize / sizeof(int16_t)) < 0)
+                    log_error_m << "Failed call filter_audio() for noise filter";
+            }
+            else if (filterType == data::AudioNoise::FilterType::RNNoise)
+            {
+                float channel[RNNOISE_FRAME_SIZE];
+
+                float* c = channel;
+                int16_t* p = pcm;
+                for (int i = 0; i < RNNOISE_FRAME_SIZE; ++i)
+                    *c++ = *p++;
+
+                rnnoise_process_frame(rnnoiseFilter, channel, channel);
+
+                c = channel;
+                p = pcm;
+                for (int i = 0; i < RNNOISE_FRAME_SIZE; ++i)
+                    *p++ = *c++;
             }
 
             /*** Отладка эхоподавления ***/
             //secondVoiceRB().write((char*)data, recordDataSize);
             /***/
-
-//            if (echoFilter)
-//                if (filter_audio(echoFilter, pcm, recordDataSize / sizeof(int16_t)) < 0)
-//                {
-//                    log_error_m << "Failed filter_audio() for echo filter";
-//                }
 
             if (!recordRBuff_2().write((char*)data, recordDataSize))
             {
@@ -177,17 +203,66 @@ void VoiceFilters::run()
             _threadCond.wait(&_threadLock, 10);
         }
     }
-    kill_filter_audio(noiseFilter);
-
-//    if (echoFilter)
-//        kill_filter_audio(echoFilter);
-
-    rnnoise_destroy(denoiseState);
+    kill_filter_audio(webrtcFilter);
+    rnnoise_destroy(rnnoiseFilter);
 
     _recordLevetMax = 0;
     sendRecordLevet(_recordLevetMax, 200);
 
     log_info_m << "Stopped";
+}
+
+void VoiceFilters::message(const communication::Message::Ptr& message)
+{
+    if (message->processed())
+        return;
+
+    if (_funcInvoker.containsCommand(message->command()))
+    {
+        if (!commandsPool().commandIsMultiproc(message->command()))
+            message->markAsProcessed();
+        _funcInvoker.call(message);
+    }
+}
+
+void VoiceFilters::command_IncomingConfigConnection(const Message::Ptr& /*message*/)
+{
+    data::AudioNoise audioNoise;
+    audioNoise.filterType = rereadFilterType();
+
+    Message::Ptr m = createMessage(audioNoise);
+    toxConfig().send(m);
+}
+
+void VoiceFilters::command_AudioNoise(const Message::Ptr& message)
+{
+    data::AudioNoise audioNoise;
+    readFromMessage(message, audioNoise);
+
+    string value = "webrtc";
+    if (audioNoise.filterType == data::AudioNoise::FilterType::None)
+        value = "none";
+    else if (audioNoise.filterType == data::AudioNoise::FilterType::RNNoise)
+        value = "rnnoise";
+
+    config::state().setValue("audio.streams.noise_filter", value);
+    config::state().save();
+
+    _filterChanged = true;
+}
+
+data::AudioNoise::FilterType VoiceFilters::rereadFilterType()
+{
+    data::AudioNoise::FilterType filterType = data::AudioNoise::FilterType::WebRtc;
+
+    string value = "webrtc";
+    config::state().getValue("audio.streams.noise_filter", value);
+    if (value == "none")
+        filterType = data::AudioNoise::FilterType::None;
+    else if (value == "rnnoise")
+        filterType = data::AudioNoise::FilterType::RNNoise;
+
+    return filterType;
 }
 
 #undef log_error_m

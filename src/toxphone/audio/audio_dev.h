@@ -96,7 +96,6 @@ private:
     void command_IncomingConfigConnection(const Message::Ptr&);
     void command_AudioDevChange(const Message::Ptr&);
     void command_AudioStreamInfo(const Message::Ptr&);
-    void command_AudioNoise(const Message::Ptr&);
     void command_AudioTest(const Message::Ptr&);
     void command_ToxCallState(const Message::Ptr&);
 
