@@ -1543,8 +1543,11 @@ void AudioDev::sink_info(pa_context* context, const pa_sink_info* info,
     if (eol != 0)
         return;
 
-    if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
-        return;
+    /* Даем возможность выбирать виртуальные звуковые устройства. Это позволит
+       на уровне PulseAudio выбирать устройства с функцией эхоподавления
+    */
+    //if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+    //    return;
 
     lst::FindResult fr = ad->_sinkDevices.find(info->name);
     if (fr.failed())
@@ -1564,8 +1567,9 @@ void AudioDev::sink_change(pa_context* context, const pa_sink_info* info,
     if (eol != 0)
         return;
 
-    if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
-        return;
+    /* См. комментарий в функции AudioDev::sink_info() */
+    //if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+    //    return;
 
     lst::FindResult fr = ad->_sinkDevices.findRef(quint32(info->index));
     if (fr.failed())
@@ -1587,8 +1591,9 @@ void AudioDev::source_info(pa_context* context, const pa_source_info* info,
     if (eol != 0)
         return;
 
-    if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
-        return;
+    /* См. комментарий в функции AudioDev::sink_info() */
+    //if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+    //    return;
 
     lst::FindResult fr = ad->_sourceDevices.find(info->name);
     if (fr.failed())
@@ -1608,8 +1613,9 @@ void AudioDev::source_change(pa_context* context, const pa_source_info* info,
     if (eol != 0)
         return;
 
-    if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
-        return;
+    /* См. комментарий в функции AudioDev::sink_info() */
+    //if ((info->flags & PA_SOURCE_HARDWARE) != PA_SOURCE_HARDWARE)
+    //    return;
 
     lst::FindResult fr = ad->_sourceDevices.findRef(quint32(info->index));
     if (fr.failed())
