@@ -108,6 +108,11 @@ MainWindow::MainWindow(QWidget *parent) :
     _btnDeleteAvatar->setFocusPolicy(Qt::NoFocus);
     chk_connect_a(_btnDeleteAvatar, SIGNAL(clicked(bool)),
                   this, SLOT(btnDeleteAvatar_clicked(bool)));
+
+    _timerDeleteAvatar.setInterval(600);
+    _timerDeleteAvatar.setSingleShot(true);
+    chk_connect_a(&_timerDeleteAvatar, SIGNAL(timeout()),
+                  this, SLOT(timerDeleteAvatar_timeout()));
 }
 
 MainWindow::~MainWindow()
@@ -980,10 +985,12 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
         else if (event->type() == QEvent::Enter)
         {
             if (!_avatar.isNull() )
-                _btnDeleteAvatar->setVisible(true);
+                _timerDeleteAvatar.start();
+                //_btnDeleteAvatar->setVisible(true);
         }
         else if (event->type() == QEvent::Leave)
         {
+            _timerDeleteAvatar.stop();
             _btnDeleteAvatar->setVisible(false);
         }
     }
@@ -1643,6 +1650,11 @@ void MainWindow::updateLabelCallState()
         if (_callState.callState == data::ToxCallState::CallState::Undefined)
             ui->labelCallState->clear();
     }
+}
+
+void MainWindow::timerDeleteAvatar_timeout()
+{
+    _btnDeleteAvatar->setVisible(true);
 }
 
 void MainWindow::aboutClear()

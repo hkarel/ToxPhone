@@ -90,6 +90,7 @@ private slots:
     void labelAvatar_clicked();
     void btnDeleteAvatar_clicked(bool);
     void updateLabelCallState();
+    void timerDeleteAvatar_timeout();
 
 private:
     bool eventFilter(QObject*, QEvent*) override;
@@ -144,6 +145,7 @@ private:
 
     // Кнопка для удаления аватара
     QPushButton* _btnDeleteAvatar = {0};
+    QTimer _timerDeleteAvatar;
     QPixmap _avatar;
 
     int _tabRrequestsIndex = {0};
