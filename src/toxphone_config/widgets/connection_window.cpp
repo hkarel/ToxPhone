@@ -1,6 +1,7 @@
 #include "connection_window.h"
 #include "ui_connection_window.h"
 #include "widgets/connection.h"
+#include "widgets/list_widget_item.h"
 
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
@@ -324,6 +325,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
                 cw->setHostPoint(toxPhoneInfo.hostPoint);
                 cw->setPointToPoint(false);
             }
+            ui->listPhones->sortItems();
             found = true;
             break;
         }
@@ -340,10 +342,11 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
         //QSize sz = cw->sizeHint();
-        QListWidgetItem* lwi = new QListWidgetItem();
+        ListWidgetItem<ConnectionWidget>* lwi = new ListWidgetItem<ConnectionWidget>(cw);
         lwi->setSizeHint(cw->minimumSize());
         ui->listPhones->addItem(lwi);
         ui->listPhones->setItemWidget(lwi, cw);
+        ui->listPhones->sortItems();
     }
 
     if (ui->listPhones->count())

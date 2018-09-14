@@ -50,3 +50,8 @@ bool ConnectionWidget::lifeTimeExpired() const
 {
     return (_lifeTimer.elapsed<std::chrono::seconds>() > _lifeTimeInterval);
 }
+
+bool ConnectionWidget::lessThan(ConnectionWidget* cw)
+{
+    return (QString::compare(info(), cw->info(), Qt::CaseInsensitive) < 0);
+}

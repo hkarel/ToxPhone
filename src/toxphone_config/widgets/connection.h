@@ -38,7 +38,7 @@ public:
     void resetLifeTimer() {_lifeTimer.reset();}
     bool lifeTimeExpired() const;
 
-
+    bool lessThan(ConnectionWidget*);
 
 private:
     Ui::ConnectionWidget *ui;

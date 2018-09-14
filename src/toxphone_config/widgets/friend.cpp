@@ -16,20 +16,20 @@ FriendWidget::~FriendWidget()
     delete ui;
 }
 
+static QString friendName(const data::FriendItem& properties)
+{
+    if (!properties.nameAlias.isEmpty())
+        return QString("%1 (%2)").arg(properties.nameAlias)
+                                 .arg(properties.name);
+    return properties.name;
+}
+
 void FriendWidget::setProperties(const data::FriendItem& val)
 {
     _properties = val;
+    ui->labelFriendName->setText(friendName(_properties));
 
-    QString msg;
-    if (!_properties.nameAlias.isEmpty())
-        msg = QString("%1 (%2)").arg(_properties.nameAlias)
-                                .arg(_properties.name);
-    else
-        msg = _properties.name;
-
-    ui->labelFriendName->setText(msg);
-
-    msg = _properties.statusMessage.trimmed();
+    QString msg = _properties.statusMessage.trimmed();
     ui->labelFriendStatus->setText(msg);
     ui->labelFriendStatus->setVisible(!msg.isEmpty());
 
@@ -69,6 +69,18 @@ void FriendWidget::setProperties(const data::FriendItem& val)
         avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     setAvatar(avatar, (avatarSize == 42));
+}
+
+bool FriendWidget::lessThan(FriendWidget* fw)
+{
+    if (_properties.isConnecnted == fw->_properties.isConnecnted)
+    {
+        QString name1 = friendName(_properties);
+        QString name2 = friendName(fw->_properties);
+        if (QString::compare(name1, name2, Qt::CaseInsensitive) < 0)
+            return true;
+    }
+    return (_properties.isConnecnted > fw->_properties.isConnecnted);
 }
 
 void FriendWidget::setAvatar(QPixmap avatar, bool roundCorner)

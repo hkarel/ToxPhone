@@ -2,6 +2,7 @@
 #include "ui_main_window.h"
 #include "widgets/friend.h"
 #include "widgets/friend_request.h"
+#include "widgets/list_widget_item.h"
 #include "widgets/password_window.h"
 
 #include "shared/defmac.h"
@@ -420,7 +421,7 @@ void MainWindow::command_FriendItem(const Message::Ptr& message)
     if (!found)
     {
         FriendWidget* fw = new FriendWidget();
-        QListWidgetItem* lwi = new QListWidgetItem();
+        ListWidgetItem<FriendWidget>* lwi = new ListWidgetItem<FriendWidget>(fw);
         lwi->setSizeHint(fw->sizeHint());
         ui->listFriends->addItem(lwi);
         ui->listFriends->setItemWidget(lwi, fw);
@@ -429,6 +430,7 @@ void MainWindow::command_FriendItem(const Message::Ptr& message)
         // иначе будет неверная геометрия
         fw->setProperties(friendItem);
     }
+    ui->listFriends->sortItems();
 }
 
 void MainWindow::command_FriendList(const Message::Ptr& message)
@@ -439,7 +441,7 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
     while (friendList.list.count() > ui->listFriends->count())
     {
         FriendWidget* fw = new FriendWidget();
-        QListWidgetItem* lwi = new QListWidgetItem();
+        ListWidgetItem<FriendWidget>* lwi = new ListWidgetItem<FriendWidget>(fw);
         //QSize sz = fw->minimumSize();
         lwi->setSizeHint(fw->minimumSize());
         ui->listFriends->addItem(lwi);
@@ -458,6 +460,7 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
         FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
         fw->setProperties(fi);
     }
+    ui->listFriends->sortItems();
 }
 
 void MainWindow::command_RemoveFriend(const Message::Ptr& message)

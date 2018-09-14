@@ -21,6 +21,8 @@ public:
     const data::FriendItem& properties() const {return _properties;}
     void setProperties(const data::FriendItem&);
 
+    bool lessThan(FriendWidget*);
+
 private:
     void setAvatar(QPixmap avatar, bool roundCorner);
 

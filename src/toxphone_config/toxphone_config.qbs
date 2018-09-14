@@ -84,6 +84,7 @@ Product {
             "friend_request.cpp",
             "friend_request.h",
             "friend_request.ui",
+            "list_widget_item.h",
             "main_window.cpp",
             "main_window.h",
             "main_window.ui",
