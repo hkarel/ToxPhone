@@ -855,7 +855,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
             logLine << "#";
         else
             logLine << val;
-        logLine << ". Diverter use state: "
+        logLine << "  Diverter use state: "
                 << (diverterIsActive() ? "ON" : "OFF");
     }
     if (!diverterIsActive())
@@ -941,7 +941,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
             return;
         }
         log_debug_m << "Call phone number: *" << phoneNum
-                    << "#. " << ToxFriendLog(toxNet().tox(), friendNumber);
+                    << "#  " << ToxFriendLog(toxNet().tox(), friendNumber);
 
         // Новый вызов
         data::ToxCallAction toxCallAction;
