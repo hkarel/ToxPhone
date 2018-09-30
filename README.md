@@ -1,4 +1,5 @@
 <a name="toxphone" />
+<img align="left" src="https://raw.githubusercontent.com/hkarel/ToxPhone/master/setup/icons/128x128/toxphone.png" alt="logo" />
 
 # ToxPhone
 
