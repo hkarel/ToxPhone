@@ -19,6 +19,20 @@ cp $script_dir/setup/deb/toxphone-config/DEBIAN/*  $package_dir/DEBIAN
 cp ${build_dir}/bin/toxphone-config                $package_dir/opt/toxphone
 cp $script_dir/setup/toxphone-config.desktop       $package_dir/usr/share/applications
 
+function copy_pict()
+{
+    mkdir -p $package_dir/usr/share/icons/hicolor/${1}/apps
+    cp $script_dir/setup/icons/${1}/toxphone*.png $package_dir/usr/share/icons/hicolor/${1}/apps
+    chmod -R u=rwX,go=rX $package_dir/usr/share/icons/hicolor/${1}/apps
+    chmod -R u=rw,go=r   $package_dir/usr/share/icons/hicolor/${1}/apps/*
+}
+copy_pict "16x16"
+copy_pict "24x24"
+copy_pict "32x32"
+copy_pict "64x64"
+copy_pict "128x128"
+copy_pict "256x256"
+
 chmod -R go-w        $package_dir
 chmod    u=rwx,go=rx $package_dir/DEBIAN/post*
 chmod    u=rwx,go=rx $package_dir/DEBIAN/pre*

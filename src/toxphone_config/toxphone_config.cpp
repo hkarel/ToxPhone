@@ -108,6 +108,7 @@ int main(int argc, char *argv[])
         QApplication appl {argc, argv};
         QApplication::setApplicationName("ToxPhoneConfig " + productVersion().toString());
         QApplication::setQuitOnLastWindowClosed(false);
+        QApplication::setWindowIcon(QIcon("://resources/toxphone.png"));
 
         tcp::Socket::Ptr socket {new tcp::Socket};
 

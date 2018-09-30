@@ -6,6 +6,6 @@ GenericName=ToxPhone configurator
 Comment=Tox phone for communication
 TryExec=/opt/toxphone/toxphone-config
 Exec=/opt/toxphone/toxphone-config
-Icon=xorg
+Icon=toxphone.png
 Terminal=false
 Categories=Network;Telephony;Application;

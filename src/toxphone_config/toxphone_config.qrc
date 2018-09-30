@@ -5,5 +5,6 @@
         <file>resources/offline.png</file>
         <file>resources/online.png</file>
         <file>resources/avatar_mask.svg</file>
+        <file>resources/toxphone.png</file>
     </qresource>
 </RCC>
