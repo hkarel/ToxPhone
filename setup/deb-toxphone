@@ -7,7 +7,7 @@ package_dir=$script_dir/build/${build_subdir}/deb/toxphone
 echo -e "\npackage_dir: $package_dir"
 
 package_name="toxphone-${package_vers}-${package_date}git${gitrev}-${os_id}${os_ver}-${os_arch}.deb"
-echo "package_name_tox: $package_name"
+echo "package_name: $package_name"
 
 rm -rf $package_dir
 
@@ -59,7 +59,6 @@ chmod    u=rwx,go=rx $package_dir/DEBIAN/pre*
 chmod    u=rw,go=r   $package_dir/DEBIAN/conffiles
 chmod    u=rwX,go=rX $package_dir/etc/toxphone
 chmod -R u=rwX,go=rX $package_dir/opt/toxphone
-chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
 chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
 chmod    u=rw,go=r   $package_dir/opt/toxphone/lib/*
 chmod    u=rw,go=r   $package_dir/opt/toxphone/autorun/*

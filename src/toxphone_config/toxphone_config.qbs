@@ -3,12 +3,12 @@ import QbsUtl
 import ProbExt
 
 Product {
+    name: "ToxPhone (Config)"
+    targetName: "toxphone-config"
+
     type: "application"
     consoleApplication: false
     destinationDirectory: "./bin"
-
-    name: "ToxPhone (Config)"
-    targetName: "toxphone-config"
 
     Depends { name: "cpp" }
     Depends { name: "cppstdlib" }

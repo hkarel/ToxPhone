@@ -5,12 +5,12 @@ import QbsUtl
 import ProbExt
 
 Product {
-    type: "application"
-    destinationDirectory: "./bin"
-
     name: "ToxPhone"
     targetName: "toxphone"
     condition: !qbs.toolchain.contains("mingw")
+
+    type: "application"
+    destinationDirectory: "./bin"
 
     Depends { name: "cpp" }
     Depends { name: "cppstdlib" }

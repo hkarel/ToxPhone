@@ -234,7 +234,6 @@ echo "gitrev: $gitrev"
 #
 # Формирование deb-пакета для toxphone
 #
-
 if [ "$build_deb_package" = "yes" -o "$install_toxphone" = "yes" ]; then
     . $script_dir/setup/deb-toxphone
 fi
