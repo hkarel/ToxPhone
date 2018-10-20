@@ -328,7 +328,7 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
              && _callState.callState == data::ToxCallState::CallState::Undefined)
     {
         setDiverterToDefaultState();
-        _diverterPhoneNumber.clear();
+        resetDiverterPhoneNumber();
     }
     updateConfigDiverterInfo();
 }
@@ -690,7 +690,7 @@ void ToxPhoneApplication::command_PlaybackFinish(const Message::Ptr& message)
         && _callState.callState == data::ToxCallState::CallState::Undefined)
     {
         setDiverterToDefaultState();
-        _diverterPhoneNumber.clear();
+        resetDiverterPhoneNumber();
     }
 }
 
@@ -798,6 +798,12 @@ void ToxPhoneApplication::setDiverterToDefaultState()
     }
 }
 
+void ToxPhoneApplication::resetDiverterPhoneNumber()
+{
+    _asteriskPressed = false;
+    _diverterPhoneNumber.clear();
+}
+
 void ToxPhoneApplication::phoneDiverterAttached()
 {
     YamlConfig::Func loadFunc = [this](YamlConfig* conf, YAML::Node& phones, bool)
@@ -866,27 +872,30 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     if (!canToCall)
         return;
 
-    if (val >= 0x00 && val < 0x0a)
+    if (val >= 0x00 && val < 0x0a) // Нажата цифра
     {
-        _diverterPhoneNumber.append(QString::number(val));
+        if (_asteriskPressed)
+            _diverterPhoneNumber.append(QString::number(val));
     }
-    else if (val == 0x0b)
+    else if (val == 0x0b) // Нажата '*'
     {
-        // Нажата '*'
-        if (_diverterPhoneNumber.isEmpty())
+        _asteriskPressed = true;
+        _diverterPhoneNumber.clear();
+        if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
         {
-            if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
-            {
-                phoneDiverter().switchToUsb();
-                updateConfigDiverterInfo();
-            }
-            if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
-                phoneDiverter().startDialTone();
+            phoneDiverter().switchToUsb();
+            updateConfigDiverterInfo();
         }
+        if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
+            phoneDiverter().startDialTone();
     }
-    else if (val == 0x0c)
+    else if (val == 0x0c) // Нажата '#'
     {
-        // Нажата '#'
+        if (!_asteriskPressed)
+        {
+            resetDiverterPhoneNumber();
+            return;
+        }
         phoneDiverter().stopDialTone();
 
         // Удаляем ведущий символ '*'
@@ -906,7 +915,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
                 phoneDiverter().stopDialTone();
                 audioDev().playError();
             }
-            _diverterPhoneNumber.clear();
+            resetDiverterPhoneNumber();
             return;
         }
 
@@ -921,7 +930,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
                 phoneDiverter().stopDialTone();
                 audioDev().playError();
             }
-            _diverterPhoneNumber.clear();
+            resetDiverterPhoneNumber();
             return;
         }
 
@@ -937,7 +946,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
                 phoneDiverter().stopDialTone();
                 audioDev().playError();
             }
-            _diverterPhoneNumber.clear();
+            resetDiverterPhoneNumber();
             return;
         }
         log_debug_m << "Call phone number: *" << phoneNum
@@ -955,8 +964,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
 
 void ToxPhoneApplication::phoneDiverterHandset(PhoneDiverter::Handset handset)
 {
-    _diverterPhoneNumber.clear();
-
+    resetDiverterPhoneNumber();
     if (!diverterIsActive())
         return;
 

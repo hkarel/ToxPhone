@@ -74,6 +74,8 @@ private:
     // Возвращает дивертер в состояние согласно базовым установкам
     void setDiverterToDefaultState();
 
+    void resetDiverterPhoneNumber();
+
 private:
     int _stopTimerId = {-1};
     static volatile bool _stop;
@@ -98,6 +100,7 @@ private:
     //data::PhoneDiverter _phoneDiverter;
     QHash<quint32/*PhoneNumber*/, QByteArray/*FriendKey*/> _phonesHash;
 
+    bool _asteriskPressed = {false};
     QString _diverterPhoneNumber;
     PhoneDiverter::Mode _diverterDefaultMode = {PhoneDiverter::Mode::Pstn};
 
