@@ -538,7 +538,7 @@ void ToxNet::run()
             if (!_messages.empty())
             {
                 for (int i = 0; i < _messages.count(); ++i)
-                    messages.add(_messages.release(i, lst::NO_COMPRESS_LIST));
+                    messages.add(_messages.release(i, lst::CompressList::No));
                 _messages.clear();
             }
         }
