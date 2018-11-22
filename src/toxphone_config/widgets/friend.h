@@ -1,5 +1,6 @@
 #pragma once
 
+#include "comparator.h"
 #include "kernel/communication/commands.h"
 #include <QWidget>
 
@@ -10,7 +11,7 @@ class FriendWidget;
 using namespace std;
 using namespace communication;
 
-class FriendWidget : public QWidget
+class FriendWidget : public Comparator
 {
     Q_OBJECT
 
@@ -21,7 +22,7 @@ public:
     const data::FriendItem& properties() const {return _properties;}
     void setProperties(const data::FriendItem&);
 
-    bool lessThan(FriendWidget*);
+    bool lessThan(Comparator*) const override;
 
 private:
     void setAvatar(QPixmap avatar, bool roundCorner);

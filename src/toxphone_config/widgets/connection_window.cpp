@@ -2,6 +2,7 @@
 #include "ui_connection_window.h"
 #include "widgets/connection.h"
 #include "widgets/list_widget_item.h"
+#include "widgets/stub_widget.h"
 
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
@@ -79,6 +80,13 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
                   this, SLOT(socketConnected(communication::SocketDescriptor)))
     chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
                   this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+
+    StubWidget* sw = new StubWidget();
+    ListWidgetItem* lwi = new ListWidgetItem(sw);
+    lwi->setSizeHint(sw->minimumSize());
+    ui->listPhones->addItem(lwi);
+    ui->listPhones->setItemWidget(lwi, sw);
+    //ui->listPhones->sortItems();
 
     int port = 33601;
     if (!config::state().getValue("connection.port", port))
@@ -173,6 +181,9 @@ void ConnectionWindow::on_btnConnect_clicked(bool /*checked*/)
     QListWidgetItem* lwi = ui->listPhones->currentItem();
     ConnectionWidget* cw =
         qobject_cast<ConnectionWidget*>(ui->listPhones->itemWidget(lwi));
+
+    if (!cw)
+        return;
 
     if (cw->configConnectCount() != 0)
     {
@@ -278,7 +289,7 @@ void ConnectionWindow::updatePhonesList()
         QListWidgetItem* lwi = ui->listPhones->item(i);
         ConnectionWidget* cw =
             qobject_cast<ConnectionWidget*>(ui->listPhones->itemWidget(lwi));
-        if (cw->lifeTimeExpired())
+        if (cw && cw->lifeTimeExpired())
         {
             --i;
             ui->listPhones->removeItemWidget(lwi);
@@ -315,7 +326,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         QListWidgetItem* lwi = ui->listPhones->item(i);
         ConnectionWidget* cw =
             qobject_cast<ConnectionWidget*>(ui->listPhones->itemWidget(lwi));
-        if (cw->applId() == toxPhoneInfo.applId)
+        if (cw && (cw->applId() == toxPhoneInfo.applId))
         {
             cw->resetLifeTimer();
             cw->setInfo(toxPhoneInfo.info);
@@ -342,7 +353,7 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
         //QSize sz = cw->sizeHint();
-        ListWidgetItem<ConnectionWidget>* lwi = new ListWidgetItem<ConnectionWidget>(cw);
+        ListWidgetItem* lwi = new ListWidgetItem(cw);
         lwi->setSizeHint(cw->minimumSize());
         ui->listPhones->addItem(lwi);
         ui->listPhones->setItemWidget(lwi, cw);
@@ -367,7 +378,7 @@ void ConnectionWindow::command_ApplShutdown(const Message::Ptr& message)
         QListWidgetItem* lwi = ui->listPhones->item(i);
         ConnectionWidget* cw =
             qobject_cast<ConnectionWidget*>(ui->listPhones->itemWidget(lwi));
-        if (cw->applId() == applShutdown.applId)
+        if (cw && (cw->applId() == applShutdown.applId))
         {
             ui->listPhones->removeItemWidget(lwi);
             delete lwi;

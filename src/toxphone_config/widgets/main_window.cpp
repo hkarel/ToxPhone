@@ -426,7 +426,7 @@ void MainWindow::command_FriendItem(const Message::Ptr& message)
     if (!found)
     {
         FriendWidget* fw = new FriendWidget();
-        ListWidgetItem<FriendWidget>* lwi = new ListWidgetItem<FriendWidget>(fw);
+        ListWidgetItem* lwi = new ListWidgetItem(fw);
         lwi->setSizeHint(fw->sizeHint());
         ui->listFriends->addItem(lwi);
         ui->listFriends->setItemWidget(lwi, fw);
@@ -446,7 +446,7 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
     while (friendList.list.count() > ui->listFriends->count())
     {
         FriendWidget* fw = new FriendWidget();
-        ListWidgetItem<FriendWidget>* lwi = new ListWidgetItem<FriendWidget>(fw);
+        ListWidgetItem* lwi = new ListWidgetItem(fw);
         //QSize sz = fw->minimumSize();
         lwi->setSizeHint(fw->minimumSize());
         ui->listFriends->addItem(lwi);

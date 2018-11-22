@@ -72,6 +72,7 @@ Product {
         name: "widgets"
         prefix: "widgets/"
         files: [
+            "comparator.h",
             "connection.cpp",
             "connection.h",
             "connection.ui",
@@ -91,6 +92,9 @@ Product {
             "password_window.cpp",
             "password_window.h",
             "password_window.ui",
+            "stub_widget.cpp",
+            "stub_widget.h",
+            "stub_widget.ui"
         ]
     }
 

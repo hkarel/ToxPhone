@@ -5,7 +5,7 @@
 #include <QPainter>
 
 FriendWidget::FriendWidget(QWidget *parent) :
-    QWidget(parent),
+    Comparator(parent),
     ui(new Ui::FriendWidget)
 {
     ui->setupUi(this);
@@ -71,8 +71,9 @@ void FriendWidget::setProperties(const data::FriendItem& val)
     setAvatar(avatar, (avatarSize == 42));
 }
 
-bool FriendWidget::lessThan(FriendWidget* fw)
+bool FriendWidget::lessThan(Comparator* c) const
 {
+    FriendWidget* fw = dynamic_cast<FriendWidget*>(c);
     if (_properties.isConnecnted == fw->_properties.isConnecnted)
     {
         QString name1 = friendName(_properties);

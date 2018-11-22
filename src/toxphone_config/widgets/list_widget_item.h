@@ -1,17 +1,18 @@
 #pragma once
+
+#include "comparator.h"
 #include <QListWidgetItem>
 
-template<typename T>
 struct ListWidgetItem : public QListWidgetItem
 {
-    ListWidgetItem(T* widget) :
+    ListWidgetItem(Comparator* widget) :
         QListWidgetItem(0, int(QListWidgetItem::Type)),
         widget(widget)
     {}
     bool operator< (const QListWidgetItem &other) const override
     {
-        const ListWidgetItem<T>& lwi = dynamic_cast<const ListWidgetItem<T>&>(other);
+        const ListWidgetItem& lwi = dynamic_cast<const ListWidgetItem&>(other);
         return widget->lessThan(lwi.widget);
     }
-    T* const widget;
+    Comparator* const widget;
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "comparator.h"
 #include "shared/steady_timer.h"
 #include "shared/qt/quuidex.h"
 #include "shared/qt/communication/host_point.h"
@@ -9,7 +10,7 @@ namespace Ui {
 class ConnectionWidget;
 }
 
-class ConnectionWidget : public QWidget
+class ConnectionWidget : public Comparator
 {
     Q_OBJECT
 
@@ -38,7 +39,7 @@ public:
     void resetLifeTimer() {_lifeTimer.reset();}
     bool lifeTimeExpired() const;
 
-    bool lessThan(ConnectionWidget*);
+    bool lessThan(Comparator*) const override;
 
 private:
     Ui::ConnectionWidget *ui;

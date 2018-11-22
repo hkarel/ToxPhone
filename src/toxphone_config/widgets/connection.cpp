@@ -2,7 +2,7 @@
 #include "ui_connection.h"
 
 ConnectionWidget::ConnectionWidget(QWidget *parent) :
-    QWidget(parent),
+    Comparator(parent),
     ui(new Ui::ConnectionWidget)
 {
     ui->setupUi(this);
@@ -51,7 +51,10 @@ bool ConnectionWidget::lifeTimeExpired() const
     return (_lifeTimer.elapsed<std::chrono::seconds>() > _lifeTimeInterval);
 }
 
-bool ConnectionWidget::lessThan(ConnectionWidget* cw)
+bool ConnectionWidget::lessThan(Comparator* c) const
 {
-    return (QString::compare(info(), cw->info(), Qt::CaseInsensitive) < 0);
+    if (ConnectionWidget* cw = dynamic_cast<ConnectionWidget*>(c))
+        return (QString::compare(info(), cw->info(), Qt::CaseInsensitive) < 0);
+    else
+        return true;
 }
