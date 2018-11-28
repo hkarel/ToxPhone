@@ -549,7 +549,8 @@ void ToxPhoneApplication::command_ConfigAuthorization(const Message::Ptr& messag
             QByteArray passw;
             {
                 QDataStream s {&passwBuff, QIODevice::ReadOnly};
-                s.setVersion(Q_DATA_STREAM_VERSION);
+                s.setByteOrder(QDATASTREAM_BYTEORDER);
+                s.setVersion(QDATASTREAM_VERSION);
                 s >> passw;
             }
 
@@ -651,7 +652,8 @@ void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message
             QByteArray passw;
             {
                 QDataStream s {&passwBuff, QIODevice::ReadOnly};
-                s.setVersion(Q_DATA_STREAM_VERSION);
+                s.setByteOrder(QDATASTREAM_BYTEORDER);
+                s.setVersion(QDATASTREAM_VERSION);
                 s >> passw;
             }
 

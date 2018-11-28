@@ -45,12 +45,12 @@ Project {
             "VERSION_PROJECT_MINOR=" + projectVersion[2],
             "VERSION_PROJECT_PATCH=" + projectVersion[3],
             "GIT_REVISION=\"" + projectGitRevision + "\"",
-            "Q_DATA_STREAM_VERSION=QDataStream::Qt_4_8",
+            "QDATASTREAM_VERSION=QDataStream::Qt_4_8",
             "BPROTOCOL_VERSION_LOW=0",
-            "BPROTOCOL_VERSION_HIGH=1",
-            //"UDP_LONGSIG=1",
-            //"UDP_SIGNATURE=\"TOXPHONE\"",
+            "BPROTOCOL_VERSION_HIGH=0",
             "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
+            //"UDP_LONGSIG=1",
+            //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
         ]

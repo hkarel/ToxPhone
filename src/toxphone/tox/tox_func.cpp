@@ -127,7 +127,10 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
     buff.reserve(message->size() + sizeof(toxPhoneMessageSignature) + 1);
     {
         QDataStream stream {&buff, QIODevice::WriteOnly};
-        stream << quint8(160); // Идентификатор пользовательской tox-команды
+        stream.setByteOrder(QDATASTREAM_BYTEORDER);
+        stream.setVersion(QDATASTREAM_VERSION);
+        quint8 toxCommand = 160; // Идентификатор пользовательской tox-команды
+        stream << toxCommand;
         stream << toxPhoneMessageSignature;
         message->toDataStream(stream);
     }
@@ -148,11 +151,13 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
 const communication::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
                                                  const uint8_t* data, size_t length)
 {
-    QByteArray buff = QByteArray::QByteArray::fromRawData((char*)data, length);
-    QDataStream stream {&buff, QIODevice::ReadOnly};
-    quint8 toxCommand;
+    QByteArray buff {QByteArray::fromRawData((char*)data, length)};
+    QDataStream stream {&buff, QIODevice::ReadOnly | QIODevice::Unbuffered};
+    stream.setByteOrder(QDATASTREAM_BYTEORDER);
+    stream.setVersion(QDATASTREAM_VERSION);
+    quint8 toxCommand; (void) toxCommand;
     quint64 toxPhoneSign;
-    stream >> toxCommand; (void) toxCommand;
+    stream >> toxCommand;
     stream >> toxPhoneSign;
     if (toxPhoneSign != toxPhoneMessageSignature)
     {
@@ -163,7 +168,7 @@ const communication::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber
         }
         return communication::Message::Ptr();
     }
-    communication::Message::Ptr message = communication::Message::fromDataStream(stream);
+    communication::Message::Ptr message {communication::Message::fromDataStream(stream)};
     message->setAuxiliary(friendNumber);
     return std::move(message);
 }
