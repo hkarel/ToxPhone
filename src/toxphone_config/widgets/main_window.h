@@ -28,7 +28,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-
     bool init(const tcp::Socket::Ptr&);
     void deinit();
 

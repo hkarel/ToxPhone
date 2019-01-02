@@ -69,6 +69,7 @@ Product {
         "shared/qt/bserialize.cpp",
         "shared/qt/bserialize.h",
         "shared/qt/quuidex.h",
+        "shared/qt/stream_init.h",
         "shared/thread/thread_base.cpp",
         "shared/thread/thread_base.h",
         "shared/thread/thread_info.cpp",

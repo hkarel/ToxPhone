@@ -1535,12 +1535,9 @@ void MainWindow::on_btnAuthorizationPassword_clicked(bool)
         QByteArray passwBuff;
         {
             QDataStream s {&passwBuff, QIODevice::WriteOnly};
-            s.setByteOrder(QDATASTREAM_BYTEORDER);
-            s.setVersion(QDATASTREAM_VERSION);
-
+            STREAM_INIT(s)
             QByteArray garbage; garbage.resize(512 - passw.length() - 2 * sizeof(int));
             randombytes((uchar*)garbage.constData(), garbage.length());
-
             s << passw;
             s << garbage;
         }
