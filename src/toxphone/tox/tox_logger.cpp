@@ -88,6 +88,8 @@ void logger_write(
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
                 alog::logger().error_f(file, func, line, "ToxCore") << buff;
+                alog::logger().flush();
+                alog::logger().waitingFlush();
             }
             break;
 
