@@ -74,7 +74,7 @@ typedef simple_ptr<pa_operation, pa_operation_deleter> pa_operation_ptr;
     if (!o) { \
         log_error_m << MSG << paStrError(OBJ_ERROR) \
                     << "; Application will be stopped"; \
-        ToxPhoneApplication::stop(1); \
+        Application::stop(1); \
         RETURT_OPERATOR ; \
     } \
 }
@@ -1400,7 +1400,7 @@ void AudioDev::context_state(pa_context* context, void* userdata)
 
             log_error_m << "Sink event: PA_CONTEXT_FAILED"
                         << paStrError(ad->_paContext);
-            ToxPhoneApplication::stop(1);
+            Application::stop(1);
             break;
 
         case PA_CONTEXT_TERMINATED:

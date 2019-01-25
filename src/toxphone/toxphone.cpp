@@ -68,7 +68,7 @@ void stopProgramHandler(int sig)
     {
         const char* sigName = (sig == SIGTERM) ? "SIGTERM" : "SIGINT";
         log_verbose << "Signal " << sigName << " is received. Program will be stopped";
-        ToxPhoneApplication::stop();
+        Application::stop();
     }
     else
         log_verbose << "Signal " << sig << " is received";
@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
         // Пул потоков нужно активировать после кода демонизации
         trd::threadPool().start();
 
-        ToxPhoneApplication appl {argc, argv};
+        Application appl {argc, argv};
 
         // Устанавливаем текущую директорию. Эта конструкция работает только
         // когда создан экземпляр QCoreApplication.
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
         }
         phoneDiverter().start();
 
-        if (ToxPhoneApplication::isStopped())
+        if (Application::isStopped())
         {
             stopProgram();
             return 0;
@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
         ret = appl.exec();
 
         communication::data::ApplShutdown applShutdown;
-        applShutdown.applId = ToxPhoneApplication::applId();
+        applShutdown.applId = Application::applId();
 
         network::Interface::List netInterfaces = network::getInterfaces();
         for (network::Interface* intf : netInterfaces)

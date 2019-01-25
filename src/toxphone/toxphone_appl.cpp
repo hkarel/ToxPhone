@@ -17,18 +17,18 @@
 #include <string.h>
 
 
-#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
-#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxPhoneAppl")
+#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
 
-volatile bool ToxPhoneApplication::_stop = false;
-std::atomic_int ToxPhoneApplication::_exitCode = {0};
-QUuidEx ToxPhoneApplication::_applId = QUuidEx::createUuid();
+volatile bool Application::_stop = false;
+std::atomic_int Application::_exitCode = {0};
+QUuidEx Application::_applId = QUuidEx::createUuid();
 
-ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
+Application::Application(int &argc, char **argv)
     : QCoreApplication(argc, argv)
 {
     _stopTimerId = startTimer(1000);
@@ -49,7 +49,7 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
 
 
     #define FUNC_REGISTRATION(COMMAND) \
-        _funcInvoker.registration(command:: COMMAND, &ToxPhoneApplication::command_##COMMAND, this);
+        _funcInvoker.registration(command:: COMMAND, &Application::command_##COMMAND, this);
 
     FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(ToxPhoneInfo)
@@ -65,12 +65,12 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
     #undef FUNC_REGISTRATION
 }
 
-ToxPhoneApplication::~ToxPhoneApplication()
+Application::~Application()
 {
     // Реализация деструктора нужна для подавления inline warning-ов
 }
 
-void ToxPhoneApplication::timerEvent(QTimerEvent* event)
+void Application::timerEvent(QTimerEvent* event)
 {
     if (event->timerId() == _stopTimerId)
     {
@@ -82,13 +82,13 @@ void ToxPhoneApplication::timerEvent(QTimerEvent* event)
     }
 }
 
-void ToxPhoneApplication::stop(int exitCode)
+void Application::stop(int exitCode)
 {
     _exitCode = exitCode;
     stop();
 }
 
-void ToxPhoneApplication::message(const Message::Ptr& message)
+void Application::message(const Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -101,12 +101,12 @@ void ToxPhoneApplication::message(const Message::Ptr& message)
     }
 }
 
-void ToxPhoneApplication::socketConnected(SocketDescriptor /*socketDescriptor*/)
+void Application::socketConnected(SocketDescriptor /*socketDescriptor*/)
 {
     sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::socketDisconnected(SocketDescriptor socketDescriptor)
+void Application::socketDisconnected(SocketDescriptor socketDescriptor)
 {
     if (toxConfig().isActive()
         && toxConfig().socketDescriptor == socketDescriptor)
@@ -128,7 +128,7 @@ void ToxPhoneApplication::socketDisconnected(SocketDescriptor socketDescriptor)
     sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::sendToxPhoneInfo()
+void Application::sendToxPhoneInfo()
 {
     int port = 33601;
     config::base().getValue("config_connection.port", port);
@@ -152,7 +152,7 @@ void ToxPhoneApplication::sendToxPhoneInfo()
     }
 }
 
-void ToxPhoneApplication::command_IncomingConfigConnection(const Message::Ptr& message)
+void Application::command_IncomingConfigConnection(const Message::Ptr& message)
 {
     data::DiverterInfo diverterInfo;
     fillPhoneDiverter(diverterInfo);
@@ -178,7 +178,7 @@ void ToxPhoneApplication::command_IncomingConfigConnection(const Message::Ptr& m
     toxConfig().send(m);
 }
 
-void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
+void Application::command_ToxPhoneInfo(const Message::Ptr& message)
 {
     // Обработка сообщения поступившего с TCP сокета
     if (message->socketType() == SocketType::Tcp)
@@ -227,7 +227,7 @@ void ToxPhoneApplication::command_ToxPhoneInfo(const Message::Ptr& message)
         }
 }
 
-void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
+void Application::command_ToxCallState(const Message::Ptr& message)
 {
     readFromMessage(message, _callState);
 
@@ -332,7 +332,7 @@ void ToxPhoneApplication::command_ToxCallState(const Message::Ptr& message)
     updateConfigDiverterInfo();
 }
 
-void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
+void Application::command_DiverterChange(const Message::Ptr& message)
 {
     data::DiverterChange diverterChange;
     readFromMessage(message, diverterChange);
@@ -411,7 +411,7 @@ void ToxPhoneApplication::command_DiverterChange(const Message::Ptr& message)
     initPhoneDiverter();
 }
 
-void ToxPhoneApplication::command_DiverterTest(const Message::Ptr& message)
+void Application::command_DiverterTest(const Message::Ptr& message)
 {
     data::DiverterTest diverterTest;
     readFromMessage(message, diverterTest);
@@ -438,7 +438,7 @@ void ToxPhoneApplication::command_DiverterTest(const Message::Ptr& message)
     }
 }
 
-void ToxPhoneApplication::command_PhoneFriendInfo(const Message::Ptr& message)
+void Application::command_PhoneFriendInfo(const Message::Ptr& message)
 {
     data::PhoneFriendInfo phoneFriendInfo;
     readFromMessage(message, phoneFriendInfo);
@@ -449,7 +449,7 @@ void ToxPhoneApplication::command_PhoneFriendInfo(const Message::Ptr& message)
         _phonesHash.remove(phoneFriendInfo.phoneNumber);
 }
 
-void ToxPhoneApplication::command_ConfigAuthorizationRequest(const Message::Ptr& message)
+void Application::command_ConfigAuthorizationRequest(const Message::Ptr& message)
 {
     if (toxConfig().isActive())
     {
@@ -511,7 +511,7 @@ void ToxPhoneApplication::command_ConfigAuthorizationRequest(const Message::Ptr&
     tcp::listener().send(answer);
 }
 
-void ToxPhoneApplication::command_ConfigAuthorization(const Message::Ptr& message)
+void Application::command_ConfigAuthorization(const Message::Ptr& message)
 {
     data::ConfigAuthorization configAuthorization;
     readFromMessage(message, configAuthorization);
@@ -614,7 +614,7 @@ void ToxPhoneApplication::command_ConfigAuthorization(const Message::Ptr& messag
     sendToxPhoneInfo();
 }
 
-void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message)
+void Application::command_ConfigSavePassword(const Message::Ptr& message)
 {
     // Сохранение пароля
     if (message->type() == Message::Type::Command)
@@ -683,7 +683,7 @@ void ToxPhoneApplication::command_ConfigSavePassword(const Message::Ptr& message
     }
 }
 
-void ToxPhoneApplication::command_PlaybackFinish(const Message::Ptr& message)
+void Application::command_PlaybackFinish(const Message::Ptr& message)
 {
     if (_callState.direction == data::ToxCallState::Direction::Undefined
         && _callState.callState == data::ToxCallState::CallState::Undefined)
@@ -693,7 +693,7 @@ void ToxPhoneApplication::command_PlaybackFinish(const Message::Ptr& message)
     }
 }
 
-void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
+void Application::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
 {
     YamlConfig::Func loadFunc =
         [&diverterInfo](YamlConfig* conf, YAML::Node& node, bool logWarn)
@@ -731,7 +731,7 @@ void ToxPhoneApplication::fillPhoneDiverter(data::DiverterInfo& diverterInfo)
     }
 }
 
-void ToxPhoneApplication::updateConfigDiverterInfo()
+void Application::updateConfigDiverterInfo()
 {
     if (!toxConfig().isActive())
         return;
@@ -742,7 +742,7 @@ void ToxPhoneApplication::updateConfigDiverterInfo()
     toxConfig().send(m);
 }
 
-void ToxPhoneApplication::initPhoneDiverter()
+void Application::initPhoneDiverter()
 {
     data::DiverterInfo diverterInfo;
     fillPhoneDiverter(diverterInfo);
@@ -775,7 +775,7 @@ void ToxPhoneApplication::initPhoneDiverter()
     }
 }
 
-void ToxPhoneApplication::setDiverterToDefaultState()
+void Application::setDiverterToDefaultState()
 {
     if (!diverterIsActive())
         return;
@@ -797,13 +797,13 @@ void ToxPhoneApplication::setDiverterToDefaultState()
     }
 }
 
-void ToxPhoneApplication::resetDiverterPhoneNumber()
+void Application::resetDiverterPhoneNumber()
 {
     _asteriskPressed = false;
     _diverterPhoneNumber.clear();
 }
 
-void ToxPhoneApplication::phoneDiverterAttached()
+void Application::phoneDiverterAttached()
 {
     YamlConfig::Func loadFunc = [this](YamlConfig* conf, YAML::Node& phones, bool)
     {
@@ -840,17 +840,17 @@ void ToxPhoneApplication::phoneDiverterAttached()
     initPhoneDiverter();
 }
 
-void ToxPhoneApplication::phoneDiverterDetached()
+void Application::phoneDiverterDetached()
 {
     initPhoneDiverter();
 }
 
-void ToxPhoneApplication::phoneDiverterPstnRing()
+void Application::phoneDiverterPstnRing()
 {
     break_point
 }
 
-void ToxPhoneApplication::phoneDiverterKey(int val)
+void Application::phoneDiverterKey(int val)
 {
     { //Block for alog::Line
         alog::Line logLine = log_debug_m << "Phone key is pressed: ";
@@ -961,7 +961,7 @@ void ToxPhoneApplication::phoneDiverterKey(int val)
     }
 }
 
-void ToxPhoneApplication::phoneDiverterHandset(PhoneDiverter::Handset handset)
+void Application::phoneDiverterHandset(PhoneDiverter::Handset handset)
 {
     resetDiverterPhoneNumber();
     if (!diverterIsActive())

@@ -18,11 +18,11 @@ using namespace std;
 using namespace communication;
 using namespace communication::transport;
 
-class ToxPhoneApplication : public QCoreApplication
+class Application : public QCoreApplication
 {
 public:
-    ToxPhoneApplication(int &argc, char **argv);
-    ~ToxPhoneApplication();
+    Application(int &argc, char **argv);
+    ~Application();
 
     void initPhoneDiverter();
 

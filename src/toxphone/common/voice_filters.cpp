@@ -76,7 +76,7 @@ void VoiceFilters::run()
     if (recordFrameInfo.empty())
     {
         log_error_m << "Failed get VoiceFrameInfo for record";
-        ToxPhoneApplication::stop(1);
+        Application::stop(1);
         return;
     }
 
@@ -84,7 +84,7 @@ void VoiceFilters::run()
     if (!webrtcFilter)
     {
         log_error_m << "Failed call new_filter_audio() for noise filter";
-        ToxPhoneApplication::stop(1);
+        Application::stop(1);
         return;
     }
     enable_disable_filters(webrtcFilter, 0, 1, 0, 0);
