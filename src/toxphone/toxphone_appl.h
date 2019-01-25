@@ -5,6 +5,7 @@
 #include "diverter/phone_diverter.h"
 
 #include "shared/steady_timer.h"
+#include "shared/qt/qhashex.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/udp.h"
@@ -98,9 +99,10 @@ private:
     data::ToxCallState _callState;
 
     //data::PhoneDiverter _phoneDiverter;
-    QHash<quint32/*PhoneNumber*/, QByteArray/*FriendKey*/> _phonesHash;
+    QHashEx<quint32/*PhoneNumber*/, QByteArray/*FriendKey*/> _phonesHash;
 
     bool _asteriskPressed = {false};
+    QTime _diverterHandsetTimer;
     QString _diverterPhoneNumber;
     PhoneDiverter::Mode _diverterDefaultMode = {PhoneDiverter::Mode::Pstn};
 

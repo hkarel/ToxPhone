@@ -878,6 +878,15 @@ void Application::phoneDiverterKey(int val)
     }
     else if (val == 0x0b) // Нажата '*'
     {
+        if (phoneDiverter().handset() == PhoneDiverter::Handset::On
+            && _diverterHandsetTimer.elapsed() > 5*1000 /*5 сек*/ )
+        {
+            // Обработка случайного нажатия '*' во время телефонного разговора
+            log_debug_m << "Expired timeout for press '*' (5 sec)"
+                        << "; expired: " << _diverterHandsetTimer.elapsed() << " msec";
+            return;
+        }
+
         _asteriskPressed = true;
         _diverterPhoneNumber.clear();
         if (phoneDiverter().mode() == PhoneDiverter::Mode::Pstn)
@@ -1018,6 +1027,8 @@ void Application::phoneDiverterHandset(PhoneDiverter::Handset handset)
     }
     else // PhoneDiverter::Handset::On
     {
+        _diverterHandsetTimer.restart();
+
         // Принять входящий вызов
         if (_callState.direction == data::ToxCallState::Direction::Incoming
             && _callState.callState == data::ToxCallState::CallState::WaitingAnswer)
