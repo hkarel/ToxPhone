@@ -49,7 +49,6 @@ ToxCall::ToxCall() : QThreadEx(0)
     FUNC_REGISTRATION(FriendCallEndCause)
     FUNC_REGISTRATION(PlaybackFinish)
     FUNC_REGISTRATION(DiverterHandset)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 }

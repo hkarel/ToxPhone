@@ -44,7 +44,6 @@ VoiceFilters::VoiceFilters()
 
     FUNC_REGISTRATION(IncomingConfigConnection)
     FUNC_REGISTRATION(AudioNoise)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 }
@@ -217,11 +216,11 @@ void VoiceFilters::message(const communication::Message::Ptr& message)
     if (message->processed())
         return;
 
-    if (_funcInvoker.containsCommand(message->command()))
+    if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
         if (!commandsPool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
-        _funcInvoker.call(message);
+        _funcInvoker.call(message, fr);
     }
 }
 

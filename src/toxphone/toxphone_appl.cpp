@@ -61,7 +61,6 @@ ToxPhoneApplication::ToxPhoneApplication(int &argc, char **argv)
     FUNC_REGISTRATION(ConfigAuthorization)
     FUNC_REGISTRATION(ConfigSavePassword)
     FUNC_REGISTRATION(PlaybackFinish)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 }
@@ -94,11 +93,11 @@ void ToxPhoneApplication::message(const Message::Ptr& message)
     if (message->processed())
         return;
 
-    if (_funcInvoker.containsCommand(message->command()))
+    if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
         if (!commandsPool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
-        _funcInvoker.call(message);
+        _funcInvoker.call(message, fr);
     }
 }
 

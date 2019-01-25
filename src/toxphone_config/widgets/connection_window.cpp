@@ -8,6 +8,7 @@
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/config/config.h"
 #include "kernel/network/interfaces.h"
@@ -59,7 +60,6 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
     FUNC_REGISTRATION(ApplShutdown)
     FUNC_REGISTRATION(ConfigAuthorizationRequest)
     FUNC_REGISTRATION(ConfigAuthorization)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 
@@ -142,8 +142,15 @@ void ConnectionWindow::loadGeometry()
 
 void ConnectionWindow::message(const communication::Message::Ptr& message)
 {
-    if (_funcInvoker.containsCommand(message->command()))
-        _funcInvoker.call(message);
+    if (message->processed())
+        return;
+
+    if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
+    {
+        if (!commandsPool().commandIsMultiproc(message->command()))
+            message->markAsProcessed();
+        _funcInvoker.call(message, fr);
+    }
 }
 
 void ConnectionWindow::socketConnected(communication::SocketDescriptor)

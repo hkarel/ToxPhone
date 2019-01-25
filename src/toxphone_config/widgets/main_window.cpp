@@ -9,6 +9,7 @@
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
 #include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/version/version_number.h"
 #include "shared/qt/config/config.h"
 
@@ -90,7 +91,6 @@ MainWindow::MainWindow(QWidget *parent) :
     FUNC_REGISTRATION(ConfigAuthorizationRequest)
     FUNC_REGISTRATION(ConfigAuthorization)
     FUNC_REGISTRATION(ConfigSavePassword)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 
@@ -181,8 +181,15 @@ void MainWindow::loadSettings()
 
 void MainWindow::message(const communication::Message::Ptr& message)
 {
-    if (_funcInvoker.containsCommand(message->command()))
-        _funcInvoker.call(message);
+    if (message->processed())
+        return;
+
+    if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
+    {
+        if (!commandsPool().commandIsMultiproc(message->command()))
+            message->markAsProcessed();
+        _funcInvoker.call(message, fr);
+    }
 }
 
 void MainWindow::socketConnected(communication::SocketDescriptor)

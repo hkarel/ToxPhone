@@ -105,7 +105,6 @@ AudioDev::AudioDev()
     FUNC_REGISTRATION(AudioStreamInfo)
     FUNC_REGISTRATION(AudioTest)
     FUNC_REGISTRATION(ToxCallState)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 }
@@ -693,11 +692,11 @@ void AudioDev::message(const communication::Message::Ptr& message)
     if (message->processed())
         return;
 
-    if (_funcInvoker.containsCommand(message->command()))
+    if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
         if (!commandsPool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
-        _funcInvoker.call(message);
+        _funcInvoker.call(message, fr);
     }
 }
 

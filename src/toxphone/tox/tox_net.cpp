@@ -59,7 +59,6 @@ ToxNet::ToxNet() : QThreadEx(0)
     FUNC_REGISTRATION(PhoneFriendInfo)
     FUNC_REGISTRATION(FriendAudioChange)
     FUNC_REGISTRATION(ToxMessage)
-    _funcInvoker.sort();
 
     #undef FUNC_REGISTRATION
 }
