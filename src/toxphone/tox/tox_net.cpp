@@ -1278,14 +1278,16 @@ void ToxNet::tox_friend_connection_status(Tox* tox, uint32_t friend_number,
                 << ToxFriendLog(tox, friend_number);
 
     if (connection_status != TOX_CONNECTION_NONE
-        && tn->_connectionStatusSet.find(friend_number) == tn->_connectionStatusSet.end())
+        //&& tn->_connectionStatusSet.find(friend_number) == tn->_connectionStatusSet.end())
+        && !tn->_connectionStatusSet.contains(friend_number))
     {
         tn->_connectionStatusSet.insert(friend_number);
         tn->sendAvatar(friend_number);
     }
     if (connection_status == TOX_CONNECTION_NONE)
     {
-        tn->_connectionStatusSet.erase(friend_number);
+        //tn->_connectionStatusSet.erase(friend_number);
+        tn->_connectionStatusSet.remove(friend_number);
         auto remove = [friend_number](TransferData* td) -> bool
         {
             return (td->friendNumber == friend_number);

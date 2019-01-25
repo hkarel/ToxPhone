@@ -68,6 +68,7 @@ Product {
         "shared/qt/thread/qthreadex.h",
         "shared/qt/version/version_number.cpp",
         "shared/qt/version/version_number.h",
+        "shared/qt/qhashex.h",
         "shared/qt/quuidex.h",
         "shared/qt/stream_init.h",
         "shared/thread/thread_base.cpp",

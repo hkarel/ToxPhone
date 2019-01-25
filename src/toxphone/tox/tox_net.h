@@ -10,6 +10,7 @@
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
+#include "shared/qt/qhashex.h"
 #include "shared/qt/thread/qthreadex.h"
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
@@ -17,7 +18,7 @@
 
 #include <QtCore>
 #include <atomic>
-#include <set>
+//#include <set>
 
 using namespace std;
 using namespace communication;
@@ -158,7 +159,8 @@ private:
 
     // Параметр используется для отслеживания смены статуса подключения друзей.
     // Не используем здесь QSet, т.к. QSet некорректно работает с типом uint32_t
-    std::set<uint32_t> _connectionStatusSet;
+    //std::set<uint32_t> _connectionStatusSet;
+    QSetEx<uint32_t> _connectionStatusSet;
 
     FunctionInvoker _funcInvoker;
 
