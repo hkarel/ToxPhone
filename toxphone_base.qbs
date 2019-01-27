@@ -11,7 +11,7 @@ Project {
     // используется для сборки deb-пакета
     readonly property bool printPackegeBuildInfo: false
 
-    readonly property string sodiumVersion: "1.0.16"
+    readonly property string sodiumVersion: "1.0.17"
     readonly property bool   useSystemSodium: false
 
     readonly property string osName: osProbe.osName
