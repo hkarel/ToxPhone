@@ -36,7 +36,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>6</number>
       </property>
       <widget class="QWidget" name="tabProfile">
        <attribute name="title">
@@ -1749,23 +1749,23 @@
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QLabel" name="labelBprotocolVers">
+                <widget class="QLabel" name="labelBprotoVers">
                  <property name="text">
-                  <string>BprotocolVers</string>
+                  <string>BprotoVers</string>
                  </property>
                  <property name="textInteractionFlags">
                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="0">
+               <item row="5" column="0">
                 <widget class="QLabel" name="label_22">
                  <property name="text">
                   <string>Toxcore:</string>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="1">
+               <item row="5" column="1">
                 <widget class="QLabel" name="labelToxcoreVers">
                  <property name="text">
                   <string>ToxcoreVers</string>
@@ -1786,6 +1786,20 @@
                 <widget class="QLabel" name="labelQtVersion">
                  <property name="text">
                   <string>QtVersion</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_32">
+                 <property name="text">
+                  <string>Sodium:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="labelSodiumVers">
+                 <property name="text">
+                  <string>SodiumVers</string>
                  </property>
                 </widget>
                </item>
@@ -1859,9 +1873,9 @@
                 </widget>
                </item>
                <item row="2" column="1">
-                <widget class="QLabel" name="labelBprotocolConfVers">
+                <widget class="QLabel" name="labelBprotoConfVers">
                  <property name="text">
-                  <string>BprotocolConfVers</string>
+                  <string>BprotoConfVers</string>
                  </property>
                  <property name="textInteractionFlags">
                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -1879,6 +1893,20 @@
                 <widget class="QLabel" name="labelQtVersionConf">
                  <property name="text">
                   <string>QtVersionConf</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_34">
+                 <property name="text">
+                  <string>Sodium:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="labelSodiumConfVers">
+                 <property name="text">
+                  <string>SodiumConfVers</string>
                  </property>
                 </widget>
                </item>

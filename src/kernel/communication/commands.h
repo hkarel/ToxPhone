@@ -225,6 +225,7 @@ struct ToxPhoneAbout : Data<&command::ToxPhoneAbout,
     quint32 toxcore; // Версия ядра Tox-библиотеки
     QString gitrev;  // Хэш git-коммита
     QString qtvers;  // Версия Qt
+    QString sodium;  // Версия Sodium
 
     DECLARE_B_SERIALIZE_FUNC
 };

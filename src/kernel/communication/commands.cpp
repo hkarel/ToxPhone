@@ -81,6 +81,7 @@ bserial::RawVector ToxPhoneAbout::toRaw() const
     stream << toxcore;
     stream << gitrev;
     stream << qtvers;
+    stream << sodium;
     B_SERIALIZE_RETURN
 }
 
@@ -91,6 +92,7 @@ void ToxPhoneAbout::fromRaw(const bserial::RawVector& vect)
     stream >> toxcore;
     stream >> gitrev;
     stream >> qtvers;
+    stream >> sodium;
     B_DESERIALIZE_END
 }
 

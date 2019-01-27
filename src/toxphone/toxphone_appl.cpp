@@ -174,6 +174,7 @@ void Application::command_IncomingConfigConnection(const Message::Ptr& message)
                                           tox_version_patch()).vers;
     toxPhoneAbout.gitrev = GIT_REVISION;
     toxPhoneAbout.qtvers = QT_VERSION_STR;
+    toxPhoneAbout.sodium = sodium_version_string();
     m = createMessage(toxPhoneAbout);
     toxConfig().send(m);
 }

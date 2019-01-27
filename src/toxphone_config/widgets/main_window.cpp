@@ -57,9 +57,10 @@ MainWindow::MainWindow(QWidget *parent) :
     aboutClear();
     ui->labelToxPhoneConfVers->setText(productVersion().toString());
     ui->labelGitrevConf->setText(GIT_REVISION);
-    ui->labelBprotocolConfVers->setText(QString("%1-%2").arg(BPROTOCOL_VERSION_LOW)
-                                                        .arg(BPROTOCOL_VERSION_HIGH));
+    ui->labelBprotoConfVers->setText(QString("%1-%2").arg(BPROTOCOL_VERSION_LOW)
+                                                     .arg(BPROTOCOL_VERSION_HIGH));
     ui->labelQtVersionConf->setText(QT_VERSION_STR);
+    ui->labelSodiumConfVers->setText(sodium_version_string());
     ui->labelCopyright->setTextInteractionFlags(Qt::TextBrowserInteraction);
 
     #define FUNC_REGISTRATION(COMMAND) \
@@ -275,9 +276,10 @@ void MainWindow::command_ToxPhoneAbout(const Message::Ptr& message)
     ui->labelToxPhoneVers->setText(VersionNumber(toxPhoneAbout.version).toString());
     ui->labelToxcoreVers->setText(VersionNumber(toxPhoneAbout.toxcore).toString());
     ui->labelGitrev->setText(toxPhoneAbout.gitrev);
+    ui->labelBprotoVers->setText(QString("%1-%2").arg(message->protocolVersionLow())
+                                                 .arg(message->protocolVersionHigh()));
     ui->labelQtVersion->setText(toxPhoneAbout.qtvers);
-    ui->labelBprotocolVers->setText(QString("%1-%2").arg(message->protocolVersionLow())
-                                                    .arg(message->protocolVersionHigh()));
+    ui->labelSodiumVers->setText(toxPhoneAbout.sodium);
 }
 
 void MainWindow::command_ToxProfile(const Message::Ptr& message)
@@ -1667,8 +1669,9 @@ void MainWindow::aboutClear()
     ui->labelToxPhoneVers->clear();
     ui->labelToxcoreVers->clear();
     ui->labelGitrev->clear();
-    ui->labelBprotocolVers->clear();
+    ui->labelBprotoVers->clear();
     ui->labelQtVersion->clear();
+    ui->labelSodiumVers->clear();
 }
 
 void MainWindow::setAvatar(QPixmap avatar, bool roundCorner)
