@@ -118,7 +118,7 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
         message->compress();
         if ((message->size() + sizeof(toxPhoneMessageSignature) + 1) > TOX_MAX_CUSTOM_PACKET_SIZE)
         {
-            log_error_m << toxError(TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG);
+            log_error_m << toxError(TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG).description;
             return false;
         }
     }
@@ -141,7 +141,7 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
                                     buff.length(), &err);
     if (err != TOX_ERR_FRIEND_CUSTOM_PACKET_OK)
     {
-        log_error_m << toxError(err);
+        log_error_m << toxError(err).description;
         return false;
     }
     return true;

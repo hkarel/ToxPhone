@@ -1,32 +1,43 @@
 #include "tox_error.h"
+#include "kernel/communication/error.h"
+
 #include <QtGlobal>
+#include <QObject>
+
+using namespace communication;
 
 static const char* unknown_error  = QT_TRANSLATE_NOOP("ToxError", "Unknown error");
 static const char* return_success = QT_TRANSLATE_NOOP("ToxError", "The function returned successfully");
 
-const char* toxError(TOX_ERR_NEW code)
+communication::data::MessageError toxError(TOX_ERR_NEW code)
 {
+    const char* msg;
+    data::MessageError err {error::tox_err_new};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOX_ERR_NEW_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * One of the arguments to the function was NULL when it was not expected.
          */
         case TOX_ERR_NEW_NULL:
-            return QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function was NULL "
-                                                 "when it was not expected");
+            msg = QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function was NULL "
+                                                "when it was not expected");
+            break;
 
         /**
          * The function was unable to allocate enough memory to store the internal
          * structures for the Tox object.
          */
         case TOX_ERR_NEW_MALLOC:
-            return QT_TRANSLATE_NOOP("ToxError", "The function was unable to allocate enough memory");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The function was unable to allocate enough memory");
+            break;
 
         /**
          * The function was unable to bind to a port. This may mean that all ports
@@ -34,39 +45,45 @@ const char* toxError(TOX_ERR_NEW code)
          * a permission error. You may be able to gather more information from errno.
          */
         case TOX_ERR_NEW_PORT_ALLOC:
-            return QT_TRANSLATE_NOOP("ToxError", "The function was unable to bind to a port");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The function was unable to bind to a port");
+            break;
 
         /**
          * proxy_type was invalid.
          */
         case TOX_ERR_NEW_PROXY_BAD_TYPE:
-            return QT_TRANSLATE_NOOP("ToxError", "proxy_type was invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "proxy_type was invalid");
+            break;
 
         /**
          * proxy_type was valid but the proxy_host passed had an invalid format
          * or was NULL.
          */
         case TOX_ERR_NEW_PROXY_BAD_HOST:
-            return QT_TRANSLATE_NOOP("ToxError", "proxy_type was valid but the proxy_host passed had "
-                                                 "an invalid format or was NULL");
+            msg = QT_TRANSLATE_NOOP("ToxError", "proxy_type was valid but the proxy_host passed had "
+                                                "an invalid format or was NULL");
+            break;
+
         /**
          * proxy_type was valid, but the proxy_port was invalid.
          */
         case TOX_ERR_NEW_PROXY_BAD_PORT:
-            return QT_TRANSLATE_NOOP("ToxError",
-                     "proxy_type was valid, but the proxy_port was invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "proxy_type was valid, but the proxy_port was invalid");
+            break;
 
         /**
          * The proxy address passed could not be resolved.
          */
         case TOX_ERR_NEW_PROXY_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The proxy address passed could not be resolved");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The proxy address passed could not be resolved");
+            break;
 
         /**
          * The byte array to be loaded contained an encrypted save.
          */
         case TOX_ERR_NEW_LOAD_ENCRYPTED:
-            return QT_TRANSLATE_NOOP("ToxError", "The byte array to be loaded contained an encrypted save");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The byte array to be loaded contained an encrypted save");
+            break;
 
         /**
          * The data format was invalid. This can happen when loading data that was
@@ -76,82 +93,104 @@ const char* toxError(TOX_ERR_NEW code)
          * causes this error.
          */
         case TOX_ERR_NEW_LOAD_BAD_FORMAT:
-            return QT_TRANSLATE_NOOP("ToxError", "The data format was invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The data format was invalid");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOXAV_ERR_CALL code)
+communication::data::MessageError toxError(TOXAV_ERR_CALL code)
 {
+    const char* msg;
+    data::MessageError err {error::toxav_err_call};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOXAV_ERR_CALL_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * A resource allocation error occurred while trying to create the structures
          * required for the call.
          */
         case TOXAV_ERR_CALL_MALLOC:
-            return QT_TRANSLATE_NOOP("ToxError", "The function was unable to allocate enough memory");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The function was unable to allocate enough memory");
+            break;
 
         /**
          * Synchronization error occurred.
          */
         case TOXAV_ERR_CALL_SYNC:
-            return QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            break;
 
         /**
          * The friend number did not designate a valid friend.
          */
         case TOXAV_ERR_CALL_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate a valid friend");
+            break;
 
         /**
          * The friend was valid, but not currently connected.
          */
         case TOXAV_ERR_CALL_FRIEND_NOT_CONNECTED:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend was valid, but not currently connected");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend was valid, but not currently connected");
+            break;
 
         /**
          * Attempted to call a friend while already in an audio or video call with
          * them.
          */
         case TOXAV_ERR_CALL_FRIEND_ALREADY_IN_CALL:
-            return QT_TRANSLATE_NOOP("ToxError", "Attempted to call a friend while already in an audio "
-                                                 "or video call with them");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Attempted to call a friend while already in an audio "
+                                                "or video call with them");
+            break;
 
         /**
          * Audio or video bit rate is invalid.
          */
         case TOXAV_ERR_CALL_INVALID_BIT_RATE:
-            return QT_TRANSLATE_NOOP("ToxError", "Audio or video bit rate is invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Audio or video bit rate is invalid");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOXAV_ERR_ANSWER code)
+communication::data::MessageError toxError(TOXAV_ERR_ANSWER code)
 {
+    const char* msg;
+    data::MessageError err {error::toxav_err_answer};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOXAV_ERR_ANSWER_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * Synchronization error occurred.
          */
         case TOXAV_ERR_ANSWER_SYNC:
-            return QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            break;
 
         /**
          * Failed to initialize codecs for call session. Note that codec initiation
@@ -159,305 +198,396 @@ const char* toxError(TOXAV_ERR_ANSWER code)
          * video.
          */
         case TOXAV_ERR_ANSWER_CODEC_INITIALIZATION:
-            return QT_TRANSLATE_NOOP("ToxError", "Failed to initialize codecs for call session");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Failed to initialize codecs for call session");
+            break;
 
         /**
          * The friend number did not designate a valid friend.
          */
         case TOXAV_ERR_ANSWER_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate a valid friend");
+            break;
 
         /**
          * The friend was valid, but they are not currently trying to initiate a call.
          * This is also returned if this client is already in a call with the friend.
          */
         case TOXAV_ERR_ANSWER_FRIEND_NOT_CALLING:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend was valid, but they are not currently "
-                                                 "trying to initiate a call");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend was valid, but they are not currently "
+                                                "trying to initiate a call");
+            break;
 
         /**
          * Audio or video bit rate is invalid.
          */
         case TOXAV_ERR_ANSWER_INVALID_BIT_RATE:
-            return QT_TRANSLATE_NOOP("ToxError", "Audio or video bit rate is invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Audio or video bit rate is invalid");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOXAV_ERR_CALL_CONTROL code)
+communication::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
 {
+    const char* msg;
+    data::MessageError err {error::toxav_err_call_control};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOXAV_ERR_CALL_CONTROL_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * Synchronization error occurred.
          */
         case TOXAV_ERR_CALL_CONTROL_SYNC:
-            return QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            break;
 
         /**
          * The friend_number passed did not designate a valid friend.
          */
         case TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed did not designate "
-                                                 "a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend_number passed did not designate "
+                                                "a valid friend");
+            break;
 
         /**
          * This client is currently not in a call with the friend. Before the call is
          * answered, only CANCEL is a valid control.
          */
         case TOXAV_ERR_CALL_CONTROL_FRIEND_NOT_IN_CALL:
-            return QT_TRANSLATE_NOOP("ToxError", "This client is currently not in a call "
-                                                 "with the friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "This client is currently not in a call "
+                                                "with the friend");
+            break;
 
         /**
          * Happens if user tried to pause an already paused call or if trying to
          * resume a call that is not paused.
          */
         case TOXAV_ERR_CALL_CONTROL_INVALID_TRANSITION:
-            return QT_TRANSLATE_NOOP("ToxError", "Happens if user tried to pause an already "
-                                                 "paused call or if trying to resume a call that "
-                                                 "is not paused");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Happens if user tried to pause an already "
+                                                "paused call or if trying to resume a call that "
+                                                "is not paused");
+            break;
+
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOXAV_ERR_SEND_FRAME code)
+communication::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
 {
+    const char* msg;
+    data::MessageError err {error::toxav_err_send_frame};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOXAV_ERR_SEND_FRAME_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * In case of video, one of Y, U, or V was NULL. In case of audio, the samples
          * data pointer was NULL.
          */
         case TOXAV_ERR_SEND_FRAME_NULL:
-            return QT_TRANSLATE_NOOP("ToxError", "In case of video, one of Y, U, or V "
-                                                 "was NULL. In case of audio, the samples "
-                                                 "data pointer was NULL");
+            msg = QT_TRANSLATE_NOOP("ToxError", "In case of video, one of Y, U, or V "
+                                                "was NULL. In case of audio, the samples "
+                                                "data pointer was NULL");
+            break;
+
         /**
          * The friend_number passed did not designate a valid friend.
          */
         case TOXAV_ERR_SEND_FRAME_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed did not designate "
-                                                 "a valid friend.");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend_number passed did not designate "
+                                                "a valid friend.");
+            break;
+
         /**
          * This client is currently not in a call with the friend.
          */
         case TOXAV_ERR_SEND_FRAME_FRIEND_NOT_IN_CALL:
-            return QT_TRANSLATE_NOOP("ToxError", "This client is currently not in a call with the friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "This client is currently not in a call with the friend");
+            break;
 
         /**
          * Synchronization error occurred.
          */
         case TOXAV_ERR_SEND_FRAME_SYNC:
-            return QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Synchronization error occurred");
+            break;
 
         /**
          * One of the frame parameters was invalid. E.g. the resolution may be too
          * small or too large, or the audio sampling rate may be unsupported.
          */
         case TOXAV_ERR_SEND_FRAME_INVALID:
-            return QT_TRANSLATE_NOOP("ToxError", "One of the frame parameters was invalid");
+            msg = QT_TRANSLATE_NOOP("ToxError", "One of the frame parameters was invalid");
+            break;
 
         /**
          * Either friend turned off audio or video receiving or we turned off sending
          * for the said payload.
          */
         case TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED:
-            return QT_TRANSLATE_NOOP("ToxError", "Either friend turned off audio or video receiving "
-                                                 "or we turned off sending for the said payload");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Either friend turned off audio or video receiving "
+                                                "or we turned off sending for the said payload");
+            break;
+
         /**
          * Failed to push frame through rtp interface.
          */
         case TOXAV_ERR_SEND_FRAME_RTP_FAILED:
-            return QT_TRANSLATE_NOOP("ToxError", "Failed to push frame through rtp interface");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Failed to push frame through rtp interface");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
+communication::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
 {
+    const char* msg;
+    data::MessageError err {error::tox_err_friend_custom_packet};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * One of the arguments to the function was NULL when it was not expected.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_NULL:
-            return QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
-                                                 "was NULL when it was not expected");
+            msg = QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
+                                                "was NULL when it was not expected");
+            break;
+
         /**
          * The friend number did not designate a valid friend.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate "
-                                                 "a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend number did not designate "
+                                                "a valid friend");
+            break;
+
         /**
          * This client is currently not connected to the friend.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_FRIEND_NOT_CONNECTED:
-            return QT_TRANSLATE_NOOP("ToxError", "This client is currently not connected "
-                                                 "to the friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "This client is currently not connected "
+                                                "to the friend");
+            break;
+
         /**
          * The first byte of data was not in the specified range for the packet type.
          * This range is 200-254 for lossy, and 160-191 for lossless packets.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_INVALID:
-            return QT_TRANSLATE_NOOP("ToxError", "The first byte of data was not in "
-                                                 "the specified range for the packet type");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The first byte of data was not in "
+                                                "the specified range for the packet type");
+            break;
+
         /**
          * Attempted to send an empty packet.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_EMPTY:
-            return QT_TRANSLATE_NOOP("ToxError", "Attempted to send an empty packet");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Attempted to send an empty packet");
+            break;
 
         /**
          * Packet data length exceeded TOX_MAX_CUSTOM_PACKET_SIZE.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG:
-            return QT_TRANSLATE_NOOP("ToxError", "Packet data length exceeded "
-                                                 "TOX_MAX_CUSTOM_PACKET_SIZE");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Packet data length exceeded "
+                                                "TOX_MAX_CUSTOM_PACKET_SIZE");
+            break;
+
         /**
          * Packet queue is full.
          */
         case TOX_ERR_FRIEND_CUSTOM_PACKET_SENDQ:
-            return QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOX_ERR_FILE_SEND code)
+communication::data::MessageError toxError(TOX_ERR_FILE_SEND code)
 {
+    const char* msg;
+    data::MessageError err {error::tox_err_file_send};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOX_ERR_FILE_SEND_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * One of the arguments to the function was NULL when it was not expected.
          */
         case TOX_ERR_FILE_SEND_NULL:
-            return QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
-                                                 "was NULL when it was not expected");
+            msg = QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
+                                                "was NULL when it was not expected");
+            break;
+
         /**
          * The friend_number passed did not designate a valid friend.
          */
         case TOX_ERR_FILE_SEND_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
-                                                 "did not designate a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
+                                                "did not designate a valid friend");
+            break;
+
         /**
          * This client is currently not connected to the friend.
          */
         case TOX_ERR_FILE_SEND_FRIEND_NOT_CONNECTED:
-            return QT_TRANSLATE_NOOP("ToxError", "This client is currently "
-                                                 "not connected to the friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "This client is currently "
+                                                "not connected to the friend");
+            break;
+
         /**
          * Filename length exceeded TOX_MAX_FILENAME_LENGTH bytes.
          */
         case TOX_ERR_FILE_SEND_NAME_TOO_LONG:
-            return QT_TRANSLATE_NOOP("ToxError", "Filename length exceeded "
-                                                 "TOX_MAX_FILENAME_LENGTH bytes");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Filename length exceeded "
+                                                "TOX_MAX_FILENAME_LENGTH bytes");
+            break;
+
         /**
          * Too many ongoing transfers. The maximum number of concurrent file transfers
          * is 256 per friend per direction (sending and receiving).
          */
         case TOX_ERR_FILE_SEND_TOO_MANY:
-            return QT_TRANSLATE_NOOP("ToxError", "Too many ongoing transfers");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Too many ongoing transfers");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }
 
-const char* toxError(TOX_ERR_FILE_SEND_CHUNK code)
+communication::data::MessageError toxError(TOX_ERR_FILE_SEND_CHUNK code)
 {
+    const char* msg;
+    data::MessageError err {error::tox_err_file_send_chunk};
+
     switch (code)
     {
         /**
          * The function returned successfully.
          */
         case TOX_ERR_FILE_SEND_CHUNK_OK:
-            return return_success;
+            msg = return_success;
+            break;
 
         /**
          * The length parameter was non-zero, but data was NULL.
          */
         case TOX_ERR_FILE_SEND_CHUNK_NULL:
-            return QT_TRANSLATE_NOOP("ToxError", "The length parameter was non-zero, "
-                                                 "but data was NULL");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The length parameter was non-zero, "
+                                                "but data was NULL");
+            break;
+
         /**
          * The friend_number passed did not designate a valid friend.
          */
         case TOX_ERR_FILE_SEND_CHUNK_FRIEND_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
-                                                 "did not designate a valid friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend_number passed "
+                                                "did not designate a valid friend");
+            break;
+
         /**
          * This client is currently not connected to the friend.
          */
         case TOX_ERR_FILE_SEND_CHUNK_FRIEND_NOT_CONNECTED:
-            return QT_TRANSLATE_NOOP("ToxError", "");
+            msg = QT_TRANSLATE_NOOP("ToxError", "");
+            break;
 
         /**
          * No file transfer with the given file number was found for the given friend.
          */
         case TOX_ERR_FILE_SEND_CHUNK_NOT_FOUND:
-            return QT_TRANSLATE_NOOP("ToxError", "No file transfer with the given "
-                                                 "file number was found for the given friend");
+            msg = QT_TRANSLATE_NOOP("ToxError", "No file transfer with the given "
+                                                "file number was found for the given friend");
+            break;
+
         /**
          * File transfer was found but isn't in a transferring state: (paused, done,
          * broken, etc...) (happens only when not called from the request chunk callback).
          */
         case TOX_ERR_FILE_SEND_CHUNK_NOT_TRANSFERRING:
-            return QT_TRANSLATE_NOOP("ToxError", "File transfer was found but "
-                                                 "isn't in a transferring state: "
-                                                 "(paused, done, broken, etc...)");
+            msg = QT_TRANSLATE_NOOP("ToxError", "File transfer was found but "
+                                                "isn't in a transferring state: "
+                                                "(paused, done, broken, etc...)");
+            break;
+
         /**
          * Attempted to send more or less data than requested. The requested data size is
          * adjusted according to maximum transmission unit and the expected end of
          * the file. Trying to send less or more than requested will return this error.
          */
         case TOX_ERR_FILE_SEND_CHUNK_INVALID_LENGTH:
-            return QT_TRANSLATE_NOOP("ToxError", "Attempted to send more or less "
-                                                 "data than requested");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Attempted to send more or less "
+                                                "data than requested");
+            break;
+
         /**
          * Packet queue is full.
          */
         case TOX_ERR_FILE_SEND_CHUNK_SENDQ:
-            return QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Packet queue is full");
+            break;
 
         /**
          * Position parameter was wrong.
          */
         case TOX_ERR_FILE_SEND_CHUNK_WRONG_POSITION:
-            return QT_TRANSLATE_NOOP("ToxError", "Position parameter was wrong");
+            msg = QT_TRANSLATE_NOOP("ToxError", "Position parameter was wrong");
+            break;
 
         default:
-            return unknown_error;
+            msg = unknown_error;
     }
+
+    err.description = QObject::tr(msg);
+    return err;
 }

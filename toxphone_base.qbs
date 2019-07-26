@@ -4,7 +4,7 @@ import "qbs/imports/QbsUtl/qbsutl.js" as QbsUtl
 import "qbs/imports/ProbExt/OsProbe.qbs" as OsProbe
 
 Project {
-    minimumQbsVersion: "1.10.0"
+    minimumQbsVersion: "1.12.0"
     qbsSearchPaths: ["qbs"]
 
     // Признак вывода дополнительной информации в файл package_build_info,
@@ -53,6 +53,7 @@ Project {
             //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
+            "BPROTO_SERIALIZATION"
         ]
 
         if (qbs.buildVariant === "release")
@@ -62,7 +63,7 @@ Project {
     }
 
     property var cxxFlags: [
-        "-std=c++11",
+        //"-std=c++11",
         "-ggdb3",
         "-Winline",
         "-Wall",
@@ -72,5 +73,5 @@ Project {
         "-Wno-variadic-macros",
         //"-Wconversion",
     ]
-
+    property string cxxLanguageVersion: "c++11"
 }

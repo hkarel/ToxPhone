@@ -95,7 +95,7 @@ void Application::message(const Message::Ptr& message)
 
     if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
-        if (!commandsPool().commandIsMultiproc(message->command()))
+        if (!command::pool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
         _funcInvoker.call(message, fr);
     }
@@ -339,6 +339,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
     readFromMessage(message, diverterChange);
 
     data::MessageError error;
+    QUuidEx failed_save_diverter_state__code {"8d1b2f14-4330-4ed3-8ac4-303e689db6df"};
     static const char* failed_save_diverter_state =
         QT_TRANSLATE_NOOP("ToxPhoneApplication", "Failed save a diverter state");
 
@@ -349,16 +350,16 @@ void Application::command_DiverterChange(const Message::Ptr& message)
             config::state().setValue("diverter.active", diverterChange.active);
             if (!config::state().save())
             {
-                error.code = 1;
+                error.code = failed_save_diverter_state__code;
                 error.description = tr(failed_save_diverter_state);
-                config::state().reRead();
+                config::state().reread();
             }
             log_verbose_m << "Diverter use state is changed to "
                           << (diverterChange.active ? "ON" : "OFF");
         }
         else if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
         {
-            error.code = 3;
+            error.code = QUuidEx{"bb76ae22-d123-465d-bcd5-b85f47ec98df"};
             error.description = tr("Impossible to change settings of a diverter "
                                    "\nwhen handset is on");
         }
@@ -372,9 +373,9 @@ void Application::command_DiverterChange(const Message::Ptr& message)
                 config::state().setValue("diverter.default_mode", defaultMode);
                 if (!config::state().save())
                 {
-                    error.code = 1;
+                    error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
-                    config::state().reRead();
+                    config::state().reread();
                 }
                 log_verbose_m << "Diverter default mode is changed to " << defaultMode;
             }
@@ -383,9 +384,9 @@ void Application::command_DiverterChange(const Message::Ptr& message)
                 config::state().setValue("diverter.ring_tone", diverterChange.ringTone);
                 if (!config::state().save())
                 {
-                    error.code = 1;
+                    error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
-                    config::state().reRead();
+                    config::state().reread();
                 }
                 log_verbose_m << "Diverter ringtone is changed to " << diverterChange.ringTone;
             }
@@ -393,11 +394,11 @@ void Application::command_DiverterChange(const Message::Ptr& message)
     }
     else
     {
-        error.code = 2;
+        error.code = QUuidEx{"f392cd66-1c5c-48ff-b58f-192a10276fd7"};
         error.description = tr("Impossible to change settings of a diverter "
                                "\nduring a call");
     }
-    if (error.code != 0)
+    if (!error.code.isNull())
     {
         Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(error, answer);
@@ -424,7 +425,7 @@ void Application::command_DiverterTest(const Message::Ptr& message)
             if (phoneDiverter().handset() == PhoneDiverter::Handset::On)
             {
                 data::MessageError error;
-                error.code = 1;
+                error.code = QUuidEx{"ba71e5e2-578c-4cb1-b06e-695b445165d3"};
                 error.description = tr("Ringtone test is impossible when handset is on");
 
                 Message::Ptr answer = message->cloneForAnswer();
@@ -537,12 +538,12 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
                                        _configPublicKey, _toxSecretKey);
         if (res != 0)
         {
-            const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
-                                                "Failed decrypt password");
-            error.code = 1;
+            const char* msg =
+                QT_TRANSLATE_NOOP("ToxPhoneApplication", "Failed decrypt password");
+            error.code = QUuidEx{"17ebf8eb-d7cc-4960-9161-48b15521aed0"};
             error.description = tr(msg);
             closeConnection.description = msg;
-            log_error_m << msg;
+            log_error_m << closeConnection.description;
         }
         else
         {
@@ -558,12 +559,13 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
                                      (uchar*)passw.constData(), passw.length(), 0, 0);
             if (res != 0)
             {
-                const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
-                                                    "Failed generate password-hash");
-                error.code = 2;
+                const char* msg =
+                    QT_TRANSLATE_NOOP("ToxPhoneApplication", "Failed generate password-hash");
+
+                error.code = QUuidEx{"15fb33fd-539f-4de0-96c2-35068eba8179"};
                 error.description = tr(msg);
                 closeConnection.description = msg;
-                log_error_m << msg;
+                log_error_m << closeConnection.description;
             }
             else
             {
@@ -572,10 +574,10 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
                     const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
                         "Authorization failed. Mismatch of passwords. Code error: %1");
 
-                    error.code = 3;
-                    error.description = tr(msg).arg(error.code);
-                    closeConnection.description = QString(msg).arg(error.code);
-                    log_error_m << QString(msg).arg(error.code);
+                    error.code = QUuidEx{"006c8bf5-540f-4c82-b38e-91d54fe525bc"};
+                    error.description = tr(msg).arg(error.code.toString());
+                    closeConnection.description = QString(msg).arg(error.code.toString());
+                    log_error_m << closeConnection.description;
                 }
             }
         }
@@ -585,12 +587,12 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
         const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
             "Authorization failed. Mismatch of passwords. Code error: %1");
 
-        error.code = 4;
-        error.description = tr(msg).arg(error.code);
-        closeConnection.description = QString(msg).arg(error.code);
-        log_error_m << QString(msg).arg(error.code);
+        error.code = QUuidEx{"dfb6dcba-e4fe-4dfe-aeb0-7ba0142cfa64"};
+        error.description = tr(msg).arg(error.code.toString());
+        closeConnection.description = QString(msg).arg(error.code.toString());
+        log_error_m << closeConnection.description;
     }
-    if (error.code != 0)
+    if (!error.code.isNull())
     {
         Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(error, answer);
@@ -835,7 +837,7 @@ void Application::phoneDiverterAttached()
         }
         return true;
     };
-    config::state().reRead();
+    config::state().reread();
     config::state().getValue("phones", loadFunc);
 
     initPhoneDiverter();

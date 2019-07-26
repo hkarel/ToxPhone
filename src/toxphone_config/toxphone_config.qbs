@@ -36,6 +36,7 @@ Product {
 
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags
+    cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
     cpp.includePaths: [
         "./",

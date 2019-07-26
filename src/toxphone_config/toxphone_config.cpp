@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
                  << " (version " << productVersion().toString() << ")";
         alog::logger().flush();
 
-        if (!communication::commandsPool().checkUnique())
+        if (!communication::command::pool().checkUnique())
         {
             stopProgram();
             return 1;

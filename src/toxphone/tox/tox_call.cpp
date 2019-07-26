@@ -7,6 +7,7 @@
 #include "common/functions.h"
 #include "common/voice_filters.h"
 #include "diverter/phone_diverter.h"
+#include "kernel/communication/error.h"
 
 #include "shared/break_point.h"
 #include "shared/steady_timer.h"
@@ -165,7 +166,7 @@ void ToxCall::message(const communication::Message::Ptr& message)
 
     if (_funcInvoker.containsCommand(message->command()))
     {
-        if (!commandsPool().commandIsMultiproc(message->command()))
+        if (!command::pool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
 
         message->add_ref();
@@ -215,16 +216,12 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
 
         if (err != TOXAV_ERR_CALL_OK)
         {
-            log_error_m << "Failed toxav_call: " << toxError(err);
+            log_error_m << "Failed toxav_call: " << toxError(err).description;
 
             if (toxConfig().isActive())
             {
-                data::MessageError error;
-                error.description = tr(toxError(err));
-                error.code = 1;
-
                 Message::Ptr answer = message->cloneForAnswer();
-                writeToMessage(error, answer);
+                writeToMessage(toxError(err), answer);
                 toxConfig().send(answer);
             }
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
@@ -278,16 +275,12 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         }
         else
         {
-            log_error_m << "Failed toxav_answer: " << toxError(err);
+            log_error_m << "Failed toxav_answer: " << toxError(err).description;
 
             if (toxConfig().isActive())
             {
-                data::MessageError error;
-                error.description = tr(toxError(err));
-                error.code = 1;
-
                 Message::Ptr answer = message->cloneForAnswer();
-                writeToMessage(error, answer);
+                writeToMessage(toxError(err), answer);
                 toxConfig().send(answer);
             }
             toxav_call_control(_toxav, toxCallAction.friendNumber, TOXAV_CALL_CONTROL_CANCEL, 0);
@@ -385,16 +378,12 @@ void ToxCall::command_ToxCallAction(const Message::Ptr& message)
         }
         else
         {
-            log_error_m << "Failed toxav_call_control: " << toxError(err);
+            log_error_m << "Failed toxav_call_control: " << toxError(err).description;
 
             if (toxConfig().isActive())
             {
-                data::MessageError error;
-                error.description = tr(toxError(err));
-                error.code = 1;
-
                 Message::Ptr answer = message->cloneForAnswer();
-                writeToMessage(error, answer);
+                writeToMessage(toxError(err), answer);
                 toxConfig().send(answer);
             }
         }
@@ -499,7 +488,8 @@ void ToxCall::iterateVoiceFrame()
         {
             size_t sampleCount =
                 dataSize / voiceFrameInfo->sampleSize / voiceFrameInfo->channels;
-            log_error_m << "Failed toxav_audio_send_frame: " << toxError(err)
+            log_error_m << "Failed toxav_audio_send_frame: "
+                        << toxError(err).description
                         << "; sample count: " << sampleCount
                         << "; data size: " << dataSize;
         }
@@ -549,7 +539,7 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
             toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
         }
         if (err != TOXAV_ERR_CALL_CONTROL_OK)
-            log_error_m << "Failed toxav_call_control: " << toxError(err);
+            log_error_m << "Failed toxav_call_control: " << toxError(err).description;
 
         data::ToxMessage toxMessage;
         toxMessage.friendNumber = friend_number;
@@ -579,7 +569,7 @@ void ToxCall::toxav_call_cb(ToxAV* av, uint32_t friend_number,
             sendToxLosslessMessage(toxav_get_tox(av), friend_number, m);
         }
         else
-            log_error_m << "Failed toxav_call_control: " << toxError(err);
+            log_error_m << "Failed toxav_call_control: " << toxError(err).description;
     }
     else
     {
@@ -683,7 +673,7 @@ void ToxCall::toxav_call_state(ToxAV* av, uint32_t friend_number, uint32_t state
                     toxav_call_control(av, friend_number, TOXAV_CALL_CONTROL_CANCEL, &err);
                 }
                 if (err != TOXAV_ERR_CALL_CONTROL_OK)
-                    log_error_m << "Failed toxav_call_control: " << toxError(err);
+                    log_error_m << "Failed toxav_call_control: " << toxError(err).description;
 
                 tc->_callState.direction = data::ToxCallState::Direction::Undefined;
                 tc->_callState.callState = data::ToxCallState::CallState::IsComplete;

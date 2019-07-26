@@ -15,6 +15,7 @@ Product {
     cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags //.concat(["-Wpedantic"]);
+    cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
     property var exportIncludePaths: [
         "./",
@@ -48,6 +49,8 @@ Product {
         "shared/qt/communication/message.h",
         "shared/qt/communication/serialization/bproto.cpp",
         "shared/qt/communication/serialization/bproto.h",
+        "shared/qt/communication/serialization/sresult.cpp",
+        "shared/qt/communication/serialization/sresult.h",
         "shared/qt/communication/transport/base.cpp",
         "shared/qt/communication/transport/base.h",
         "shared/qt/communication/transport/local.cpp",
@@ -83,6 +86,8 @@ Product {
         "shared/clife_ptr.h",
         "shared/container_ptr.h",
         "shared/list.h",
+        "shared/prog_abort.cpp",
+        "shared/prog_abort.h",
         "shared/ring_buffer.cpp",
         "shared/ring_buffer.h",
         "shared/safe_singleton.h",

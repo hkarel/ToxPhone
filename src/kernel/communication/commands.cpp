@@ -6,10 +6,10 @@ namespace communication {
 namespace command {
 
 #define REGISTRY_COMMAND_SINGLPROC(COMMAND, UUID) \
-    const QUuidEx COMMAND = CommandsPool::Registry{UUID, #COMMAND, false};
+    const QUuidEx COMMAND = command::Pool::Registry{UUID, #COMMAND, false};
 
 #define REGISTRY_COMMAND_MULTIPROC(COMMAND, UUID) \
-    const QUuidEx COMMAND = CommandsPool::Registry{UUID, #COMMAND, true};
+    const QUuidEx COMMAND = command::Pool::Registry{UUID, #COMMAND, true};
 
 REGISTRY_COMMAND_MULTIPROC(ToxPhoneInfo,               "936920c9-f5eb-43f5-8b4b-b00ed260f9d6")
 REGISTRY_COMMAND_MULTIPROC(IncomingConfigConnection,   "917b1e18-4a5e-4432-b6d6-457a666ef2b1")

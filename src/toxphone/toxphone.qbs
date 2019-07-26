@@ -60,6 +60,8 @@ Product {
     }
 
     cpp.cxxFlags: project.cxxFlags
+    cpp.cxxLanguageVersion: project.cxxLanguageVersion
+
     cpp.driverFlags: [
         //"--param", "inline-unit-growth=150",
         //"--param", "max-inline-insns-single=1000",

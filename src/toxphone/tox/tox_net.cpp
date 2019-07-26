@@ -26,6 +26,9 @@
 static const char* error_save_tox_state =
     QT_TRANSLATE_NOOP("ToxNet", "An error occurred when saved tox state");
 
+static const char* error_save_tox_profile =
+        QT_TRANSLATE_NOOP("ToxNet", "An error occurred when saved profile");
+
 static const char* tox_chat_responce_message =
     QT_TRANSLATE_NOOP("ToxNet", "Hi, it ToxPhone client. The ToxPhone client not support a chat function.");
 
@@ -216,7 +219,7 @@ bool ToxNet::init()
     }
     if (tox_err != TOX_ERR_NEW_OK)
     {
-         log_error_m << "Failed tox core creation: " << toxError(tox_err);
+         log_error_m << "Failed tox core creation: " << toxError(tox_err).description;
          return false;
     }
     _savedState.clear();
@@ -422,7 +425,7 @@ void ToxNet::sendAvatar(uint32_t friendNumber)
                                         _avatar.size(), avatarHash, 0, 0, &err);
     if (err != TOX_ERR_FILE_SEND_OK)
     {
-        log_error_m << "Failed tox_file_send: " << toxError(err);
+        log_error_m << "Failed tox_file_send: " << toxError(err).description;
         return;
     }
 
@@ -575,7 +578,7 @@ void ToxNet::message(const communication::Message::Ptr& message)
 
     if (_funcInvoker.containsCommand(message->command()))
     {
-        if (!commandsPool().commandIsMultiproc(message->command()))
+        if (!command::pool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
 
         message->add_ref();
@@ -626,16 +629,19 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
 
     data::MessageError error;
     if (!setUserProfile(toxProfile.name, toxProfile.status))
-        error.code = 2;
+    {
+        error.code = QUuidEx{"486cd166-f6af-49c9-8247-a2f3b41750f4"};
+        error.description = tr(error_save_tox_profile);
+    }
 
-    if (error.code == 0)
+    if (error.code.isNull())
         if (!saveState())
         {
-            error.code = 1;
+            error.code = QUuidEx{"94eb1f80-eefa-492a-a48b-e9bb531bd240"};
             error.description = tr(error_save_tox_state);
         }
 
-    if (error.code == 0)
+    if (error.code.isNull())
         if (_avatar.toHex().toUpper() != toxProfile.avatar.toHex().toUpper())
         {
             QByteArray selfPubKey = getToxSelfPublicKey(_tox);
@@ -647,14 +653,15 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
                 log_debug_m << "Own avatar updated";
             }
             else
-                error.code = 3;
+            {
+                error.code = QUuidEx{"5ca769a6-2263-4ed3-bab3-1e66a44115c7"};
+                error.description = tr(error_save_tox_profile);
+            }
         }
 
-    if (error.code > 1)
-    {
-        error.description = tr("An error occurred when saved profile");
+    if (!error.code.isNull())
         writeToMessage(error, answer);
-    }
+
     tcp::listener().send(answer);
 }
 
@@ -677,8 +684,9 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID length, should be %1 symbols");
             log_error_m << QString(err).arg(TOX_ADDRESS_SIZE*2);
+
+            error.code = QUuidEx{"4ccc0fd2-5741-497a-aae3-408f14a36e56"};
             error.description = tr(err).arg(TOX_ADDRESS_SIZE*2);
-            error.code = 1;
             return;
         }
 
@@ -687,8 +695,9 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID format");
             log_error_m << err;
+
+            error.code = QUuidEx{"0afdd1c3-3444-4b9f-ae98-78fbbb51eb43"};
             error.description = tr(err);
-            error.code = 1;
             return;
         }
 
@@ -707,24 +716,27 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID checksumm");
             log_error_m << err;
+
+            error.code = QUuidEx{"f4e76704-9842-4b0d-b3bc-09381bd99c55"};
             error.description = tr(err);
-            error.code = 1;
             return;
         }
         if (friendMessage.isEmpty())
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "You need to write a message with your request");
             log_error_m << err;
+
+            error.code = QUuidEx{"41bb9ecb-f44b-4c50-a585-f4783390e463"};
             error.description = tr(err);
-            error.code = 1;
             return;
         }
         if (friendMessage.length() > int(tox_max_friend_request_length()))
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Your message is too long! Maximum length %1 symbols");
             log_error_m << QString(err).arg(tox_max_friend_request_length());
+
+            error.code = QUuidEx{"d4b84abf-108a-4c40-8523-6c9defa4cdd9"};
             error.description = tr(err).arg(tox_max_friend_request_length());
-            error.code = 1;
             return;
         }
 
@@ -735,14 +747,15 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Friend is already added");
             log_error_m << err;
+
+            error.code = QUuidEx{"23593c3b-6368-41b1-9c69-84c17f44a28b"};
             error.description = tr(err);
-            error.code = 1;
             return;
         }
     };
     checkError();
 
-    if (error.code == 0)
+    if (error.code.isNull())
     {
         QByteArray msg = friendMessage.toUtf8();
         uint32_t friendNum;
@@ -755,20 +768,21 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed to request friendship. Friend id: %1");
             log_error_m << QString(err).arg(friendId);
+
+            error.code = QUuidEx{"74afb540-6c9b-42cb-9223-fcf62b5be2ba"};
             error.description = tr(err).arg(friendId);
-            error.code = 1;
         }
         else
         {
             log_verbose_m << "Requested friendship with " << friendId;
             if (!saveState())
             {
+                error.code = QUuidEx{"f4d117c5-50e2-40ea-90b4-64e577902d99"};
                 error.description = tr(error_save_tox_state);
-                error.code = 2;
             }
         }
     }
-    if (error.code != 0)
+    if (!error.code.isNull())
         writeToMessage(error, answer);
 
     tcp::listener().send(answer);
@@ -800,23 +814,24 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
             }
             else
             {
+                error.code = QUuidEx{"72f33fdf-7bcd-40cd-b8ab-87ad78323d18"};
                 error.description = tr(error_save_tox_state);
-                error.code = 1;
             }
         }
         else
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed add friend");
             log_error_m << err;
+
+            error.code = QUuidEx{"96589658-ea9e-4e2b-b4b8-7a474ae7047b"};
             error.description = tr(err);
-            error.code = 1;
         }
     }
     config::state().remove("friend_requests." + string(publicKey));
     config::state().save();
 
     Message::Ptr answer = message->cloneForAnswer();
-    if (error.code != 0)
+    if (!error.code.isNull())
         writeToMessage(error, answer);
     else
         writeToMessage(friendRequest, answer);
@@ -835,6 +850,7 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
     data::MessageError error;
     QByteArray publicKey = QByteArray::fromHex(removeFriend.publicKey);
     uint32_t friendNum = getToxFriendNum(_tox, publicKey);
+
     if (friendNum != UINT32_MAX)
     {
         QString fiendName = getToxFriendName(_tox, friendNum);
@@ -857,28 +873,30 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
             }
             else
             {
+                error.code = QUuidEx{"f8ad4dc5-da16-408f-aac8-44db182c6faa"};
                 error.description = tr(error_save_tox_state);
-                error.code = 1;
             }
         }
         else
         {
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed remove friend %1");
             log_error_m << QString(err).arg(removeFriend.name);
+
+            error.code = QUuidEx{"d0737547-9a1b-4bff-970b-c1325c849e64"};
             error.description = tr(err).arg(removeFriend.name);
-            error.code = 1;
         }
     }
     else
     {
         err = QT_TRANSLATE_NOOP("ToxNet", "Friend %1 not found");
         log_error_m << QString(err).arg(removeFriend.name);
+
+        error.code = QUuidEx{"4d322162-ec06-4567-9249-0ab8cdc9409a"};
         error.description = tr(err).arg(removeFriend.name);
-        error.code = 1;
     }
 
     Message::Ptr answer = message->cloneForAnswer();
-    if (error.code != 0)
+    if (!error.code.isNull())
         writeToMessage(error, answer);
 
     tcp::listener().send(answer);
@@ -893,9 +911,9 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
     QByteArray removePubKey;
     quint32 phoneNumber = quint32(-1);
 
-    YamlConfig::Func getPhones = [&](YamlConfig* conf, YAML::Node& phones, bool)
+    YamlConfig::Func loadFunt = [&](YamlConfig* conf, YAML::Node& phones, bool)
     {
-        for(auto  it = phones.begin(); it != phones.end(); ++it)
+        for (auto it = phones.begin(); it != phones.end(); ++it)
         {
             QByteArray publicKey = it->first.as<string>("").c_str();
             if (publicKey.isEmpty())
@@ -913,7 +931,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
         }
         return true;
     };
-    config::state().getValue("phones", getPhones);
+    config::state().getValue("phones", loadFunt);
 
     if (!removePubKey.isEmpty())
     {
@@ -1077,7 +1095,7 @@ void ToxNet::updateFriendRequests()
         }
         return true;
     };
-    config::state().reRead();
+    config::state().reread();
     config::state().getValue("friend_requests", loadFunc);
 
     Message::Ptr m = createMessage(friendRequests);
@@ -1463,7 +1481,7 @@ void ToxNet::tox_file_chunk_request(Tox* tox, uint32_t friend_number, uint32_t f
         {
             tox_file_send_chunk(tox, friend_number, file_number, position, 0, 0, &err);
             if (err != TOX_ERR_FILE_SEND_CHUNK_OK)
-                log_error_m << "Failed tox_file_send_chunk: " << toxError(err);
+                log_error_m << "Failed tox_file_send_chunk: " << toxError(err).description;
             return;
         }
 
@@ -1473,7 +1491,7 @@ void ToxNet::tox_file_chunk_request(Tox* tox, uint32_t friend_number, uint32_t f
         tox_file_send_chunk(tox, friend_number, file_number,
                             position, (uint8_t*)data, length, &err);
         if (err != TOX_ERR_FILE_SEND_CHUNK_OK)
-            log_error_m << "Failed tox_file_send_chunk: " << toxError(err);
+            log_error_m << "Failed tox_file_send_chunk: " << toxError(err).description;
     }
 }
 

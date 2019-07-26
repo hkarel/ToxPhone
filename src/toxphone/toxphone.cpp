@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
         // Test
         //const QUuidEx cmd = CommandsPool::Registry{"917b1e18-4a5e-4432-b6d6-457a666ef2b1", "IncomingConfigConnection1", true};
 
-        if (!communication::commandsPool().checkUnique())
+        if (!communication::command::pool().checkUnique())
         {
             stopProgram();
             return 1;

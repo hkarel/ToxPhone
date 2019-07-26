@@ -16,6 +16,7 @@ Product {
     cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags
+    cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
     property var exportIncludePaths: [
         "./",
@@ -28,6 +29,7 @@ Product {
     files: [
         "communication/commands.cpp",
         "communication/commands.h",
+        "communication/error.h",
         "network/interfaces.cpp",
         "network/interfaces.h",
     ]

@@ -187,7 +187,7 @@ void MainWindow::message(const communication::Message::Ptr& message)
 
     if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
-        if (!commandsPool().commandIsMultiproc(message->command()))
+        if (!command::pool().commandIsMultiproc(message->command()))
             message->markAsProcessed();
         _funcInvoker.call(message, fr);
     }
