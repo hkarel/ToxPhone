@@ -216,4 +216,5 @@ private:
     template<typename T, int> friend T& ::safe_singleton();
 
 };
+
 AudioDev& audioDev();

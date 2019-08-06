@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
         chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
                       &appl,         SLOT(message(communication::Message::Ptr)))
 
-        chk_connect_d(&appl,             SIGNAL(internalMessage(communication::Message::Ptr)),
+        chk_connect_d(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
                       &toxNet(),          SLOT(message(communication::Message::Ptr)))
         chk_connect_d(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
                       &toxCall(),         SLOT(message(communication::Message::Ptr)))
