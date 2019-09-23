@@ -89,10 +89,10 @@ void VoiceFilters::run()
     }
     enable_disable_filters(webrtcFilter, 0, 1, 0, 0);
 
-    DenoiseState* rnnoiseFilter = rnnoise_create();
+    DenoiseState* rnnoiseFilter = rnnoise_create(0);
     data::AudioNoise::FilterType filterType = data::AudioNoise::FilterType::WebRtc;
     quint32 recordDataSize = 0;
-    char data[4000];
+    char recordData[4000];
 
     _filterChanged = true;
 
@@ -138,9 +138,9 @@ void VoiceFilters::run()
             _filterChanged = false;
         }
 
-        if (recordRBuff_1().read(data, recordDataSize))
+        if (recordRBuff_1().read(recordData, recordDataSize))
         {
-            int16_t* pcm = (int16_t*)data;
+            int16_t* pcm = (int16_t*)recordData;
             if (filterType == data::AudioNoise::FilterType::WebRtc)
             {
                 if (filter_audio(webrtcFilter, pcm, recordDataSize / sizeof(int16_t)) < 0)
@@ -167,7 +167,7 @@ void VoiceFilters::run()
             //secondVoiceRB().write((char*)data, recordDataSize);
             /***/
 
-            if (!recordRBuff_2().write((char*)data, recordDataSize))
+            if (!recordRBuff_2().write((char*)recordData, recordDataSize))
             {
                 log_error_m << "Failed write data to recordRBuff_2"
                             << ". Data size: " << recordDataSize;
@@ -178,7 +178,7 @@ void VoiceFilters::run()
             // в функции filter_audio() при активном флаге gain.
             if (toxConfig().isActive())
             {
-                pcm = (int16_t*)data;
+                pcm = (int16_t*)recordData;
                 for (size_t i = 0; i < (recordDataSize / sizeof(int16_t)); ++i)
                 {
                     if (*pcm > 0)

@@ -97,11 +97,12 @@ void stopProgram()
     STOP_THREAD(toxCall(),       "ToxCall",       15)
     STOP_THREAD(toxNet(),        "ToxNet",        15)
 
+    #undef STOP_THREAD
+
     log_info << "ToxPhone client is stopped";
     stopLog();
 
     trd::threadPool().stop();
-    #undef STOP_THREAD
 }
 
 void helpInfo(/*const char * binary*/)
