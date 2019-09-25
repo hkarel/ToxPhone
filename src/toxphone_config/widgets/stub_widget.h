@@ -9,8 +9,6 @@ class StubWidget;
 
 class StubWidget : /*public QWidget,*/ public Comparator
 {
-    Q_OBJECT
-
 public:
     explicit StubWidget(QWidget *parent = 0);
     ~StubWidget();
@@ -18,5 +16,6 @@ public:
     bool lessThan(Comparator*) const override;
 
 private:
+    Q_OBJECT
     Ui::StubWidget *ui;
 };

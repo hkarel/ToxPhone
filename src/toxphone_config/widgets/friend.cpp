@@ -9,6 +9,11 @@ FriendWidget::FriendWidget(QWidget *parent) :
     ui(new Ui::FriendWidget)
 {
     ui->setupUi(this);
+
+    QFontMetrics fontMetrics {ui->labelPhoneNumber->font()};
+    int w = fontMetrics.width("*99#");
+    QSize sz {w + 3, 0};
+    ui->labelPhoneNumber->setMinimumSize(sz);
 }
 
 FriendWidget::~FriendWidget()
@@ -49,26 +54,13 @@ void FriendWidget::setProperties(const data::FriendItem& val)
     else
         onlineStatus = QPixmap("://resources/offline.png");
 
-    int onlineStatusSize = 15;
-    if (onlineStatus.height() > onlineStatusSize || onlineStatus.width() > onlineStatusSize)
-        onlineStatus = onlineStatus.scaled(onlineStatusSize, onlineStatusSize,
-                                           Qt::KeepAspectRatio, Qt::SmoothTransformation);
+//    int onlineStatusSize = 15;
+//    if (onlineStatus.height() > onlineStatusSize || onlineStatus.width() > onlineStatusSize)
+//        onlineStatus = onlineStatus.scaled(onlineStatusSize, onlineStatusSize,
+//                                           Qt::KeepAspectRatio, Qt::SmoothTransformation);
     ui->labelOnlineStatus->setPixmap(onlineStatus);
 
-    QPixmap avatar;
-    int avatarSize = 42;
-    if (_properties.avatar.isEmpty())
-    {
-        avatarSize = 28;
-        avatar = QPixmap("://resources/avatar_default.svg");
-    }
-    else
-        avatar.loadFromData(_properties.avatar);
-
-    if (avatar.height() > avatarSize || avatar.width() > avatarSize)
-        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-    setAvatar(avatar, (avatarSize == 42));
+    updateAvatar();
 }
 
 bool FriendWidget::lessThan(Comparator* c) const
@@ -84,8 +76,29 @@ bool FriendWidget::lessThan(Comparator* c) const
     return (_properties.isConnecnted > fw->_properties.isConnecnted);
 }
 
-void FriendWidget::setAvatar(QPixmap avatar, bool roundCorner)
+void FriendWidget::updateAvatar()
 {
+    ui->labelAvatar->clear();
+
+    QPixmap avatar;
+    bool roundCorner = true;
+    int avatarSize = ui->labelAvatar->height() * 0.8;
+    ui->labelAvatar->setMinimumWidth(ui->labelAvatar->height());
+
+    if (_properties.avatar.isEmpty())
+    {
+        roundCorner = false;
+        avatarSize = avatarSize * 0.9;
+        avatar = QPixmap("://resources/avatar_default.svg");
+    }
+    else
+        avatar.loadFromData(_properties.avatar);
+
+    //QSize sz = ui->labelAvatar->sizeHint();
+
+    if ((avatar.height() > avatarSize) || (avatar.width() > avatarSize))
+        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
     if (!roundCorner)
     {
         ui->labelAvatar->setPixmap(avatar);
@@ -109,3 +122,7 @@ void FriendWidget::setAvatar(QPixmap avatar, bool roundCorner)
     ui->labelAvatar->setPixmap(renderTarget);
 }
 
+void FriendWidget::showEvent(QShowEvent*)
+{
+    QMetaObject::invokeMethod(this, "updateAvatar", Qt::QueuedConnection);
+}

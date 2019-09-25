@@ -20,8 +20,6 @@ class ConnectionWindow;
 
 class ConnectionWindow : public QDialog
 {
-    Q_OBJECT
-
 public:
     explicit ConnectionWindow(QWidget *parent = 0);
     ~ConnectionWindow();
@@ -44,6 +42,8 @@ private slots:
     void on_btnConnect_clicked(bool checked);
 
 private:
+    Q_OBJECT
+
     //--- Обработчики команд ---
     //void command_CloseConnection(const Message::Ptr&);
     void command_ToxPhoneInfo(const Message::Ptr&);

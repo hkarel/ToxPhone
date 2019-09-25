@@ -96,6 +96,9 @@ MainWindow::MainWindow(QWidget *parent) :
     #undef FUNC_REGISTRATION
 
     ui->labelAvatar->installEventFilter(this);
+    //Qt::Alignment al = ui->gboxPersonalData->alignment();
+    //QSize sz = ui->labelAvatar->size();
+    //ui->gboxPersonalData->setAlignment(Qt::AlignLeft|Qt::AlignTop);
 
     _btnDeleteAvatar = new QPushButton(ui->labelAvatar);
     _btnDeleteAvatar->setObjectName(QString::fromUtf8("btnDeleteAvatar"));
@@ -132,13 +135,7 @@ bool MainWindow::init(const tcp::Socket::Ptr& socket)
     chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
                   this, SLOT(socketDisconnected(communication::SocketDescriptor)))
 
-    int x = 20;
-    int y = ui->labelAvatar->height() * 4. / 5 - 1;
-    int w = ui->labelAvatar->width() - x * 2;
-    int h = ui->labelAvatar->height() / 5;
-    _btnDeleteAvatar->setGeometry(x, y, w, h);
-    _btnDeleteAvatar->setVisible(false);
-    _btnDeleteAvatar->setStyleSheet("color: rgb(60, 60, 60)");
+    //int avatarSize = ui->labelAvatar->height();
 
     return true;
 }
@@ -298,20 +295,24 @@ void MainWindow::command_ToxProfile(const Message::Ptr& message)
         else
             _avatar = QPixmap();
 
+        //QSize sz = ui->labelAvatar->size();
+
         QPixmap avatar;
-        int avatarSize = 128;
+        float avatarScale = 1.0;
+        //avatarSize = ui->labelAvatar->height();
+
         if (_avatar.isNull())
         {
-            avatarSize = 100;
+            avatarScale = 0.8;
             avatar = QPixmap("://resources/avatar_default.svg");
         }
         else
             avatar = _avatar;
 
-        if (avatar.height() > avatarSize || avatar.width() > avatarSize)
-            avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+//        if (avatar.height() > avatarSize || avatar.width() > avatarSize)
+//            avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-        setAvatar(avatar, !_avatar.isNull());
+        setAvatar(avatar, !_avatar.isNull(), avatarScale);
     }
 
     // Если Answer - значит мы отправляли команду на сервер с новыми значениями
@@ -436,6 +437,7 @@ void MainWindow::command_FriendItem(const Message::Ptr& message)
     {
         FriendWidget* fw = new FriendWidget();
         ListWidgetItem* lwi = new ListWidgetItem(fw);
+        //QSize sz = fw->sizeHint();
         lwi->setSizeHint(fw->sizeHint());
         ui->listFriends->addItem(lwi);
         ui->listFriends->setItemWidget(lwi, fw);
@@ -457,7 +459,9 @@ void MainWindow::command_FriendList(const Message::Ptr& message)
         FriendWidget* fw = new FriendWidget();
         ListWidgetItem* lwi = new ListWidgetItem(fw);
         //QSize sz = fw->minimumSize();
-        lwi->setSizeHint(fw->minimumSize());
+        //lwi->setSizeHint(fw->minimumSize());
+        //QSize sz = fw->sizeHint();
+        lwi->setSizeHint(fw->sizeHint());
         ui->listFriends->addItem(lwi);
         ui->listFriends->setItemWidget(lwi, fw);
     }
@@ -1604,15 +1608,12 @@ void MainWindow::labelAvatar_clicked()
     if (avatar.isNull())
         return;
 
+    // Ограничение для Tox-картинки (256)
     int avatarSize = 256;
-    if (avatar.height() > avatarSize || avatar.width() > avatarSize)
+    if ((avatar.height() > avatarSize) || (avatar.width() > avatarSize))
         avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     _avatar = avatar;
-
-    avatarSize = 128;
-    if (avatar.height() > avatarSize || avatar.width() > avatarSize)
-        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     setAvatar(avatar, true);
 }
@@ -1620,13 +1621,9 @@ void MainWindow::labelAvatar_clicked()
 void MainWindow::btnDeleteAvatar_clicked(bool)
 {
     _avatar = QPixmap();
-    int avatarSize = 100;
     QPixmap avatar {"://resources/avatar_default.svg"};
 
-    if (avatar.height() > avatarSize || avatar.width() > avatarSize)
-        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-    setAvatar(avatar, false);
+    setAvatar(avatar, false, 0.8);
     _btnDeleteAvatar->setVisible(false);
 }
 
@@ -1664,6 +1661,29 @@ void MainWindow::timerDeleteAvatar_timeout()
     _btnDeleteAvatar->setVisible(true);
 }
 
+void MainWindow::updateDeleteAvatarGeometry()
+{
+    //Qt::Alignment al = ui->gboxPersonalData->alignment();
+    //ui->gboxPersonalData->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);
+
+    //int hAvatar = ui->labelAvatar->height();
+    //ui->labelAvatar->setMinimumWidth(hAvatar);
+
+    //QSize sz = ui->labelAvatar->minimumSize();
+    //if (ui->labelAvatar->minimumWidth() < 90)
+    //    ui->labelAvatar->setMinimumWidth(90);
+
+    int w = ui->labelAvatar->height() - (ui->labelAvatar->height() * 0.2) * 2;
+    int h = ui->btnSaveProfile->height();
+    //int x = ui->labelAvatar->minimumWidth() / 2 - w / 2;
+    int x = ui->labelAvatar->width() / 2 - w / 2;
+    int y = ui->labelAvatar->height() - h - 10;
+
+    _btnDeleteAvatar->setGeometry(x, y, w, h);
+    _btnDeleteAvatar->setVisible(false);
+    _btnDeleteAvatar->setStyleSheet("color: rgb(30, 30, 30)");
+}
+
 void MainWindow::aboutClear()
 {
     ui->labelToxPhoneVers->clear();
@@ -1674,11 +1694,24 @@ void MainWindow::aboutClear()
     ui->labelSodiumVers->clear();
 }
 
-void MainWindow::setAvatar(QPixmap avatar, bool roundCorner)
+void MainWindow::setAvatar(QPixmap avatar, bool roundCorner, float scale)
 {
+    ui->labelAvatar->clear();
+    int avatarSize = ui->labelAvatar->height();
+
+    if (scale != 1.0)
+        avatarSize = avatarSize * scale;
+
+    if ((avatar.height() > avatarSize) || (avatar.width() > avatarSize))
+        avatar = avatar.scaled(avatarSize, avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    //int hAvatar = ui->labelAvatar->height();
+    //ui->labelAvatar->setMinimumWidth(hAvatar);
+
     if (!roundCorner)
     {
         ui->labelAvatar->setPixmap(avatar);
+        QMetaObject::invokeMethod(this, "updateDeleteAvatarGeometry", Qt::QueuedConnection);
         return;
     }
 
@@ -1696,10 +1729,29 @@ void MainWindow::setAvatar(QPixmap avatar, bool roundCorner)
         p.drawPixmap(0, 0, mask);
         p.end();
     }
+
     ui->labelAvatar->setPixmap(renderTarget);
+    QMetaObject::invokeMethod(this, "updateDeleteAvatarGeometry", Qt::QueuedConnection);
 }
 
 void MainWindow::on_labelCopyright_linkActivated(const QString& link)
 {
      QDesktopServices::openUrl(QUrl(link));
 }
+
+//void MainWindow::showEvent(QShowEvent* /*event*/)
+//{
+//    QMetaObject::invokeMethod(this, "updateFriendsAvatar", Qt::QueuedConnection);
+//}
+
+//void MainWindow::updateFriendsAvatar()
+//{
+//    for (int i = 0; i < ui->listFriends->count(); ++i)
+//    {
+//        QListWidgetItem* lwi = ui->listFriends->item(i);
+//        //ui->listFriends->removeItemWidget(lwi);
+//        //delete lwi;
+//        FriendWidget* fw = qobject_cast<FriendWidget*>(ui->listFriends->itemWidget(lwi));
+//        fw->updateAvatar();
+//    }
+//}

@@ -12,8 +12,6 @@ class ConnectionWidget;
 
 class ConnectionWidget : public Comparator
 {
-    Q_OBJECT
-
 public:
     explicit ConnectionWidget(QWidget *parent = 0);
     ~ConnectionWidget();
@@ -42,6 +40,7 @@ public:
     bool lessThan(Comparator*) const override;
 
 private:
+    Q_OBJECT
     Ui::ConnectionWidget *ui;
 
     communication::HostPoint _hostPoint;

@@ -22,8 +22,6 @@ class MainWindow;
 
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT
-
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -90,8 +88,13 @@ private slots:
     void btnDeleteAvatar_clicked(bool);
     void updateLabelCallState();
     void timerDeleteAvatar_timeout();
+    void updateDeleteAvatarGeometry();
+
+    //void updateFriendsAvatar();
 
 private:
+    Q_OBJECT
+
     bool eventFilter(QObject*, QEvent*) override;
     void closeEvent(QCloseEvent*) override;
 
@@ -128,7 +131,9 @@ private:
     QString friendCalling(quint32 friendNumber);
 
     void aboutClear();
-    void setAvatar(QPixmap, bool roundCorner);
+    void setAvatar(QPixmap, bool roundCorner, float scale = 1.0);
+
+    //void showEvent(QShowEvent*) override;
 
 private:
     Ui::MainWindow *ui;

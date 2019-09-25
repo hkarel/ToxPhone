@@ -34,8 +34,8 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     setWindowTitle(qApp->applicationName());
-    setFixedSize(size());
-    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    //setFixedSize(size());
+    //setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     //setWindowState(windowState() & ~(Qt::WindowMaximized | Qt::WindowFullScreen));
     //setWindowFlags(Qt::Dialog|Qt::WindowCloseButtonHint|Qt::MSWindowsFixedSizeDialogHint);
 
@@ -129,15 +129,23 @@ void ConnectionWindow::deinit()
 void ConnectionWindow::saveGeometry()
 {
     QPoint p = pos();
-    std::vector<int> v {p.x(), p.y()};
+    //std::vector<int> v {p.x(), p.y()};
+    std::vector<int> v {p.x(), p.y(), width(), height()};
     config::state().setValue("windows.connection_window.geometry", v);
 }
 
 void ConnectionWindow::loadGeometry()
 {
-    std::vector<int> v;
+//    std::vector<int> v;
+//    if (config::state().getValue("windows.connection_window.geometry", v))
+//        move(v[0], v[1]);
+
+    std::vector<int> v {0, 0, 280, 350};
     if (config::state().getValue("windows.connection_window.geometry", v))
+    {
         move(v[0], v[1]);
+        resize(v[2], v[3]);
+    }
 }
 
 void ConnectionWindow::message(const communication::Message::Ptr& message)
@@ -359,9 +367,11 @@ void ConnectionWindow::command_ToxPhoneInfo(const Message::Ptr& message)
         cw->setConfigConnectCount(toxPhoneInfo.configConnectCount);
         cw->setLifeTimeInterval(PHONES_LIST_TIMEUPDATE * 3 + 2);
         cw->resetLifeTimer();
-        //QSize sz = cw->sizeHint();
         ListWidgetItem* lwi = new ListWidgetItem(cw);
-        lwi->setSizeHint(cw->minimumSize());
+        //QSize sz2 = cw->minimumSize();
+        //lwi->setSizeHint(cw->minimumSize());
+        //QSize sz = cw->sizeHint();
+        lwi->setSizeHint(cw->sizeHint());
         ui->listPhones->addItem(lwi);
         ui->listPhones->setItemWidget(lwi, cw);
         ui->listPhones->sortItems();

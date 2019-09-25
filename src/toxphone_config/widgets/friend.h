@@ -13,8 +13,6 @@ using namespace communication;
 
 class FriendWidget : public Comparator
 {
-    Q_OBJECT
-
 public:
     explicit FriendWidget(QWidget *parent = 0);
     ~FriendWidget();
@@ -24,8 +22,12 @@ public:
 
     bool lessThan(Comparator*) const override;
 
+private slots:
+    void updateAvatar();
+
 private:
-    void setAvatar(QPixmap avatar, bool roundCorner);
+    Q_OBJECT
+    void showEvent(QShowEvent*) override;
 
 private:
     Ui::FriendWidget *ui;

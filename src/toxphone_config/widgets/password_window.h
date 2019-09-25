@@ -7,8 +7,6 @@ class PasswordWindow;
 
 class PasswordWindow : public QDialog
 {
-    Q_OBJECT
-
 public:
     explicit PasswordWindow(QWidget *parent = 0);
     ~PasswordWindow();
@@ -19,5 +17,6 @@ private slots:
     void on_btnOk_clicked(bool);
 
 private:
+    Q_OBJECT
     Ui::PasswordWindow *ui;
 };

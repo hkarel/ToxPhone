@@ -7,8 +7,6 @@ class FriendRequestWidget;
 
 class FriendRequestWidget : public QWidget
 {
-    Q_OBJECT
-
 public:
     explicit FriendRequestWidget(QWidget *parent = 0);
     ~FriendRequestWidget();
@@ -19,5 +17,6 @@ public:
     void setMessage(const QString&);
 
 private:
+    Q_OBJECT
     Ui::FriendRequestWidget *ui;
 };

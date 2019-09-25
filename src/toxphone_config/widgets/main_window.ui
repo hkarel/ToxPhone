@@ -36,7 +36,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>6</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabProfile">
        <attribute name="title">
@@ -44,7 +44,13 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
-         <widget class="QGroupBox" name="groupBox_3">
+         <widget class="QGroupBox" name="gboxPersonalData">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="title">
            <string>Personal data</string>
           </property>
@@ -63,16 +69,16 @@
            </property>
            <item>
             <widget class="QLabel" name="labelAvatar">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
-               <width>130</width>
-               <height>130</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>130</width>
-               <height>130</height>
+               <width>90</width>
+               <height>90</height>
               </size>
              </property>
              <property name="frameShape">
@@ -851,12 +857,6 @@
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>25</height>
-                </size>
-               </property>
               </widget>
              </item>
              <item row="0" column="0">
@@ -890,7 +890,7 @@
                <property name="minimumSize">
                 <size>
                  <width>80</width>
-                 <height>25</height>
+                 <height>0</height>
                 </size>
                </property>
                <property name="text">
@@ -923,12 +923,6 @@
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>25</height>
-                  </size>
                  </property>
                  <property name="text">
                   <string>Set device as default</string>
@@ -1003,12 +997,6 @@
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>25</height>
-                </size>
-               </property>
               </widget>
              </item>
              <item row="2" column="0">
@@ -1032,7 +1020,7 @@
                <property name="minimumSize">
                 <size>
                  <width>80</width>
-                 <height>25</height>
+                 <height>0</height>
                 </size>
                </property>
                <property name="text">
@@ -1124,12 +1112,6 @@
                </item>
                <item>
                 <widget class="QPushButton" name="btnRecordAsDefault">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>25</height>
-                  </size>
-                 </property>
                  <property name="text">
                   <string>Set device as default</string>
                  </property>
