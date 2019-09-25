@@ -630,14 +630,14 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
     data::MessageError error;
     if (!setUserProfile(toxProfile.name, toxProfile.status))
     {
-        error.code = QUuidEx{"486cd166-f6af-49c9-8247-a2f3b41750f4"};
+        error.code = QUuidEx("486cd166-f6af-49c9-8247-a2f3b41750f4");
         error.description = tr(error_save_tox_profile);
     }
 
     if (error.code.isNull())
         if (!saveState())
         {
-            error.code = QUuidEx{"94eb1f80-eefa-492a-a48b-e9bb531bd240"};
+            error.code = QUuidEx("94eb1f80-eefa-492a-a48b-e9bb531bd240");
             error.description = tr(error_save_tox_state);
         }
 
@@ -654,7 +654,7 @@ void ToxNet::command_ToxProfile(const Message::Ptr& message)
             }
             else
             {
-                error.code = QUuidEx{"5ca769a6-2263-4ed3-bab3-1e66a44115c7"};
+                error.code = QUuidEx("5ca769a6-2263-4ed3-bab3-1e66a44115c7");
                 error.description = tr(error_save_tox_profile);
             }
         }
@@ -685,7 +685,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID length, should be %1 symbols");
             log_error_m << QString(err).arg(TOX_ADDRESS_SIZE*2);
 
-            error.code = QUuidEx{"4ccc0fd2-5741-497a-aae3-408f14a36e56"};
+            error.code = QUuidEx("4ccc0fd2-5741-497a-aae3-408f14a36e56");
             error.description = tr(err).arg(TOX_ADDRESS_SIZE*2);
             return;
         }
@@ -696,7 +696,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID format");
             log_error_m << err;
 
-            error.code = QUuidEx{"0afdd1c3-3444-4b9f-ae98-78fbbb51eb43"};
+            error.code = QUuidEx("0afdd1c3-3444-4b9f-ae98-78fbbb51eb43");
             error.description = tr(err);
             return;
         }
@@ -717,7 +717,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Invalid Tox ID checksumm");
             log_error_m << err;
 
-            error.code = QUuidEx{"f4e76704-9842-4b0d-b3bc-09381bd99c55"};
+            error.code = QUuidEx("f4e76704-9842-4b0d-b3bc-09381bd99c55");
             error.description = tr(err);
             return;
         }
@@ -726,7 +726,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "You need to write a message with your request");
             log_error_m << err;
 
-            error.code = QUuidEx{"41bb9ecb-f44b-4c50-a585-f4783390e463"};
+            error.code = QUuidEx("41bb9ecb-f44b-4c50-a585-f4783390e463");
             error.description = tr(err);
             return;
         }
@@ -735,7 +735,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Your message is too long! Maximum length %1 symbols");
             log_error_m << QString(err).arg(tox_max_friend_request_length());
 
-            error.code = QUuidEx{"d4b84abf-108a-4c40-8523-6c9defa4cdd9"};
+            error.code = QUuidEx("d4b84abf-108a-4c40-8523-6c9defa4cdd9");
             error.description = tr(err).arg(tox_max_friend_request_length());
             return;
         }
@@ -748,7 +748,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Friend is already added");
             log_error_m << err;
 
-            error.code = QUuidEx{"23593c3b-6368-41b1-9c69-84c17f44a28b"};
+            error.code = QUuidEx("23593c3b-6368-41b1-9c69-84c17f44a28b");
             error.description = tr(err);
             return;
         }
@@ -769,7 +769,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed to request friendship. Friend id: %1");
             log_error_m << QString(err).arg(friendId);
 
-            error.code = QUuidEx{"74afb540-6c9b-42cb-9223-fcf62b5be2ba"};
+            error.code = QUuidEx("74afb540-6c9b-42cb-9223-fcf62b5be2ba");
             error.description = tr(err).arg(friendId);
         }
         else
@@ -777,7 +777,7 @@ void ToxNet::command_RequestFriendship(const Message::Ptr& message)
             log_verbose_m << "Requested friendship with " << friendId;
             if (!saveState())
             {
-                error.code = QUuidEx{"f4d117c5-50e2-40ea-90b4-64e577902d99"};
+                error.code = QUuidEx("f4d117c5-50e2-40ea-90b4-64e577902d99");
                 error.description = tr(error_save_tox_state);
             }
         }
@@ -814,7 +814,7 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
             }
             else
             {
-                error.code = QUuidEx{"72f33fdf-7bcd-40cd-b8ab-87ad78323d18"};
+                error.code = QUuidEx("72f33fdf-7bcd-40cd-b8ab-87ad78323d18");
                 error.description = tr(error_save_tox_state);
             }
         }
@@ -823,7 +823,7 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed add friend");
             log_error_m << err;
 
-            error.code = QUuidEx{"96589658-ea9e-4e2b-b4b8-7a474ae7047b"};
+            error.code = QUuidEx("96589658-ea9e-4e2b-b4b8-7a474ae7047b");
             error.description = tr(err);
         }
     }
@@ -873,7 +873,7 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
             }
             else
             {
-                error.code = QUuidEx{"f8ad4dc5-da16-408f-aac8-44db182c6faa"};
+                error.code = QUuidEx("f8ad4dc5-da16-408f-aac8-44db182c6faa");
                 error.description = tr(error_save_tox_state);
             }
         }
@@ -882,7 +882,7 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
             err = QT_TRANSLATE_NOOP("ToxNet", "Failed remove friend %1");
             log_error_m << QString(err).arg(removeFriend.name);
 
-            error.code = QUuidEx{"d0737547-9a1b-4bff-970b-c1325c849e64"};
+            error.code = QUuidEx("d0737547-9a1b-4bff-970b-c1325c849e64");
             error.description = tr(err).arg(removeFriend.name);
         }
     }
@@ -891,7 +891,7 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
         err = QT_TRANSLATE_NOOP("ToxNet", "Friend %1 not found");
         log_error_m << QString(err).arg(removeFriend.name);
 
-        error.code = QUuidEx{"4d322162-ec06-4567-9249-0ab8cdc9409a"};
+        error.code = QUuidEx("4d322162-ec06-4567-9249-0ab8cdc9409a");
         error.description = tr(err).arg(removeFriend.name);
     }
 
