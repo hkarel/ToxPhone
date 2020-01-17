@@ -124,8 +124,28 @@ void helpInfo(/*const char * binary*/)
     log_info << "  -h this help";
 }
 
+//std::vector<int> testNRVO(int value, size_t size, const std::vector<int> **localVec)
+//{
+//    std::vector<int> vec(size, value);
+//    (void) vec;
+//    *localVec = &vec;
+
+//    return vec;
+//}
+
 int main(int argc, char *argv[])
 {
+//    const std::vector<int> *localVec = nullptr;
+//    std::vector<int> vec = testNRVO(0, 10, &localVec);
+
+//    if (&vec == localVec)
+//        std::cout << "NRVO was applied" << std::endl;
+//    else
+//        std::cout << "NRVO was not applied" << std::endl;
+
+//    return 0;
+
+
     // Устанавливаем в качестве разделителя целой и дробной части символ '.',
     // если этого не сделать - функции преобразования строк в числа (std::atof)
     // буду неправильно работать.
