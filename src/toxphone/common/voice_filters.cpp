@@ -111,15 +111,19 @@ void VoiceFilters::run()
                 {
                     case 40000:
                         recordDataSize = recordFrameInfo->bufferSize / 4;
+                        break;
 
                     case 20000:
                         recordDataSize = recordFrameInfo->bufferSize / 2;
+                        break;
 
                     case 10000:
                         recordDataSize = recordFrameInfo->bufferSize;
+                        break;
 
                     case 5000:
                         recordDataSize = recordFrameInfo->bufferSize * 2;
+                        break;
 
                     default:
                         recordDataSize = recordFrameInfo->bufferSize;
