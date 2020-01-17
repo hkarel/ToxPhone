@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # --- Detect host system parameters ---
 os_type=$(uname -o)
@@ -27,8 +27,11 @@ while read line; do
     [ -n "$(echo "$line" | grep -E '^VERSION_ID=')" ] && os_ver=$(get_param $line)
 done < /etc/os-release
 
+os_num=$(echo $os_ver | sed 's/\.//')
+
 echo "os_type ... $os_type"
 echo "os_arch ... $os_arch"
 echo "os_id ..... $os_id"
 echo "os_name ... $os_name"
 echo "os_ver .... $os_ver"
+echo "os_num .... $os_num"
