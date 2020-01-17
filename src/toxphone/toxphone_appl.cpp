@@ -146,7 +146,7 @@ void Application::sendToxPhoneInfo()
     toxPhoneInfo.configConnectCount = toxConfig().isActive() ? 1: 0;
     for (network::Interface* intf : _netInterfaces)
     {
-        toxPhoneInfo.hostPoint = {intf->ip, port};
+        toxPhoneInfo.hostPoint = {intf->ip(), port};
         toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
         sendUdpMessageToConfig(intf, port, toxPhoneInfo);
     }
@@ -216,9 +216,9 @@ void Application::command_ToxPhoneInfo(const Message::Ptr& message)
     toxPhoneInfo.applId = _applId;
     toxPhoneInfo.configConnectCount = toxConfig().isActive() ? 1: 0;
     for (network::Interface* intf : _netInterfaces)
-        if (message->sourcePoint().address().isInSubnet(intf->subnet, intf->subnetPrefixLength))
+        if (message->sourcePoint().address().isInSubnet(intf->subnet(), intf->subnetPrefixLength()))
         {
-            toxPhoneInfo.hostPoint = {intf->ip, port};
+            toxPhoneInfo.hostPoint = {intf->ip(), port};
             toxPhoneInfo.isPointToPoint = intf->isPointToPoint();
 
             Message::Ptr answer = message->cloneForAnswer();

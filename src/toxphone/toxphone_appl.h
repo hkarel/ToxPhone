@@ -1,6 +1,5 @@
 #pragma once
 
-#include "kernel/network/interfaces.h"
 #include "kernel/communication/commands.h"
 #include "diverter/phone_diverter.h"
 
@@ -9,6 +8,7 @@
 #include "shared/qt/communication/message.h"
 #include "shared/qt/communication/func_invoker.h"
 #include "shared/qt/communication/transport/udp.h"
+#include "shared/qt/network/interfaces.h"
 
 #include <sodium/crypto_box.h>
 #include <QtCore>
@@ -123,10 +123,10 @@ void sendUdpMessageToConfig(const network::Interface* interface, int basePort,
     {
         Message::Ptr message = createMessage(messageData);
         for (int i = 1; i <= 5; ++i)
-            message->destinationPoints().insert({interface->broadcast, basePort + i});
+            message->destinationPoints().insert({interface->broadcast(), basePort + i});
         udp::socket().send(message);
     }
-    else if (interface->isPointToPoint() && (interface->subnetPrefixLength == 24))
+    else if (interface->isPointToPoint() && (interface->subnetPrefixLength() == 24))
     {
         Message::Ptr message = createMessage(messageData);
         for (int i = 1; i <= 5; ++i)
@@ -135,7 +135,7 @@ void sendUdpMessageToConfig(const network::Interface* interface, int basePort,
                 quint8  ip4[4];
                 quint32 ip4_val;
             };
-            ip4_val = interface->subnet.toIPv4Address();
+            ip4_val = interface->subnet().toIPv4Address();
             for (quint8 i = 1; i < 255; ++i)
             {
                 ip4[0] = i;

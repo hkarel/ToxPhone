@@ -67,6 +67,8 @@ Product {
         "shared/qt/config/config.h",
         "shared/qt/logger/logger_operators.cpp",
         "shared/qt/logger/logger_operators.h",
+        "shared/qt/network/interfaces.cpp",
+        "shared/qt/network/interfaces.h",
         "shared/qt/thread/qthreadex.cpp",
         "shared/qt/thread/qthreadex.h",
         "shared/qt/version/version_number.cpp",

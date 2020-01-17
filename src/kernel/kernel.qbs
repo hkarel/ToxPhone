@@ -30,8 +30,8 @@ Product {
         "communication/commands.cpp",
         "communication/commands.h",
         "communication/error.h",
-        "network/interfaces.cpp",
-        "network/interfaces.h",
+        //"network/interfaces.cpp",
+        //"network/interfaces.h",
     ]
     Export {
         Depends { name: "cpp" }

@@ -7,11 +7,11 @@
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/communication/commands_pool.h"
 #include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/config/config.h"
-#include "kernel/network/interfaces.h"
+#include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/network/interfaces.h"
 
 #include <sodium.h>
 #include <QCloseEvent>
@@ -268,17 +268,17 @@ void ConnectionWindow::requestPhonesList()
         if (intf->canBroadcast() && !intf->isPointToPoint())
         {
             Message::Ptr message = createMessage(command::ToxPhoneInfo);
-            message->destinationPoints().insert({intf->broadcast, port});
+            message->destinationPoints().insert({intf->broadcast(), port});
             udp::socket().send(message);
         }
-        else if (intf->isPointToPoint() && (intf->subnetPrefixLength == 24))
+        else if (intf->isPointToPoint() && (intf->subnetPrefixLength() == 24))
         {
             Message::Ptr message = createMessage(command::ToxPhoneInfo);
             union {
                 quint8  ip4[4];
                 quint32 ip4_val;
             };
-            ip4_val = intf->subnet.toIPv4Address();
+            ip4_val = intf->subnet().toIPv4Address();
             for (quint8 i = 1; i < 255; ++i)
             {
                 ip4[0] = i;
