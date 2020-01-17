@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         //QString configFile = configPath("27fretail.conf");
         QString configFile = "~/.config/toxphone/toxphone_config.conf";
         config::homeDirExpansion(configFile);
-        config::state().read(configFile.toStdString());
+        config::state().readFile(configFile.toStdString());
 
         QString logFile;
         if (!config::state().getValue("logger.file", logFile))

@@ -17,12 +17,12 @@
 #include <string.h>
 #include <type_traits>
 
-#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
-#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "AudioDev")
+#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "AudioDev")
+#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "AudioDev")
+#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "AudioDev")
+#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "AudioDev")
+#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "AudioDev")
+#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "AudioDev")
 
 struct MainloopLocker
 {
@@ -1137,7 +1137,7 @@ void AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List
             audioDevInfo.isDefault = bool(devDefault);
 
             alog::Line logLine =
-                alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, line, "AudioDev")
+                alog::logger().verbose(__FILE__, __func__, line, "AudioDev")
                 << ((audioDevInfo.type == data::AudioDevType::Sink)
                     ? "Sound sink"
                     : "Sound source");

@@ -17,12 +17,12 @@
 #include <string.h>
 
 
-#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
-#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
-#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
-#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
-#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
-#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "Application")
+#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "Application")
+#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "Application")
+#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "Application")
+#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "Application")
+#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "Application")
+#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "Application")
 
 volatile bool Application::_stop = false;
 std::atomic_int Application::_exitCode = {0};
@@ -352,7 +352,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
             {
                 error.code = failed_save_diverter_state__code;
                 error.description = tr(failed_save_diverter_state);
-                config::state().reread();
+                config::state().rereadFile();
             }
             log_verbose_m << "Diverter use state is changed to "
                           << (diverterChange.active ? "ON" : "OFF");
@@ -375,7 +375,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
                 {
                     error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
-                    config::state().reread();
+                    config::state().rereadFile();
                 }
                 log_verbose_m << "Diverter default mode is changed to " << defaultMode;
             }
@@ -386,7 +386,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
                 {
                     error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
-                    config::state().reread();
+                    config::state().rereadFile();
                 }
                 log_verbose_m << "Diverter ringtone is changed to " << diverterChange.ringTone;
             }
@@ -837,7 +837,7 @@ void Application::phoneDiverterAttached()
         }
         return true;
     };
-    config::state().reread();
+    config::state().rereadFile();
     config::state().getValue("phones", loadFunc);
 
     initPhoneDiverter();

@@ -235,14 +235,14 @@ int main(int argc, char *argv[])
 
         config::base().setReadOnly(true);
         config::base().setSaveDisabled(true);
-        if (!config::base().read(configFile.toStdString()))
+        if (!config::base().readFile(configFile.toStdString()))
         {
             stopLog();
             return 1;
         }
 
         QString configFileS = "/var/opt/toxphone/state/toxphone.state";
-        config::state().read(configFileS.toStdString());
+        config::state().readFile(configFileS.toStdString());
 
         QString logFile;
         config::base().getValue("logger.file", logFile);

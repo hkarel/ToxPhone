@@ -65,7 +65,7 @@ void logger_write(
             if (alog::logger().level() == alog::Level::Debug2)
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
-                alog::logger().debug2_f(file, func, line, "ToxCore") << buff;
+                alog::logger().debug2(file, func, line, "ToxCore") << buff;
             }
             break;
 
@@ -73,21 +73,21 @@ void logger_write(
             if (alog::logger().level() >= alog::Level::Debug)
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
-                alog::logger().debug_f(file, func, line, "ToxCore") << buff;
+                alog::logger().debug(file, func, line, "ToxCore") << buff;
             }
             break;
 
         case LOGGER_LEVEL_WARNING:
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
-                alog::logger().warn_f(file, func, line, "ToxCore") << buff;
+                alog::logger().warn(file, func, line, "ToxCore") << buff;
             }
             break;
 
         case LOGGER_LEVEL_ERROR:
             {
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
-                alog::logger().error_f(file, func, line, "ToxCore") << buff;
+                alog::logger().error(file, func, line, "ToxCore") << buff;
                 alog::logger().flush();
                 alog::logger().waitingFlush();
             }
@@ -97,7 +97,7 @@ void logger_write(
             {
                 // LOGGER_LEVEL_INFO
                 vsnprintf(buff, sizeof(buff) - 1, format, args);
-                alog::logger().info_f(file, func, line, "ToxCore") << buff;
+                alog::logger().info(file, func, line, "ToxCore") << buff;
             }
     }
     va_end(args);

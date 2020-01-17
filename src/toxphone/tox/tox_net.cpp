@@ -16,12 +16,12 @@
 #include <chrono>
 #include <string>
 
-#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
-#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
-#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
-#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
-#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
-#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "ToxNet")
+#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "ToxNet")
+#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "ToxNet")
+#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "ToxNet")
+#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "ToxNet")
+#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "ToxNet")
+#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "ToxNet")
 
 static const char* error_save_tox_state =
     QT_TRANSLATE_NOOP("ToxNet", "An error occurred when saved tox state");
@@ -117,7 +117,7 @@ bool ToxNet::init()
         return true;
     };
     YamlConfig bootstrapConfig;
-    bootstrapConfig.read(bootstrapFile.toStdString());
+    bootstrapConfig.readFile(bootstrapFile.toStdString());
     bootstrapConfig.getValue("bootstrap_nodes", bootstrapFunc);
 
     if (_bootstrapNodes.count() == 0)
@@ -1095,7 +1095,7 @@ void ToxNet::updateFriendRequests()
         }
         return true;
     };
-    config::state().reread();
+    config::state().rereadFile();
     config::state().getValue("friend_requests", loadFunc);
 
     Message::Ptr m = createMessage(friendRequests);
