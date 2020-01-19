@@ -105,6 +105,12 @@ int main(int argc, char *argv[])
             return 1;
         }
 
+        if (!communication::error::checkUnique())
+        {
+            stopProgram();
+            return 1;
+        }
+
         if (sodium_init() < 0)
         {
             log_error  << "Can't init libsodium";

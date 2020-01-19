@@ -115,7 +115,7 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
         udp::socket().stop();
     }
     if (port_counter > 5)
-        log_error << "The number of attempts of initialization of UDP is exhausted";
+        log_error << "The number attempts of initialization UDP is exhausted";
 
     return true;
 }
