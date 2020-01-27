@@ -54,20 +54,18 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        //QString configFile = configPath("27fretail.conf");
         QString configFile = "~/.config/toxphone/toxphone_config.conf";
-        config::homeDirExpansion(configFile);
+        config::dirExpansion(configFile);
         config::state().readFile(configFile.toStdString());
 
         QString logFile;
         if (!config::state().getValue("logger.file", logFile))
         {
-            //logFile = configPath("log/27fretail.log");
             logFile = "~/.config/toxphone/toxphone_config.log";
             config::state().setValue("logger.file", logFile);
             config::state().save();
         }
-        config::homeDirExpansion(logFile);
+        config::dirExpansion(logFile);
 
         QFileInfo logFileInfo {logFile};
         QString logFileDir = logFileInfo.absolutePath();

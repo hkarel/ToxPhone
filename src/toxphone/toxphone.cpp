@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
 
         QString logFile;
         config::base().getValue("logger.file", logFile);
-        config::homeDirExpansion(logFile);
+        config::dirExpansion(logFile);
 
         QFileInfo logFileInfo {logFile};
         QString logFileDir = logFileInfo.absolutePath();
@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
 #endif
         if (!logConf.isEmpty())
         {
-            config::homeDirExpansion(logConf);
+            config::dirExpansion(logConf);
             if (QFile::exists(logConf))
                 alog::loadSavers(logConf.toStdString());
             else
