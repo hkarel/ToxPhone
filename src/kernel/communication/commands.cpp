@@ -1,5 +1,4 @@
 #include "commands.h"
-#include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/commands_pool.h"
 
 namespace communication {

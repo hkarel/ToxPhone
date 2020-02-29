@@ -12,10 +12,9 @@
 #include "shared/break_point.h"
 #include "shared/steady_timer.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
+#include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include <chrono>
 #include <string>

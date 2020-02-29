@@ -6,16 +6,14 @@
 #include "audio/audio_dev.h"
 
 #include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/config/config.h"
+#include "shared/qt/logger/logger_operators.h"
 #include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/functions.h"
 #include "shared/qt/communication/transport/tcp.h"
 #include "shared/qt/version/version_number.h"
 
 #include <sodium.h>
 #include <string.h>
-
 
 #define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "Application")
 #define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "Application")
