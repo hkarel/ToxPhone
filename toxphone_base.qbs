@@ -53,7 +53,7 @@ Project {
             //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
-            "BPROTO_SERIALIZATION"
+            "BPROTO_SERIALIZE"
         ]
 
         if (qbs.buildVariant === "release")
