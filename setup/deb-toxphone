@@ -85,7 +85,7 @@ installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
 echo "installed_size: $installed_size"
 
 packet_depends=$(cat << EOS
-    adduser, systemd, pulseaudio,\
+    libc6, adduser, systemd, pulseaudio,\
     libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
 EOS
 )

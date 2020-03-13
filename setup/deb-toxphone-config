@@ -49,7 +49,7 @@ installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
 echo "installed_size: $installed_size"
 
 packet_depends=$(cat << EOS
-    libqtcore4, libqt4-network, libqtgui4, toxphone
+    libc6, libqtcore4, libqt4-network, libqtgui4
 EOS
 )
 
