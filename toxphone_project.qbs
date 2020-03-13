@@ -5,6 +5,7 @@ ToxPhoneBase {
     name: "ToxPhone Project"
 
     references: [
+        "setup/packege_build.qbs",
         "src/3rdparty/3rdparty.qbs",
         "src/yaml/yaml.qbs",
         "src/shared/shared.qbs",

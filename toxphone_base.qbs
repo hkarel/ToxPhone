@@ -73,5 +73,5 @@ Project {
         "-Wno-variadic-macros",
         //"-Wconversion",
     ]
-    property string cxxLanguageVersion: "c++11"
+    property string cxxLanguageVersion: "c++14"
 }

@@ -47,10 +47,11 @@ Product {
         lib.sodium.includePath
     )
 
-    //cpp.rpaths: [
-    //    cppstdlib.path,
-    //    "$ORIGIN/../lib",
-    //]
+    cpp.rpaths: QbsUtl.concatPaths(
+        cppstdlib.path,
+        "/opt/toxphone/lib"
+        //"$ORIGIN/../lib"
+    )
 
     //cpp.libraryPaths: [
     //    project.buildDirectory + "/lib",

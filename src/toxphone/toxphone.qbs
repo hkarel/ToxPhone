@@ -28,27 +28,6 @@ Product {
     lib.sodium.version:   project.sodiumVersion
     lib.sodium.useSystem: project.useSystemSodium
 
-    Probe {
-        id: productProbe
-        readonly property bool printPackegeBuildInfo: project.printPackegeBuildInfo
-        readonly property string projectBuildDirectory: project.buildDirectory
-        readonly property var libSodium: lib.sodium
-        configure: {
-            if (printPackegeBuildInfo) {
-                var file = new TextFile(projectBuildDirectory + "/package_build_info",
-                                        TextFile.WriteOnly);
-                try {
-                    for (var i in libSodium.dynamicLibraries) {
-                        file.writeLine(libSodium.libraryPath
-                                       + "/lib" + libSodium.dynamicLibraries[i] + ".so*");
-                    }
-                }
-                finally {
-                    file.close();
-                }
-            }
-        }
-    }
     ProbExt.LibValidationProbe {
         id: libValidation
         checkingLibs: [lib.sodium]
