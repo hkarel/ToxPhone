@@ -119,8 +119,7 @@ void helpInfo(/*const char * binary*/)
     log_info << "Copyright (c) 2018 Pavel Karelin <hkarel@yandex.ru>";
     log_info << "ToxPhone is used and distributed under the terms of the GNU General Public License Version 3"
              << " (https://www.gnu.org/licenses/gpl-3.0.html)";
-    log_info << "Usage: ToxPhone [nsh]";
-    log_info << "  -n do not daemonize";
+    log_info << "Usage: ToxPhone [sh]";
     log_info << "  -s do sleep when start program (in seconds)";
     log_info << "  -h this help";
 }
@@ -186,11 +185,9 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        QString startSleep;
-        bool isDaemon = true;
-
         int c;
-        while ((c = getopt(argc, argv, "ns:hl:")) != EOF)
+        QString startSleep;
+        while ((c = getopt(argc, argv, "s:h:")) != EOF)
         {
             switch(c)
             {
@@ -200,9 +197,6 @@ int main(int argc, char *argv[])
                     exit(0);
                 case 's':
                     startSleep = optarg;
-                    break;
-                case 'n':
-                    isDaemon = false;
                     break;
                 case '?':
                     log_error << "Invalid option";
@@ -280,16 +274,6 @@ int main(int argc, char *argv[])
         log_info << "ToxPhone client is running"
                  << " (version " << productVersion().toString() << ")";
         alog::logger().flush();
-
-        if (isDaemon)
-        {
-            alog::logger().stop();
-            if (daemon(1, 0) != 0)
-                return 0;
-
-            alog::logger().start();
-            log_verbose << "Demonization success";
-        }
 
 #ifdef NDEBUG
         // Понижаем уровень логера для консоли что бы видеть только сообщения
