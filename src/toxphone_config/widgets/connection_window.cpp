@@ -41,15 +41,15 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
     //setWindowState(windowState() & ~(Qt::WindowMaximized | Qt::WindowFullScreen));
     //setWindowFlags(Qt::Dialog|Qt::WindowCloseButtonHint|Qt::MSWindowsFixedSizeDialogHint);
 
-    chk_connect_q(&udp::socket(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(&udp::socket(), &udp::Socket::message,
+                  this, &ConnectionWindow::message)
 
-    chk_connect_q(&_requestPhonesTimer, SIGNAL(timeout()),
-                  this, SLOT(requestPhonesList()))
+    chk_connect_q(&_requestPhonesTimer, &QTimer::timeout,
+                  this, &ConnectionWindow::requestPhonesList)
     _requestPhonesTimer.start(PHONES_LIST_TIMEUPDATE * 1000);
 
-    chk_connect_q(&_updatePhonesTimer, SIGNAL(timeout()),
-                  this, SLOT(updatePhonesList()))
+    chk_connect_q(&_updatePhonesTimer, &QTimer::timeout,
+                  this, &ConnectionWindow::updatePhonesList)
     _updatePhonesTimer.start(PHONES_LIST_TIMEUPDATE * 1000);
 
     ui->btnConnect->setEnabled(false);
@@ -76,12 +76,14 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
 {
     _socket = socket;
 
-    chk_connect_q(_socket.get(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
-    chk_connect_q(_socket.get(), SIGNAL(connected(pproto::SocketDescriptor)),
-                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
-    chk_connect_q(_socket.get(), SIGNAL(disconnected(pproto::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
+    chk_connect_q(_socket.get(), &tcp::Socket::message,
+                  this, &ConnectionWindow::message)
+
+    chk_connect_q(_socket.get(), &tcp::Socket::connected,
+                  this, &ConnectionWindow::socketConnected)
+
+    chk_connect_q(_socket.get(), &tcp::Socket::disconnected,
+                  this, &ConnectionWindow::socketDisconnected)
 
     StubWidget* sw = new StubWidget();
     ListWidgetItem* lwi = new ListWidgetItem(sw);

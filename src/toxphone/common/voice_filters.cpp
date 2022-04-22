@@ -36,8 +36,8 @@ VoiceFilters& voiceFilters()
 
 VoiceFilters::VoiceFilters()
 {
-    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), &tcp::Listener::message,
+                  this, &VoiceFilters::message)
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &VoiceFilters::command_##COMMAND, this);
@@ -59,7 +59,7 @@ void VoiceFilters::sendRecordLevet(quint32 maxLevel, quint32 time)
     if (toxConfig().isActive())
     {
         data::AudioRecordLevel audioRecordLevel;
-        audioRecordLevel.max = maxLevel;
+        audioRecordLevel.max = maxLevel * 5;
         audioRecordLevel.time = time;
 
         Message::Ptr m = createMessage(audioRecordLevel);

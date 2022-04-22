@@ -176,16 +176,16 @@ private:
 
 
 private:
-    pa_threaded_mainloop* _paMainLoop = {0};
-    pa_mainloop_api*      _paApi = {0};
-    pa_context*           _paContext = {0};
+    pa_threaded_mainloop* _paMainLoop = {nullptr};
+    pa_mainloop_api*      _paApi = {nullptr};
+    pa_context*           _paContext = {nullptr};
 
     data::AudioDevInfo::List _sinkDevices;
     data::AudioDevInfo::List _sourceDevices;
 
-    pa_stream* _playbackStream = {0}; // Поток для воспроизведения звуков
-    pa_stream* _voiceStream = {0};    // Поток для воспроизведения голоса
-    pa_stream* _recordStream = {0};   // Поток для записи голоса
+    pa_stream* _playbackStream = {nullptr}; // Поток для воспроизведения звуков
+    pa_stream* _voiceStream = {nullptr};    // Поток для воспроизведения голоса
+    pa_stream* _recordStream = {nullptr};   // Поток для записи голоса
     QMutex _streamLock;
 
     data::AudioStreamInfo _palybackAudioStreamInfo;

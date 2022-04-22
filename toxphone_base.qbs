@@ -40,6 +40,7 @@ Project {
 
     property var cppDefines: {
         var def = [
+          //"APPLICATION_NAME=\"ToxPhone\"",
             "VERSION_PROJECT=" + projectVersion[0],
             "VERSION_PROJECT_MAJOR=" + projectVersion[1],
             "VERSION_PROJECT_MINOR=" + projectVersion[2],
@@ -50,8 +51,8 @@ Project {
             "PPROTO_VERSION_HIGH=0",
             "PPROTO_QBINARY_SERIALIZE",
             "PPROTO_UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
-            //"UDP_LONGSIG=1",
-            //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
+          //"UDP_LONGSIG=1",
+          //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
             "LOGGER_LESS_SNPRINTF",
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
@@ -62,15 +63,14 @@ Project {
     }
 
     property var cxxFlags: [
-        //"-std=c++11",
         "-ggdb3",
         "-Winline",
         "-Wall",
         "-Wextra",
-        //"-Wpedantic",
+      //"-Wpedantic",
         "-Wno-unused-parameter",
         "-Wno-variadic-macros",
-        //"-Wconversion",
+      //"-Wconversion",
     ]
     property string cxxLanguageVersion: "c++17"
 }

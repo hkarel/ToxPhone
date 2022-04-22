@@ -22,6 +22,7 @@
 #include <QDesktopServices>
 #include <QBitmap>
 #include <QPainter>
+#include <QScreen>
 #include <limits>
 #include <unistd.h>
 
@@ -39,6 +40,16 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     ui->labelConnectStatus->clear();
     setWindowTitle(qApp->applicationName());
+
+    bool ultraHD = false;
+    QList<QScreen*> screens = QGuiApplication::screens();
+    if (!screens.isEmpty())
+        ultraHD = (screens[0]->geometry().width() >= 2560);
+
+    if (ultraHD)
+        ui->pbarAudioRecord->setMaximumHeight(12);
+    else
+        ui->pbarAudioRecord->setMaximumHeight(8);
 
     ui->tabWidget->setCurrentIndex(0);
 
@@ -112,13 +123,15 @@ MainWindow::MainWindow(QWidget *parent) :
     _btnDeleteAvatar->setFont(font);
     _btnDeleteAvatar->setText(tr("Delete"));
     _btnDeleteAvatar->setFocusPolicy(Qt::NoFocus);
-    chk_connect_a(_btnDeleteAvatar, SIGNAL(clicked(bool)),
-                  this, SLOT(btnDeleteAvatar_clicked(bool)));
+
+    chk_connect_a(_btnDeleteAvatar, &QPushButton::clicked,
+                  this, &MainWindow::btnDeleteAvatar_clicked);
 
     _timerDeleteAvatar.setInterval(600);
     _timerDeleteAvatar.setSingleShot(true);
-    chk_connect_a(&_timerDeleteAvatar, SIGNAL(timeout()),
-                  this, SLOT(timerDeleteAvatar_timeout()));
+
+    chk_connect_a(&_timerDeleteAvatar, &QTimer::timeout,
+                  this, &MainWindow::timerDeleteAvatar_timeout);
 }
 
 MainWindow::~MainWindow()
@@ -130,12 +143,14 @@ bool MainWindow::init(const tcp::Socket::Ptr& socket)
 {
     _socket = socket;
 
-    chk_connect_q(_socket.get(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
-    chk_connect_q(_socket.get(), SIGNAL(connected(pproto::SocketDescriptor)),
-                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
-    chk_connect_q(_socket.get(), SIGNAL(disconnected(pproto::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
+    chk_connect_q(_socket.get(), &tcp::Socket::message,
+                  this, &MainWindow::message)
+
+    chk_connect_q(_socket.get(), &tcp::Socket::connected,
+                  this, &MainWindow::socketConnected)
+
+    chk_connect_q(_socket.get(), &tcp::Socket::disconnected,
+                  this, &MainWindow::socketDisconnected)
 
     //int avatarSize = ui->labelAvatar->height();
 

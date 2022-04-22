@@ -43,8 +43,8 @@ ToxCall& toxCall()
 
 ToxCall::ToxCall() : QThreadEx(0)
 {
-    chk_connect_d(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_d(&tcp::listener(), &tcp::Listener::message,
+                  this, &ToxCall::message)
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxCall::command_##COMMAND, this);

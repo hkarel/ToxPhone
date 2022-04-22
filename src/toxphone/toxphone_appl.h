@@ -38,12 +38,11 @@ signals:
 
 public slots:
     static void stop(int exitCode);
-    void sendToxPhoneInfo();
-
-private slots:
     void message(const pproto::Message::Ptr&);
     void socketConnected(pproto::SocketDescriptor);
     void socketDisconnected(pproto::SocketDescriptor);
+
+    void sendToxPhoneInfo();
 
     void phoneDiverterAttached();
     void phoneDiverterDetached();

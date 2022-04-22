@@ -50,8 +50,8 @@ ToxNet::ToxNet() : QThreadEx(0)
     _configPath = "/var/opt/toxphone/state/";
     _configFile = _configPath + "toxphone.tox";
 
-    chk_connect_d(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_d(&tcp::listener(), &tcp::Listener::message,
+                  this, &ToxNet::message)
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxNet::command_##COMMAND, this);

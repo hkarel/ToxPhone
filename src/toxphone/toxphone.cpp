@@ -15,6 +15,7 @@
 #include "shared/logger/format.h"
 #include "shared/logger/config.h"
 #include "shared/config/appl_conf.h"
+#include "shared/config/logger_conf.h"
 //#include "shared/qt/compression/qlzma.h"
 //#include "shared/qt/compression/qppmd.h"
 #include "shared/qt/logger_operators.h"
@@ -76,13 +77,6 @@ void stopProgramHandler(int sig)
 }
 #endif // #if defined(__MINGW32__)
 
-void stopLog()
-{
-    alog::logger().flush();
-    alog::logger().waitingFlush();
-    alog::logger().stop();
-}
-
 void stopProgram()
 {
     #define STOP_THREAD(THREAD_FUNC, NAME, TIMEOUT) \
@@ -101,7 +95,7 @@ void stopProgram()
     #undef STOP_THREAD
 
     log_info << "ToxPhone client is stopped";
-    stopLog();
+    alog::stop();
 
     trd::threadPool().stop();
 }
@@ -111,13 +105,13 @@ void helpInfo(/*const char * binary*/)
     alog::logger().clearSavers();
     alog::logger().addSaverStdOut(alog::Level::Info, true);
 
-    log_info << "ToxPhone client"
-             << " (version: " << productVersion().toString()
-             << "; binary protocol version: "
-             << PPROTO_VERSION_LOW << "-" << PPROTO_VERSION_HIGH
-             << "; gitrev: " << GIT_REVISION << ")";
+    log_info << log_format(
+        "ToxPhone client (version: %?; protocol version: %?-%?; gitrev: %?)",
+        productVersion().toString(),
+        PPROTO_VERSION_LOW, PPROTO_VERSION_HIGH, GIT_REVISION);
     log_info << "Copyright (c) 2018 Pavel Karelin <hkarel@yandex.ru>";
-    log_info << "ToxPhone is used and distributed under the terms of the GNU General Public License Version 3"
+    log_info << "ToxPhone is used and distributed under the terms of"
+             << " the GNU General Public License Version 3"
              << " (https://www.gnu.org/licenses/gpl-3.0.html)";
     log_info << "Usage: ToxPhone [sh]";
     log_info << "  -s do sleep when start program (in seconds)";
@@ -181,26 +175,27 @@ int main(int argc, char *argv[])
         if (!homeDir.exists())
         {
             log_error << "Home dir " << homeDir.path() << " not exists";
-            stopLog();
+            alog::stop();
             return 1;
         }
 
-        int c;
         QString startSleep;
+
+        int c;
         while ((c = getopt(argc, argv, "s:h:")) != EOF)
         {
             switch(c)
             {
                 case 'h':
                     helpInfo();
-                    stopLog();
+                    alog::stop();
                     exit(0);
                 case 's':
                     startSleep = optarg;
                     break;
                 case '?':
                     log_error << "Invalid option";
-                    stopLog();
+                    alog::stop();
                     return 1;
             }
         }
@@ -211,20 +206,22 @@ int main(int argc, char *argv[])
             int s = startSleep.toInt(&ok);
             if (!ok)
             {
-                log_error << "Failed convert the value (" << startSleep
-                          << ") for -s parameter to integer";
-                stopLog();
+                log_error << log_format(
+                    "Failed convert the value (%?) for -s parameter to integer",
+                    startSleep);
+                alog::stop();
                 return 1;
             }
             if (s > 0)
                 sleep(s);
         }
 
-        QString configFile = "/etc/toxphone/toxphone.conf";
+        // Путь к основному конфиг-файлу
+        QString configFile = config::qdir() + "/toxphone.conf";
         if (!QFile::exists(configFile))
         {
             log_error << "Config file " << configFile << " not exists";
-            stopLog();
+            alog::stop();
             return 1;
         }
 
@@ -232,71 +229,45 @@ int main(int argc, char *argv[])
         config::base().setSaveDisabled(true);
         if (!config::base().readFile(configFile.toStdString()))
         {
-            stopLog();
+            alog::stop();
             return 1;
         }
 
-        QString configFileS = "/var/opt/toxphone/state/toxphone.state";
+        // Путь к конфиг-файлу текущих настроек
+        QString configFileS;
+        config::base().getValue("state.file", configFileS);
+
+        config::dirExpansion(configFileS);
         config::state().readFile(configFileS.toStdString());
 
-        QString logFile;
-        config::base().getValue("logger.file", logFile);
-        config::dirExpansion(logFile);
+        // Создаем дефолтный сэйвер для логгера
+        if (!alog::configDefaultSaver())
+        {
+            alog::stop();
+            return 1;
+        }
 
-        QFileInfo logFileInfo {logFile};
-        QString logFileDir = logFileInfo.absolutePath();
-        if (!QDir(logFileDir).exists())
-            if (!QDir().mkpath(logFileDir))
-            {
-                log_error << "Failed create log directory: " << logFileDir;
-                stopLog();
-                return 1;
-            }
+        log_info << log_format(
+            "ToxPhone client is running (version: %?; protocol version: %?-%?; gitrev: %?)",
+            productVersion().toString(),
+            PPROTO_VERSION_LOW, PPROTO_VERSION_HIGH, GIT_REVISION);
+        alog::logger().flush();
+
+        alog::logger().removeSaverStdOut();
+        alog::logger().removeSaverStdErr();
+
+        // Создаем дополнительные сэйверы для логгера
+        alog::configExtendedSavers();
+        alog::printSaversInfo();
 
         // Флаг логирование tox-ядра
         config::base().getValue("logger.enable_toxcore_log", enable_toxcore_log);
-
-        // Создаем дефолтный сэйвер для логгера
-        {
-            std::string logLevelStr = "info";
-            config::base().getValue("logger.level", logLevelStr);
-
-            bool logContinue = true;
-            config::base().getValue("logger.continue", logContinue);
-
-            alog::Level logLevel = alog::levelFromString(logLevelStr);
-            alog::SaverPtr saver {new alog::SaverFile("default",
-                                                      logFile.toStdString(),
-                                                      logLevel,
-                                                      logContinue)};
-            alog::logger().addSaver(saver);
-        }
-        log_info << "ToxPhone client is running"
-                 << " (version " << productVersion().toString() << ")";
-        alog::logger().flush();
 
 #ifdef NDEBUG
         // Понижаем уровень логера для консоли что бы видеть только сообщения
         // о возможных неисправностях
         alog::logger().addSaverStdOut(alog::Level::Warning);
 #endif
-
-        // Создаем дополнительные сэйверы для логгера
-        QString logConf;
-#if defined(__MINGW32__)
-            config::base().getValue("logger.conf_win", logConf);
-#else
-            config::base().getValue("logger.conf", logConf);
-#endif
-        if (!logConf.isEmpty())
-        {
-            config::dirExpansion(logConf);
-            if (QFile::exists(logConf))
-                alog::loadSavers(logConf.toStdString());
-            else
-                log_error << "Logger config file not exists: " << logConf;
-        }
-        alog::printSaversInfo();
 
         // Test
         //const QUuidEx cmd = CommandsPool::Registry{"917b1e18-4a5e-4432-b6d6-457a666ef2b1", "IncomingConfigConnection1", true};
@@ -341,19 +312,10 @@ int main(int argc, char *argv[])
         // Инициализация pproto::listener::tcp
         QHostAddress hostAddress = QHostAddress::Any;
         config::readHostAddress("config_connection.address", hostAddress);
-//        QString hostAddressStr;
-//        if (config::base().getValue("config_connection.address", hostAddressStr))
-//        {
-//            if (hostAddressStr.toLower().trimmed() == "localhost")
-//                hostAddress = QHostAddress::LocalHost;
-//            else if (hostAddressStr.toLower().trimmed() == "any")
-//                hostAddress = QHostAddress::Any;
-//            else
-//                hostAddress = QHostAddress(hostAddressStr);
-//        }
 
         int port = 33601;
         config::base().getValue("config_connection.port", port);
+
         if (!tcp::listener().init({hostAddress, port}))
         {
             stopProgram();
@@ -383,45 +345,45 @@ int main(int argc, char *argv[])
 
         qRegisterMetaType<VoiceFrameInfo::Ptr>("VoiceFrameInfo::Ptr");
 
-        chk_connect_d(&toxNet(),   SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &toxCall(),    SLOT(message(pproto::Message::Ptr)))
+        chk_connect_d(&toxNet(),        &ToxNet::internalMessage,
+                      &toxCall(),       &ToxCall::message)
 
-        chk_connect_q(&toxCall(),  SIGNAL(startVoice(VoiceFrameInfo::Ptr)),
-                      &audioDev(),   SLOT(startVoice(VoiceFrameInfo::Ptr)))
+        chk_connect_q(&toxCall(),       &ToxCall::startVoice,
+                      &audioDev(),      &AudioDev::startVoice)
 
-        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &audioDev(),   SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&toxCall(),       &ToxCall::internalMessage,
+                      &audioDev(),      &AudioDev::message)
 
-        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &appl,         SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&toxCall(),       &ToxCall::internalMessage,
+                      &appl,            &Application::message)
 
-        chk_connect_q(&audioDev(), SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &toxCall(),    SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&audioDev(),      &AudioDev::internalMessage,
+                      &toxCall(),       &ToxCall::message)
 
-        chk_connect_q(&audioDev(), SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &appl,         SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&audioDev(),      &AudioDev::internalMessage,
+                      &appl,            &Application::message)
 
-        chk_connect_d(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &toxNet(),          SLOT(message(pproto::Message::Ptr)))
-        chk_connect_d(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &toxCall(),         SLOT(message(pproto::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &audioDev(),        SLOT(message(pproto::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &voiceFilters(),    SLOT(message(pproto::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
-                      &appl,              SLOT(message(pproto::Message::Ptr)))
+        chk_connect_d(&appl,            &Application::internalMessage,
+                      &toxNet(),        &ToxNet::message)
+        chk_connect_d(&appl,            &Application::internalMessage,
+                      &toxCall(),       &ToxCall::message)
+        chk_connect_q(&appl,            &Application::internalMessage,
+                      &audioDev(),      &AudioDev::message)
+        chk_connect_q(&appl,            &Application::internalMessage,
+                      &voiceFilters(),  &VoiceFilters::message)
+        chk_connect_q(&appl,            &Application::internalMessage,
+                      &appl,            &Application::message)
 
-        chk_connect_q(&phoneDiverter(), SIGNAL(attached()),
-                      &appl,              SLOT(phoneDiverterAttached()))
-        chk_connect_q(&phoneDiverter(), SIGNAL(detached()),
-                      &appl,              SLOT(phoneDiverterDetached()))
-        chk_connect_q(&phoneDiverter(), SIGNAL(pstnRing()),
-                      &appl,              SLOT(phoneDiverterPstnRing()))
-        chk_connect_q(&phoneDiverter(), SIGNAL(key(int)),
-                      &appl,              SLOT(phoneDiverterKey(int)))
-        chk_connect_q(&phoneDiverter(), SIGNAL(handset(PhoneDiverter::Handset)),
-                      &appl,              SLOT(phoneDiverterHandset(PhoneDiverter::Handset)))
+        chk_connect_q(&phoneDiverter(), &PhoneDiverter::attached,
+                      &appl,            &Application::phoneDiverterAttached)
+        chk_connect_q(&phoneDiverter(), &PhoneDiverter::detached,
+                      &appl,            &Application::phoneDiverterDetached)
+        chk_connect_q(&phoneDiverter(), &PhoneDiverter::pstnRing,
+                      &appl,            &Application::phoneDiverterPstnRing)
+        chk_connect_q(&phoneDiverter(), &PhoneDiverter::key,
+                      &appl,            &Application::phoneDiverterKey)
+        chk_connect_q(&phoneDiverter(), qOverload<PhoneDiverter::Handset>(&PhoneDiverter::handset),
+                      &appl,            &Application::phoneDiverterHandset)
 
         if (!toxCall().init(toxNet().tox()))
         {
@@ -453,8 +415,11 @@ int main(int argc, char *argv[])
         alog::logger().removeSaverStdOut();
         alog::logger().removeSaverStdErr();
 
-        QMetaObject::invokeMethod(&appl, "sendToxPhoneInfo", Qt::QueuedConnection);
+        usleep(200*1000);
         appl.initPhoneDiverter();
+
+        QMetaObject::invokeMethod(&appl, "sendToxPhoneInfo", Qt::QueuedConnection);
+
         ret = appl.exec();
 
         pproto::data::ApplShutdown applShutdown;

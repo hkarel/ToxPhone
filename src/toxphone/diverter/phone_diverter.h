@@ -61,6 +61,7 @@ public:
                  QString& deviceName,
                  QString& deviceVersion,
                  QString& deviceSerial);
+
     bool switchToUsb();
     bool switchToPstn();
     bool pickupPstn();

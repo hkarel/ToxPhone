@@ -37,16 +37,17 @@ Application::Application(int &argc, char **argv)
     sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
     sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
 
-    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
-    chk_connect_q(&tcp::listener(), SIGNAL(socketConnected(pproto::SocketDescriptor)),
-                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
-    chk_connect_q(&tcp::listener(), SIGNAL(socketDisconnected(pproto::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
+    chk_connect_q(&tcp::listener(), &tcp::Listener::message,
+                  this, &Application::message)
 
-    chk_connect_q(&udp::socket(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), &tcp::Listener::socketConnected,
+                  this, &Application::socketConnected)
 
+    chk_connect_q(&tcp::listener(), &tcp::Listener::socketDisconnected,
+                  this, &Application::socketDisconnected)
+
+    chk_connect_q(&udp::socket(), &udp::Socket::message,
+                  this, &Application::message)
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &Application::command_##COMMAND, this);

@@ -89,8 +89,8 @@ AudioDev& audioDev()
 
 AudioDev::AudioDev()
 {
-    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
-                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), &tcp::Listener::message,
+                  this, &AudioDev::message)
 
     _palybackAudioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
     _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
@@ -154,67 +154,67 @@ void AudioDev::deinit()
     {
         pa_stream_disconnect(_playbackStream);
         pa_stream_unref(_playbackStream);
-        _playbackStream = 0;
+        _playbackStream = nullptr;
     }
     if (_voiceStream)
     {
         pa_stream_disconnect(_voiceStream);
         pa_stream_unref(_voiceStream);
-        _voiceStream = 0;
+        _voiceStream = nullptr;
     }
     if (_recordStream)
     {
         pa_stream_disconnect(_recordStream);
         pa_stream_unref(_recordStream);
-        _recordStream = 0;
+        _recordStream = nullptr;
     }
 
     if (_paContext)
     {
         pa_context_disconnect(_paContext);
         pa_context_unref(_paContext);
-        _paContext = 0;
+        _paContext = nullptr;
     }
     if (_paMainLoop)
     {
         pa_threaded_mainloop_free(_paMainLoop);
-        _paMainLoop = 0;
+        _paMainLoop = nullptr;
     }
-    _paApi = 0;
+    _paApi = nullptr;
 }
 
 void AudioDev::playRingtone()
 {
-    QObject::disconnect(&_playbackTimer, 0, this, 0);
-    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playRingtoneByTimer()));
+    QObject::disconnect(&_playbackTimer, nullptr, this, nullptr);
+    chk_connect_a(&_playbackTimer, &QTimer::timeout, this, &AudioDev::playRingtoneByTimer);
     _playbackTimer.start(500);
 }
 
 void AudioDev::playOutgoing()
 {
-    QObject::disconnect(&_playbackTimer, 0, this, 0);
-    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playOutgoingByTimer()));
+    QObject::disconnect(&_playbackTimer, nullptr, this, nullptr);
+    chk_connect_a(&_playbackTimer, &QTimer::timeout, this, &AudioDev::playOutgoingByTimer);
     _playbackTimer.start(500);
 }
 
 void AudioDev::playBusy()
 {
-    QObject::disconnect(&_playbackTimer, 0, this, 0);
-    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playBusyByTimer()));
+    QObject::disconnect(&_playbackTimer, nullptr, this, nullptr);
+    chk_connect_a(&_playbackTimer, &QTimer::timeout, this, &AudioDev::playBusyByTimer);
     _playbackTimer.start(500);
 }
 
 void AudioDev::playFail()
 {
-    QObject::disconnect(&_playbackTimer, 0, this, 0);
-    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playFailByTimer()));
+    QObject::disconnect(&_playbackTimer, nullptr, this, nullptr);
+    chk_connect_a(&_playbackTimer, &QTimer::timeout, this, &AudioDev::playFailByTimer);
     _playbackTimer.start(500);
 }
 
 void AudioDev::playError()
 {
-    QObject::disconnect(&_playbackTimer, 0, this, 0);
-    chk_connect_a(&_playbackTimer, SIGNAL(timeout()), this, SLOT(playErrorByTimer()));
+    QObject::disconnect(&_playbackTimer, nullptr, this, nullptr);
+    chk_connect_a(&_playbackTimer, &QTimer::timeout, this, &AudioDev::playErrorByTimer);
     _playbackTimer.start(500);
 }
 
@@ -584,7 +584,7 @@ void AudioDev::stopRecord()
 
     MainloopLocker mainloopLocker(_paMainLoop); (void) mainloopLocker;
 
-    pa_stream_set_read_callback(_recordStream, 0, 0);
+    pa_stream_set_read_callback(_recordStream, nullptr, nullptr);
     if (pa_stream_disconnect(_recordStream) < 0)
     {
         log_error_m << "Failed call pa_stream_disconnect()"
@@ -784,12 +784,14 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
 
         if (audioDevInfo->type == data::AudioDevType::Sink)
         {
-            O_PTR_MSG(pa_context_set_sink_volume_by_index(_paContext, audioDevInfo->index, &volume, 0, 0),
+            O_PTR_MSG(pa_context_set_sink_volume_by_index(
+                      _paContext, audioDevInfo->index, &volume, nullptr, nullptr),
                       "Failed call pa_context_set_sink_volume_by_index()", _paContext, {})
         }
         else
         {
-            O_PTR_MSG(pa_context_set_source_volume_by_index(_paContext, audioDevInfo->index, &volume, 0, 0),
+            O_PTR_MSG(pa_context_set_source_volume_by_index(
+                      _paContext, audioDevInfo->index, &volume, nullptr, nullptr),
                       "Failed call pa_context_set_source_volume_by_index()", _paContext, {})
         }
     }
@@ -901,7 +903,8 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _palybackAudioStreamInfo.index;
 
             initChannelsVolume(_palybackAudioStreamInfo, volume);
-            if (O_PTR(pa_context_set_sink_input_volume(_paContext, _palybackAudioStreamInfo.index, &volume, 0, 0)))
+            if (O_PTR(pa_context_set_sink_input_volume(
+                      _paContext, _palybackAudioStreamInfo.index, &volume, nullptr, nullptr)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
                 {
@@ -909,12 +912,14 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                        персональный уровень громкости, да это и не нужно делать.
                        saveAudioStreamVolume(_palybackAudioStreamInfo, "playback_volume");
                     */
-                    config::state().setValue("audio.streams.playback_volume", _palybackAudioStreamInfo.volume);
+                    config::state().setValue("audio.streams.playback_volume",
+                                             _palybackAudioStreamInfo.volume);
                     config::state().saveFile();
                 }
             }
             else
-                log_error_m << "Failed call pa_context_set_sink_input_volume()" << paStrError(_paContext);
+                log_error_m << "Failed call pa_context_set_sink_input_volume()"
+                            << paStrError(_paContext);
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Voice)
         {
@@ -923,13 +928,15 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _voiceAudioStreamInfo.index;
 
             initChannelsVolume(_voiceAudioStreamInfo, volume);
-            if (O_PTR(pa_context_set_sink_input_volume(_paContext, _voiceAudioStreamInfo.index, &volume, 0, 0)))
+            if (O_PTR(pa_context_set_sink_input_volume(
+                      _paContext, _voiceAudioStreamInfo.index, &volume, nullptr, nullptr)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
                     saveAudioStreamVolume(_voiceAudioStreamInfo, "voice_volume");
             }
             else
-                log_error_m << "Failed call pa_context_set_sink_input_volume()" << paStrError(_paContext);
+                log_error_m << "Failed call pa_context_set_sink_input_volume()"
+                            << paStrError(_paContext);
         }
         else if (audioStreamInfo.type == data::AudioStreamInfo::Type::Record)
         {
@@ -938,13 +945,15 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                          << "; index: " << _recordAudioStreamInfo.index;
 
             initChannelsVolume(_recordAudioStreamInfo, volume);
-            if (O_PTR(pa_context_set_source_output_volume(_paContext, _recordAudioStreamInfo.index, &volume, 0, 0)))
+            if (O_PTR(pa_context_set_source_output_volume(
+                      _paContext, _recordAudioStreamInfo.index, &volume, nullptr, nullptr)))
             {
                 if (audioStreamInfo.state == data::AudioStreamInfo::State::Changed)
                     saveAudioStreamVolume(_recordAudioStreamInfo, "record_volume");
             }
             else
-                log_error_m << "Failed call pa_context_set_source_output_volume()" << paStrError(_paContext);
+                log_error_m << "Failed call pa_context_set_source_output_volume()"
+                            << paStrError(_paContext);
         }
     }
 }
