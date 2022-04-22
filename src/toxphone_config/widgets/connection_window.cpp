@@ -7,11 +7,13 @@
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/udp.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
 #include "shared/qt/network/interfaces.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/udp.h"
 
 #include <sodium.h>
 #include <QCloseEvent>
@@ -39,8 +41,8 @@ ConnectionWindow::ConnectionWindow(QWidget *parent) :
     //setWindowState(windowState() & ~(Qt::WindowMaximized | Qt::WindowFullScreen));
     //setWindowFlags(Qt::Dialog|Qt::WindowCloseButtonHint|Qt::MSWindowsFixedSizeDialogHint);
 
-    chk_connect_q(&udp::socket(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(&udp::socket(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
     chk_connect_q(&_requestPhonesTimer, SIGNAL(timeout()),
                   this, SLOT(requestPhonesList()))
@@ -74,12 +76,12 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
 {
     _socket = socket;
 
-    chk_connect_q(_socket.get(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
-    chk_connect_q(_socket.get(), SIGNAL(connected(communication::SocketDescriptor)),
-                  this, SLOT(socketConnected(communication::SocketDescriptor)))
-    chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(_socket.get(), SIGNAL(connected(pproto::SocketDescriptor)),
+                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(disconnected(pproto::SocketDescriptor)),
+                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
 
     StubWidget* sw = new StubWidget();
     ListWidgetItem* lwi = new ListWidgetItem(sw);
@@ -148,7 +150,7 @@ void ConnectionWindow::loadGeometry()
     }
 }
 
-void ConnectionWindow::message(const communication::Message::Ptr& message)
+void ConnectionWindow::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -161,13 +163,13 @@ void ConnectionWindow::message(const communication::Message::Ptr& message)
     }
 }
 
-void ConnectionWindow::socketConnected(communication::SocketDescriptor)
+void ConnectionWindow::socketConnected(pproto::SocketDescriptor)
 {
     //hide();
     //saveGeometry();
 }
 
-void ConnectionWindow::socketDisconnected(communication::SocketDescriptor)
+void ConnectionWindow::socketDisconnected(pproto::SocketDescriptor)
 {
     sodium_memzero(configPublicKey, crypto_box_PUBLICKEYBYTES);
     sodium_memzero(configSecretKey, crypto_box_SECRETKEYBYTES);
@@ -209,7 +211,7 @@ void ConnectionWindow::on_btnConnect_clicked(bool /*checked*/)
 
     if (!_socket->init(cw->hostPoint()))
     {
-        msg = tr("Failed initialize a communication system.\n"
+        msg = tr("Failed initialize a pproto system.\n"
                  "See details in the log file.");
         QMessageBox::critical(this, qApp->applicationName(), msg);
         return;

@@ -5,24 +5,23 @@
 
 #pragma once
 
-#include "kernel/communication/commands.h"
+#include "commands/commands.h"
+#include "commands/error.h"
 
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
-#include "shared/qt/qhashex.h"
-#include "shared/qt/thread/qthreadex.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
+#include "shared/qt/qthreadex.h"
+
+#include "pproto/func_invoker.h"
 #include "toxcore/tox.h"
 
 #include <QtCore>
 #include <atomic>
-//#include <set>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 class ToxNet : public QThreadEx
 {
@@ -33,10 +32,10 @@ public:
 
 signals:
     // Используется для отправки сообщения в пределах программы
-    void internalMessage(const communication::Message::Ptr&);
+    void internalMessage(const pproto::Message::Ptr&);
 
 public slots:
-    void message(const communication::Message::Ptr&);
+    void message(const pproto::Message::Ptr&);
 
 private:
     Q_OBJECT
@@ -94,8 +93,8 @@ private:
                                              void* user_data);
     static void tox_file_recv_control       (Tox* tox, uint32_t friend_number, uint32_t file_number,
                                              TOX_FILE_CONTROL control, void* user_data);
-    static void tox_file_recv               (Tox *tox, uint32_t friend_number, uint32_t file_number,
-                                             uint32_t kind, uint64_t file_size, const uint8_t *filename,
+    static void tox_file_recv               (Tox* tox, uint32_t friend_number, uint32_t file_number,
+                                             uint32_t kind, uint64_t file_size, const uint8_t* filename,
                                              size_t filename_length, void* user_data);
     static void tox_file_recv_chunk         (Tox* tox, uint32_t friend_number, uint32_t file_number,
                                              uint64_t position, const uint8_t* data, size_t length,
@@ -145,7 +144,7 @@ private:
         {}
         struct Compare
         {
-            int operator() (const TransferData* item1, const TransferData* item2, void*) const
+            int operator() (const TransferData* item1, const TransferData* item2) const
             {
                 LIST_COMPARE_MULTI_ITEM(item1->friendNumber, item2->friendNumber)
                 LIST_COMPARE_MULTI_ITEM(item1->fileNumber,   item2->fileNumber)
@@ -160,7 +159,7 @@ private:
     // Параметр используется для отслеживания смены статуса подключения друзей.
     // Не используем здесь QSet, т.к. QSet некорректно работает с типом uint32_t
     //std::set<uint32_t> _connectionStatusSet;
-    QSetEx<uint32_t> _connectionStatusSet;
+    QSet<uint32_t> _connectionStatusSet;
 
     FunctionInvoker _funcInvoker;
 

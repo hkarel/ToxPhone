@@ -1,11 +1,12 @@
 #pragma once
-#include "shared/qt/communication/commands_base.h"
+
+#include "pproto/commands/base.h"
 
 #ifndef QTEXT
 #define QTEXT(MSG) QString::fromUtf8(u8##MSG)
 #endif
 
-namespace communication {
+namespace pproto {
 namespace error {
 
 //--- TOXAV_ERR_CALL ---
@@ -19,4 +20,4 @@ DECL_ERROR_CODE(tox_err_file_send,             0, "064a71e1-88a5-4486-8570-c7e20
 DECL_ERROR_CODE(tox_err_file_send_chunk,       0, "2df2a88e-b035-45aa-8404-060c19f11cec", "TOX_ERR_FILE_SEND_CHUNK")
 
 } // namespace error
-} // namespace communication
+} // namespace pproto

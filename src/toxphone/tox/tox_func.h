@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/qt/communication/message.h"
+#include "pproto/message.h"
 #include "toxcore/tox.h"
 #include <QtCore>
 
@@ -32,8 +32,8 @@ QByteArray getToxSelfPublicKey(Tox* tox);
 
 // Отправляем сообщение Message через tox-механизм пользовательских сообщений
 bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
-                            const communication::Message::Ptr&);
+                            const pproto::Message::Ptr&);
 
 // Читает сообщение Message из tox-механизма пользовательских сообщений
-const communication::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
-                                                 const uint8_t* data, size_t length);
+const pproto::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
+                                          const uint8_t* data, size_t length);

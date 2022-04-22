@@ -1,24 +1,26 @@
 #pragma once
 
+#include "commands/commands.h"
+#include "commands/error.h"
+
 #include "common/voice_frame.h"
-#include "kernel/communication/commands.h"
+#include "toxcore/tox.h"
+#include "toxav/toxav.h"
 
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
 #include "shared/steady_timer.h"
-#include "shared/qt/thread/qthreadex.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
-#include "toxcore/tox.h"
-#include "toxav/toxav.h"
+#include "shared/qt/qthreadex.h"
+
+#include "pproto/func_invoker.h"
 
 #include <QtCore>
 #include <atomic>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 class ToxCall : public QThreadEx
 {
@@ -27,11 +29,11 @@ public:
 
 signals:
     // Используется для отправки сообщения в пределах программы
-    void internalMessage(const communication::Message::Ptr&);
+    void internalMessage(const pproto::Message::Ptr&);
     void startVoice(const VoiceFrameInfo::Ptr&);
 
 public slots:
-    void message(const communication::Message::Ptr&);
+    void message(const pproto::Message::Ptr&);
 
 private:
     Q_OBJECT

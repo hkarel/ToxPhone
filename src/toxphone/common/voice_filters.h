@@ -1,18 +1,20 @@
 #pragma once
 
-#include "kernel/communication/commands.h"
 #include "shared/defmac.h"
 #include "shared/steady_timer.h"
 #include "shared/safe_singleton.h"
-#include "shared/qt/thread/qthreadex.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
+#include "shared/qt/qthreadex.h"
+
+#include "pproto/func_invoker.h"
+
+#include "commands/commands.h"
+#include "commands/error.h"
 
 #include <QtCore>
 #include <atomic>
 
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 class VoiceFilters : public QThreadEx
 {
@@ -22,7 +24,7 @@ public:
     void sendRecordLevet(quint32 maxLevel, quint32 time);
 
 public slots:
-    void message(const communication::Message::Ptr&);
+    void message(const pproto::Message::Ptr&);
 
 private:
     Q_OBJECT

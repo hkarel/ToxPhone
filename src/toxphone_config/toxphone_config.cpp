@@ -1,10 +1,12 @@
 #include "shared/break_point.h"
-#include "shared/config/yaml_config.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/version/version_number.h"
-#include "shared/qt/config/config.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+#include "shared/qt/version_number.h"
+
+#include "pproto/commands/pool.h"
+
 #include "widgets/connection_window.h"
 #include "widgets/main_window.h"
 
@@ -31,8 +33,8 @@ uchar configSecretKey[crypto_box_SECRETKEYBYTES];
 uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +65,7 @@ int main(int argc, char *argv[])
         {
             logFile = "~/.config/toxphone/toxphone_config.log";
             config::state().setValue("logger.file", logFile);
-            config::state().save();
+            config::state().saveFile();
         }
         config::dirExpansion(logFile);
 
@@ -97,13 +99,13 @@ int main(int argc, char *argv[])
                  << " (version " << productVersion().toString() << ")";
         alog::logger().flush();
 
-        if (!communication::command::pool().checkUnique())
+        if (!pproto::command::pool().checkUnique())
         {
             stopProgram();
             return 1;
         }
 
-        if (!communication::error::checkUnique())
+        if (!pproto::error::checkUnique())
         {
             stopProgram();
             return 1;
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
 
         socket->disconnect();
 
-        config::state().save();
+        config::state().saveFile();
     }
     catch (std::exception& e)
     {

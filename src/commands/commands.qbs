@@ -1,19 +1,18 @@
 import qbs
-import GccUtl
 import QbsUtl
 
 Product {
+    name: "Commands"
+    targetName: "commands"
+
     type: "staticlibrary"
 
-    name: "Kernel"
-    targetName: "kernel"
-
     Depends { name: "cpp" }
-    Depends { name: "Yaml" }
     Depends { name: "SharedLib" }
+    Depends { name: "PProto" }
+    Depends { name: "Yaml" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
-    cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
@@ -27,11 +26,9 @@ Product {
     cpp.systemIncludePaths: Qt.core.cpp.includePaths
 
     files: [
-        "communication/commands.cpp",
-        "communication/commands.h",
-        "communication/error.h",
-        //"network/interfaces.cpp",
-        //"network/interfaces.h",
+        "commands.cpp",
+        "commands.h",
+        "error.h",
     ]
     Export {
         Depends { name: "cpp" }

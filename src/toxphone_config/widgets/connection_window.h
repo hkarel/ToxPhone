@@ -1,16 +1,17 @@
 #pragma once
 
-#include "kernel/communication/commands.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
-#include "shared/qt/communication/transport/tcp.h"
+#include "commands/commands.h"
+#include "commands/error.h"
+
+#include "pproto/func_invoker.h"
+#include "pproto/transport/tcp.h"
 
 #include <QDialog>
 #include <functional>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 class ConnectionWidget;
 
@@ -35,9 +36,9 @@ public slots:
     void updatePhonesList();
 
 private slots:
-    void message(const communication::Message::Ptr&);
-    void socketConnected(communication::SocketDescriptor);
-    void socketDisconnected(communication::SocketDescriptor);
+    void message(const pproto::Message::Ptr&);
+    void socketConnected(pproto::SocketDescriptor);
+    void socketDisconnected(pproto::SocketDescriptor);
 
     void on_btnConnect_clicked(bool checked);
 

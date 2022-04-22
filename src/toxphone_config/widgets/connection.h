@@ -3,7 +3,7 @@
 #include "comparator.h"
 #include "shared/steady_timer.h"
 #include "shared/qt/quuidex.h"
-#include "shared/qt/communication/host_point.h"
+#include "pproto/host_point.h"
 #include <QWidget>
 
 namespace Ui {
@@ -19,8 +19,8 @@ public:
     QString info() const;
     void setInfo(const QString& info);
 
-    const communication::HostPoint& hostPoint() const {return _hostPoint;}
-    void setHostPoint(const communication::HostPoint&);
+    const pproto::HostPoint& hostPoint() const {return _hostPoint;}
+    void setHostPoint(const pproto::HostPoint&);
 
     bool isPointToPoint() const {return _isPointToPoint;}
     void setPointToPoint(bool val) {_isPointToPoint = val;}
@@ -43,7 +43,7 @@ private:
     Q_OBJECT
     Ui::ConnectionWidget *ui;
 
-    communication::HostPoint _hostPoint;
+    pproto::HostPoint _hostPoint;
     bool _isPointToPoint;
     int _configConnectCount = {0};
     QUuidEx _applId;

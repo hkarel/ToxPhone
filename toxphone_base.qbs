@@ -4,7 +4,7 @@ import "qbs/imports/QbsUtl/qbsutl.js" as QbsUtl
 import "qbs/imports/ProbExt/OsProbe.qbs" as OsProbe
 
 Project {
-    minimumQbsVersion: "1.12.0"
+    minimumQbsVersion: "1.20.0"
     qbsSearchPaths: ["qbs"]
 
     // Признак вывода дополнительной информации в файл package_build_info,
@@ -45,20 +45,19 @@ Project {
             "VERSION_PROJECT_MINOR=" + projectVersion[2],
             "VERSION_PROJECT_PATCH=" + projectVersion[3],
             "GIT_REVISION=\"" + projectGitRevision + "\"",
-            "QDATASTREAM_VERSION=QDataStream::Qt_4_8",
-            "BPROTOCOL_VERSION_LOW=0",
-            "BPROTOCOL_VERSION_HIGH=0",
-            "UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
+            "QDATASTREAM_VERSION=QDataStream::Qt_5_12",
+            "PPROTO_VERSION_LOW=0",
+            "PPROTO_VERSION_HIGH=0",
+            "PPROTO_QBINARY_SERIALIZE",
+            "PPROTO_UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
             //"UDP_LONGSIG=1",
             //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
+            "LOGGER_LESS_SNPRINTF",
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
-            "BPROTO_SERIALIZE"
+            "CONFIG_DIR=\"/etc/toxphone\"",
+            "VAROPT_DIR=\"/var/opt/toxphone\"",
         ]
-
-        if (qbs.buildVariant === "release")
-            def.push("NDEBUG");
-
         return def;
     }
 
@@ -68,10 +67,10 @@ Project {
         "-Winline",
         "-Wall",
         "-Wextra",
-        "-Wpedantic",
+        //"-Wpedantic",
         "-Wno-unused-parameter",
         "-Wno-variadic-macros",
         //"-Wconversion",
     ]
-    property string cxxLanguageVersion: "c++14"
+    property string cxxLanguageVersion: "c++17"
 }

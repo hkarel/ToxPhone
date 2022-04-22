@@ -5,22 +5,25 @@
 
 #include "common/defines.h"
 #include "common/functions.h"
+
 #include "shared/break_point.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
 
 #include <chrono>
 #include <string>
 
-#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "ToxNet")
-#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "ToxNet")
-#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "ToxNet")
-#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "ToxNet")
-#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "ToxNet")
-#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "ToxNet")
+#define log_error_m   alog::logger().error  (alog_line_location, "ToxNet")
+#define log_warn_m    alog::logger().warn   (alog_line_location, "ToxNet")
+#define log_info_m    alog::logger().info   (alog_line_location, "ToxNet")
+#define log_verbose_m alog::logger().verbose(alog_line_location, "ToxNet")
+#define log_debug_m   alog::logger().debug  (alog_line_location, "ToxNet")
+#define log_debug2_m  alog::logger().debug2 (alog_line_location, "ToxNet")
 
 static const char* error_save_tox_state =
     QT_TRANSLATE_NOOP("ToxNet", "An error occurred when saved tox state");
@@ -47,8 +50,8 @@ ToxNet::ToxNet() : QThreadEx(0)
     _configPath = "/var/opt/toxphone/state/";
     _configFile = _configPath + "toxphone.tox";
 
-    chk_connect_d(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_d(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxNet::command_##COMMAND, this);
@@ -131,7 +134,7 @@ bool ToxNet::init()
     if (_toxOptions.ipv6_enabled)
         log_verbose_m << "Core starting with IPv6 enabled";
     else
-        log_warn_m << "Core starting with IPv6 disabled. LAN discovery may not work properly.";
+        log_warn_m << "Core starting with IPv6 disabled. LAN discovery may not work properly";
 
     config::base().getValue("tox_core.options.udp_enabled", _toxOptions.udp_enabled);
     log_verbose_m << "Core starting with UDP "
@@ -166,7 +169,7 @@ bool ToxNet::init()
 
     int tcp_port = 0;
     config::base().getValue("tox_core.options.tcp_port", tcp_port);
-    if (end_port < 0 || end_port > 65535)
+    if (tcp_port < 0 || tcp_port > 65535)
     {
         log_error_m << "Tox core options"
                     << ": a tcp_port must be in interval 0 - 65535"
@@ -438,7 +441,7 @@ void ToxNet::sendAvatar(uint32_t friendNumber)
 
 void ToxNet::stopSendAvatars()
 {
-    for(TransferData* fd : _sendAvatars)
+    for (TransferData* fd : _sendAvatars)
         tox_file_control(_tox, fd->friendNumber, fd->fileNumber, TOX_FILE_CONTROL_CANCEL, 0);
 
     _sendAvatars.clear();
@@ -570,7 +573,7 @@ void ToxNet::run()
     log_info_m << "Stopped";
 }
 
-void ToxNet::message(const communication::Message::Ptr& message)
+void ToxNet::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -611,7 +614,7 @@ void ToxNet::command_IncomingConfigConnection(const Message::Ptr& message)
         toxProfile.avatar = _avatar;
 
         Message::Ptr m = createMessage(toxProfile);
-        m->destinationSocketDescriptors().insert(socketDescr);
+        m->appendDestinationSocket(socketDescr);
         tcp::listener().send(m);
     }
     updateFriendList();
@@ -827,7 +830,7 @@ void ToxNet::command_FriendRequest(const Message::Ptr& message)
         }
     }
     config::state().remove("friend_requests." + string(publicKey));
-    config::state().save();
+    config::state().saveFile();
 
     Message::Ptr answer = message->cloneForAnswer();
     if (!error.code.isNull())
@@ -852,7 +855,7 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
 
     if (friendNum != UINT32_MAX)
     {
-        QString fiendName = getToxFriendName(_tox, friendNum);
+        QString friendName = getToxFriendName(_tox, friendNum);
         bool result;
         { //Block for ToxGlobalLock
             ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
@@ -863,11 +866,11 @@ void ToxNet::command_RemoveFriend(const Message::Ptr& message)
             if (saveState())
             {
                 config::state().remove("phones." + string(removeFriend.publicKey));
-                config::state().save();
+                config::state().saveFile();
 
                 log_verbose_m << "Friend was successfully removed"
                               << ". Friend name/number/key: "
-                              << fiendName << "/" << friendNum << "/"
+                              << friendName << "/" << friendNum << "/"
                               << removeFriend.publicKey;
             }
             else
@@ -935,7 +938,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
     if (!removePubKey.isEmpty())
     {
         config::state().remove("phones." + string(removePubKey) + ".phone_number");
-        config::state().save();
+        config::state().saveFile();
         QByteArray removePk = QByteArray::fromHex(removePubKey);
         quint32 removeFriendNum = getToxFriendNum(_tox, removePk);
 
@@ -969,7 +972,7 @@ void ToxNet::command_PhoneFriendInfo(const Message::Ptr& message)
         return true;
     };
     config::state().setValue("phones." + string(phoneFriendInfo.publicKey), saveFunc);
-    config::state().save();
+    config::state().saveFile();
 
     log_verbose_m << "Phone number " << phoneFriendInfo.phoneNumber
                   << " assigned to " << ToxFriendLog(_tox, phoneFriendInfo.number);
@@ -995,7 +998,7 @@ void ToxNet::command_FriendAudioChange(const Message::Ptr& message)
     {
         string confKey = "phones." + string(friendAudioChange.publicKey);
         config::state().setValue(confKey + ".audio_streams.active", bool(friendAudioChange.value));
-        config::state().save();
+        config::state().saveFile();
 
         log_debug_m << "Personal audio stream volumes flag is assigned to "
                     << ((friendAudioChange.value) ? "TRUE" : "FALSE")
@@ -1186,12 +1189,13 @@ void ToxNet::tox_friend_request(Tox* tox, const uint8_t* pub_key,
         return true;
     };
     config::state().setValue("friend_requests." + public_key, saveFunc);
-    { //Block for YamlConfigLock
-        YamlConfigLock lock(config::state()); (void) lock;
-        YAML::Node node = config::state().getNode("friend_requests");
+    { //Block for YamlConfigLocker
+        break_point
+        auto locker {config::state().locker()}; (void) locker;
+        YAML::Node node = config::state().node("friend_requests");
         node.SetStyle(YAML::EmitterStyle::Block);
     }
-    config::state().save();
+    config::state().saveFile();
 
     ToxNet* tn = static_cast<ToxNet*>(user_data);
     tn->updateFriendRequests();
@@ -1342,8 +1346,8 @@ void ToxNet::tox_file_recv_control(Tox* tox, uint32_t friend_number, uint32_t fi
     }
 }
 
-void ToxNet::tox_file_recv(Tox *tox, uint32_t friend_number, uint32_t file_number,
-                           uint32_t kind, uint64_t file_size, const uint8_t *filename,
+void ToxNet::tox_file_recv(Tox* tox, uint32_t friend_number, uint32_t file_number,
+                           uint32_t kind, uint64_t file_size, const uint8_t* filename,
                            size_t filename_length, void* user_data)
 {
     ToxNet* tn = static_cast<ToxNet*>(user_data);
@@ -1498,15 +1502,7 @@ void ToxNet::tox_friend_lossless_packet(Tox* tox, uint32_t friend_number,
                                         const uint8_t* data, size_t length, void* user_data)
 {
     ToxNet* tn = static_cast<ToxNet*>(user_data);
-    communication::Message::Ptr message = readToxMessage(tox, friend_number, data, length);
+    pproto::Message::Ptr message = readToxMessage(tox, friend_number, data, length);
     if (message)
         emit tn->internalMessage(message);
 }
-
-
-#undef log_error_m
-#undef log_warn_m
-#undef log_info_m
-#undef log_verbose_m
-#undef log_debug_m
-#undef log_debug2_m

@@ -1,14 +1,15 @@
 #pragma once
 
-#include "kernel/communication/commands.h"
 #include "diverter/phone_diverter.h"
 
+#include "commands/commands.h"
+#include "commands/error.h"
+
 #include "shared/steady_timer.h"
-#include "shared/qt/qhashex.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
-#include "shared/qt/communication/transport/udp.h"
 #include "shared/qt/network/interfaces.h"
+
+#include "pproto/func_invoker.h"
+#include "pproto/transport/udp.h"
 
 #include <sodium/crypto_box.h>
 #include <QtCore>
@@ -16,8 +17,8 @@
 #include <atomic>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 class Application : public QCoreApplication
 {
@@ -33,16 +34,16 @@ public:
 
 signals:
     // Используется для отправки сообщения в пределах программы
-    void internalMessage(const communication::Message::Ptr&);
+    void internalMessage(const pproto::Message::Ptr&);
 
 public slots:
     static void stop(int exitCode);
     void sendToxPhoneInfo();
 
 private slots:
-    void message(const communication::Message::Ptr&);
-    void socketConnected(communication::SocketDescriptor);
-    void socketDisconnected(communication::SocketDescriptor);
+    void message(const pproto::Message::Ptr&);
+    void socketConnected(pproto::SocketDescriptor);
+    void socketDisconnected(pproto::SocketDescriptor);
 
     void phoneDiverterAttached();
     void phoneDiverterDetached();
@@ -99,7 +100,7 @@ private:
     data::ToxCallState _callState;
 
     //data::PhoneDiverter _phoneDiverter;
-    QHashEx<quint32/*PhoneNumber*/, QByteArray/*FriendKey*/> _phonesHash;
+    QHash<quint32/*PhoneNumber*/, QByteArray/*FriendKey*/> _phonesHash;
 
     bool _asteriskPressed = {false};
     QTime _diverterHandsetTimer;

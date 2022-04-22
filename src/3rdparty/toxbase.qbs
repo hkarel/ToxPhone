@@ -1,15 +1,12 @@
 import qbs
-import GccUtl
 import QbsUtl
 import ProbExt
 
 Product {
     type: "staticlibrary"
-    //type: "dynamiclibrary"
     destinationDirectory: "./lib"
 
     Depends { name: "cpp" }
-    Depends { name: "cppstdlib" }
     Depends { name: "lib.sodium" }
 
     lib.sodium.version:   project.sodiumVersion
@@ -20,7 +17,6 @@ Product {
         checkingLibs: [lib.sodium]
     }
 
-    cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: [
         "USE_IPV6=1",
         "TCP_SERVER_USE_EPOLL",
@@ -92,28 +88,26 @@ Product {
     ].concat(warnFlags)
 
     cpp.cxxFlags: [
-        "-std=c++11",
+        "-std=c++17",
         //"-Wno-unused-parameter",
     ].concat(warnFlags)
 
     property var exportIncludePaths: [
         "./toxcore",
     ]
-    cpp.systemIncludePaths: QbsUtl.concatPaths([
-            "/usr/include/opus",
-        ],
-        lib.sodium.includePath
+    cpp.systemIncludePaths: QbsUtl.concatPaths(
+        ["/usr/include/opus"]
+       ,lib.sodium.includePath
     )
 
     cpp.rpaths: QbsUtl.concatPaths(
-        cppstdlib.path,
-        lib.sodium.libraryPath,
-        "$ORIGIN/../lib"
+        lib.sodium.libraryPath
+       ,"$ORIGIN/../lib"
     )
 
     cpp.libraryPaths: QbsUtl.concatPaths(
-        lib.sodium.libraryPath,
-        project.buildDirectory + "/lib"
+        lib.sodium.libraryPath
+       ,project.buildDirectory + "/lib"
     )
 
     Export {

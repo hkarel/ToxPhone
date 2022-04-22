@@ -1,5 +1,4 @@
 import qbs
-import GccUtl
 
 Product {
     type: "staticlibrary"
@@ -9,8 +8,6 @@ Product {
 
     Depends { name: "cpp" }
     //Depends { name: "Celt" }
-
-    cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
 
     cpp.defines: [
         "HAVE_STDINT_H",

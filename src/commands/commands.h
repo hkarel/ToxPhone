@@ -5,21 +5,17 @@
 
   Требование надежности коммуникаций: однажды назначенный идентификатор коман-
   ды не должен более меняться.
-
 *****************************************************************************/
 
 #pragma once
 
 #include "shared/list.h"
-//#include "shared/clife_base.h"
-//#include "shared/clife_ptr.h"
 #include "shared/container_ptr.h"
-#include "shared/qt/quuidex.h"
-#include "shared/qt/communication/commands_base.h"
-#include "shared/qt/communication/host_point.h"
+#include "pproto/commands/base.h"
+#include "pproto/host_point.h"
 #include <sys/time.h>
 
-namespace communication {
+namespace pproto {
 namespace command {
 
 //----------------------------- Список команд --------------------------------
@@ -385,9 +381,9 @@ struct AudioDevInfo : Data<&command::AudioDevInfo,
 
     struct Find
     {
-        int operator() (const char*       devName,  const AudioDevInfo* item2, void*) const;
-        int operator() (const QByteArray* devName,  const AudioDevInfo* item2, void*) const;
-        int operator() (const quint32*    devIndex, const AudioDevInfo* item2, void*) const;
+        int operator() (const char*       devName,  const AudioDevInfo* item2) const;
+        int operator() (const QByteArray* devName,  const AudioDevInfo* item2) const;
+        int operator() (const quint32*    devIndex, const AudioDevInfo* item2) const;
     };
     typedef lst::List<AudioDevInfo, Find> List;
 
@@ -750,4 +746,4 @@ struct DiverterHandset : Data<&command::DiverterHandset,
 
 
 } // namespace data
-} // namespace communication
+} // namespace pproto

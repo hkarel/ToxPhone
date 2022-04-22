@@ -7,24 +7,29 @@
 #include "common/functions.h"
 #include "common/voice_filters.h"
 #include "diverter/phone_diverter.h"
-#include "kernel/communication/error.h"
+
+#include "commands/commands.h"
+#include "commands/error.h"
 
 #include "shared/break_point.h"
 #include "shared/steady_timer.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
+
 #include <chrono>
 #include <string>
 
-#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "ToxCall")
-#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "ToxCall")
-#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "ToxCall")
-#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "ToxCall")
-#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "ToxCall")
-#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "ToxCall")
+#define log_error_m   alog::logger().error  (alog_line_location, "ToxCall")
+#define log_warn_m    alog::logger().warn   (alog_line_location, "ToxCall")
+#define log_info_m    alog::logger().info   (alog_line_location, "ToxCall")
+#define log_verbose_m alog::logger().verbose(alog_line_location, "ToxCall")
+#define log_debug_m   alog::logger().debug  (alog_line_location, "ToxCall")
+#define log_debug2_m  alog::logger().debug2 (alog_line_location, "ToxCall")
 
 static const char* tox_videocall_responce_message =
     QT_TRANSLATE_NOOP("ToxCall", "Hi, it ToxPhone client. The ToxPhone client not support a video calls.");
@@ -38,8 +43,8 @@ ToxCall& toxCall()
 
 ToxCall::ToxCall() : QThreadEx(0)
 {
-    chk_connect_d(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_d(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &ToxCall::command_##COMMAND, this);
@@ -158,7 +163,7 @@ void ToxCall::run()
     log_info_m << "Stopped";
 }
 
-void ToxCall::message(const communication::Message::Ptr& message)
+void ToxCall::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -785,10 +790,3 @@ void ToxCall::toxav_video_receive_frame(ToxAV* av, uint32_t friend_number,
                  << "; friend_number: " << friend_number;
 
 }
-
-#undef log_error_m
-#undef log_warn_m
-#undef log_info_m
-#undef log_verbose_m
-#undef log_debug_m
-#undef log_debug2_m

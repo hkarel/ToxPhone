@@ -1,7 +1,9 @@
 #pragma once
 
 #include "comparator.h"
-#include "kernel/communication/commands.h"
+#include "commands/commands.h"
+#include "commands/error.h"
+
 #include <QWidget>
 
 namespace Ui {
@@ -9,7 +11,7 @@ class FriendWidget;
 }
 
 using namespace std;
-using namespace communication;
+using namespace pproto;
 
 class FriendWidget : public Comparator
 {

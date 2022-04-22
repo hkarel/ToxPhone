@@ -1,17 +1,17 @@
 #pragma once
 
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/transport/base.h"
+#include "pproto/message.h"
+#include "pproto/transport/base.h"
 #include <QtCore>
 
 struct ToxConfig
 {
     bool isActive() const {return !socket.empty();}
-    void send(const communication::Message::Ptr& message) const;
+    void send(const pproto::Message::Ptr& message) const;
     void reset();
 
-    communication::SocketDescriptor socketDescriptor = {-1};
-    communication::transport::base::Socket::Ptr socket;
+    pproto::SocketDescriptor socketDescriptor = {-1};
+    pproto::transport::base::Socket::Ptr socket;
 };
 ToxConfig& toxConfig();
 

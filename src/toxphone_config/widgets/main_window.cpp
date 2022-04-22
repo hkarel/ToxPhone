@@ -8,10 +8,12 @@
 #include "shared/defmac.h"
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/version/version_number.h"
-#include "shared/qt/config/config.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+#include "shared/qt/version_number.h"
+
+#include "pproto/commands/pool.h"
 
 #include <sodium.h>
 #include <QCloseEvent>
@@ -57,8 +59,8 @@ MainWindow::MainWindow(QWidget *parent) :
     aboutClear();
     ui->labelToxPhoneConfVers->setText(productVersion().toString());
     ui->labelGitrevConf->setText(GIT_REVISION);
-    ui->labelBprotoConfVers->setText(QString("%1-%2").arg(BPROTOCOL_VERSION_LOW)
-                                                     .arg(BPROTOCOL_VERSION_HIGH));
+    ui->labelBprotoConfVers->setText(QString("%1-%2").arg(PPROTO_VERSION_LOW)
+                                                     .arg(PPROTO_VERSION_HIGH));
     ui->labelQtVersionConf->setText(QT_VERSION_STR);
     ui->labelSodiumConfVers->setText(sodium_version_string());
     ui->labelCopyright->setTextInteractionFlags(Qt::TextBrowserInteraction);
@@ -128,12 +130,12 @@ bool MainWindow::init(const tcp::Socket::Ptr& socket)
 {
     _socket = socket;
 
-    chk_connect_q(_socket.get(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
-    chk_connect_q(_socket.get(), SIGNAL(connected(communication::SocketDescriptor)),
-                  this, SLOT(socketConnected(communication::SocketDescriptor)))
-    chk_connect_q(_socket.get(), SIGNAL(disconnected(communication::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(_socket.get(), SIGNAL(connected(pproto::SocketDescriptor)),
+                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
+    chk_connect_q(_socket.get(), SIGNAL(disconnected(pproto::SocketDescriptor)),
+                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
 
     //int avatarSize = ui->labelAvatar->height();
 
@@ -177,7 +179,7 @@ void MainWindow::loadSettings()
 {
 }
 
-void MainWindow::message(const communication::Message::Ptr& message)
+void MainWindow::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -190,14 +192,14 @@ void MainWindow::message(const communication::Message::Ptr& message)
     }
 }
 
-void MainWindow::socketConnected(communication::SocketDescriptor)
+void MainWindow::socketConnected(pproto::SocketDescriptor)
 {
     QString msg = tr("Connected to %1 : %2");
     ui->labelConnectStatus->setText(msg.arg(_socket->peerPoint().address().toString())
                                        .arg(_socket->peerPoint().port()));
 }
 
-void MainWindow::socketDisconnected(communication::SocketDescriptor)
+void MainWindow::socketDisconnected(pproto::SocketDescriptor)
 {
     hide();
     ui->labelConnectStatus->clear();

@@ -7,22 +7,23 @@
 
 #include "audio/wav_file.h"
 #include "common/voice_frame.h"
-#include "kernel/communication/commands.h"
 #include "diverter/phone_diverter.h"
 
 #include "shared/list.h"
 #include "shared/defmac.h"
 #include "shared/safe_singleton.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
+#include "pproto/func_invoker.h"
+
+#include "commands/commands.h"
+#include "commands/error.h"
 
 #include <pulse/pulseaudio.h>
 #include <QtCore>
 #include <atomic>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 /**
   Класс для работы с аудио-устройствами через PulseAudio
@@ -37,10 +38,10 @@ public:
 
 signals:
     // Используется для отправки сообщения в пределах программы
-    void internalMessage(const communication::Message::Ptr&);
+    void internalMessage(const pproto::Message::Ptr&);
 
 public slots:
-    void message(const communication::Message::Ptr&);
+    void message(const pproto::Message::Ptr&);
 
     // Проигрывания звука звонка
     void playRingtone();

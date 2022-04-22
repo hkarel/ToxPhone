@@ -4,11 +4,12 @@
 #include "common/functions.h"
 
 #include "shared/logger/logger.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
 
 #include <string>
 
@@ -19,12 +20,12 @@ extern "C" {
 #include "rnnoise.h"
 }
 
-#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "VoiceFilter")
-#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "VoiceFilter")
-#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "VoiceFilter")
-#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "VoiceFilter")
-#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "VoiceFilter")
-#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "VoiceFilter")
+#define log_error_m   alog::logger().error  (alog_line_location, "VoiceFilter")
+#define log_warn_m    alog::logger().warn   (alog_line_location, "VoiceFilter")
+#define log_info_m    alog::logger().info   (alog_line_location, "VoiceFilter")
+#define log_verbose_m alog::logger().verbose(alog_line_location, "VoiceFilter")
+#define log_debug_m   alog::logger().debug  (alog_line_location, "VoiceFilter")
+#define log_debug2_m  alog::logger().debug2 (alog_line_location, "VoiceFilter")
 
 #define RNNOISE_FRAME_SIZE 480
 
@@ -35,8 +36,8 @@ VoiceFilters& voiceFilters()
 
 VoiceFilters::VoiceFilters()
 {
-    chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
     #define FUNC_REGISTRATION(COMMAND) \
         _funcInvoker.registration(command:: COMMAND, &VoiceFilters::command_##COMMAND, this);
@@ -214,7 +215,7 @@ void VoiceFilters::run()
     log_info_m << "Stopped";
 }
 
-void VoiceFilters::message(const communication::Message::Ptr& message)
+void VoiceFilters::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -248,7 +249,7 @@ void VoiceFilters::command_AudioNoise(const Message::Ptr& message)
         value = "rnnoise";
 
     config::state().setValue("audio.streams.noise_filter", value);
-    config::state().save();
+    config::state().saveFile();
 
     _filterChanged = true;
 }
@@ -266,10 +267,3 @@ data::AudioNoise::FilterType VoiceFilters::rereadFilterType()
 
     return filterType;
 }
-
-#undef log_error_m
-#undef log_warn_m
-#undef log_info_m
-#undef log_verbose_m
-#undef log_debug_m
-#undef log_debug2_m

@@ -5,7 +5,6 @@ Product {
     name: "PackageBuild"
 
     Depends { name: "cpp" }
-    Depends { name: "cppstdlib" }
     Depends { name: "lib.sodium" }
 
     lib.sodium.version:   project.sodiumVersion
@@ -14,7 +13,7 @@ Product {
     Probe {
         id: productProbe
         property string projectBuildDirectory: project.buildDirectory
-        property string cppstdlibPath: cppstdlib.path
+      //property string cppstdlibPath: cppstdlib.path
 
         property var libs: [
             lib.sodium,
@@ -30,10 +29,10 @@ Product {
                     }
                 }
 
-                if (!cppstdlibPath.startsWith("/usr/lib", 0)) {
-                    file.writeLine(cppstdlibPath + "/" + "libstdc++.so*");
-                    file.writeLine(cppstdlibPath + "/" + "libgcc_s.so*");
-                }
+                //if (!cppstdlibPath.startsWith("/usr/lib", 0)) {
+                //    file.writeLine(cppstdlibPath + "/" + "libstdc++.so*");
+                //    file.writeLine(cppstdlibPath + "/" + "libgcc_s.so*");
+                //}
             }
             finally {
                 file.close();

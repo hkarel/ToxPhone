@@ -16,3 +16,6 @@
 [submodule "src/3rdparty/rnnoise"]
 	path = src/3rdparty/rnnoise
 	url = https://github.com/xiph/rnnoise.git
+[submodule "src/pproto/pproto"]
+	path = src/pproto/pproto
+	url = https://github.com/hkarel/PProtoCpp.git

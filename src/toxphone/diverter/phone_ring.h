@@ -20,7 +20,7 @@
 
 #include "shared/defmac.h"
 #include "shared/safe_singleton.h"
-#include "shared/qt/thread/qthreadex.h"
+#include "shared/qt/qthreadex.h"
 #include <atomic>
 
 class PhoneDiverter;

@@ -133,11 +133,12 @@ maintainer-script-empty \
 ${build_dir}/$package_name
 set -e
 
-if [ "$build_deb_package" = "yes" ]; then
+if [ "$build_packages" = "yes" ]; then
     cd $script_dir
     mkdir -p packages
     echo "Copying the file $package_name to directory ./packages"
     cp -f ${build_dir}/$package_name ./packages
+    cp -f ${build_dir}/$package_name ./packages/last
 fi
 
 if [ "$install_toxphone" = "yes" ]; then

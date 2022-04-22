@@ -5,13 +5,14 @@ ToxPhoneBase {
     name: "ToxPhone Project"
 
     references: [
-        "setup/packege_build.qbs",
         "src/3rdparty/3rdparty.qbs",
-        "src/yaml/yaml.qbs",
+        "src/commands/commands.qbs",
         "src/shared/shared.qbs",
-        "src/kernel/kernel.qbs",
+        "src/pproto/pproto.qbs",
         "src/toxphone/toxphone.qbs",
         "src/toxphone_config/toxphone_config.qbs",
+        "src/yaml/yaml.qbs",
+        "setup/packege_build.qbs",
         //"src/examples/example2.qbs",
         //"src/examples/example3.qbs",
 

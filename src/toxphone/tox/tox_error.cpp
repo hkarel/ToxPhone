@@ -1,15 +1,15 @@
 #include "tox_error.h"
-#include "kernel/communication/error.h"
+#include "commands/error.h"
 
 #include <QtGlobal>
 #include <QObject>
 
-using namespace communication;
+using namespace pproto;
 
 static const char* unknown_error  = QT_TRANSLATE_NOOP("ToxError", "Unknown error");
 static const char* return_success = QT_TRANSLATE_NOOP("ToxError", "The function returned successfully");
 
-communication::data::MessageError toxError(TOX_ERR_NEW code)
+pproto::data::MessageError toxError(TOX_ERR_NEW code)
 {
     const char* msg;
     data::MessageError err {error::tox_err_new};
@@ -104,7 +104,7 @@ communication::data::MessageError toxError(TOX_ERR_NEW code)
     return err;
 }
 
-communication::data::MessageError toxError(TOXAV_ERR_CALL code)
+pproto::data::MessageError toxError(TOXAV_ERR_CALL code)
 {
     const char* msg;
     data::MessageError err {error::toxav_err_call};
@@ -171,7 +171,7 @@ communication::data::MessageError toxError(TOXAV_ERR_CALL code)
     return err;
 }
 
-communication::data::MessageError toxError(TOXAV_ERR_ANSWER code)
+pproto::data::MessageError toxError(TOXAV_ERR_ANSWER code)
 {
     const char* msg;
     data::MessageError err {error::toxav_err_answer};
@@ -232,7 +232,7 @@ communication::data::MessageError toxError(TOXAV_ERR_ANSWER code)
     return err;
 }
 
-communication::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
+pproto::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
 {
     const char* msg;
     data::MessageError err {error::toxav_err_call_control};
@@ -288,7 +288,7 @@ communication::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
     return err;
 }
 
-communication::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
+pproto::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
 {
     const char* msg;
     data::MessageError err {error::toxav_err_send_frame};
@@ -366,7 +366,7 @@ communication::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
     return err;
 }
 
-communication::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
+pproto::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
 {
     const char* msg;
     data::MessageError err {error::tox_err_friend_custom_packet};
@@ -443,7 +443,7 @@ communication::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
     return err;
 }
 
-communication::data::MessageError toxError(TOX_ERR_FILE_SEND code)
+pproto::data::MessageError toxError(TOX_ERR_FILE_SEND code)
 {
     const char* msg;
     data::MessageError err {error::tox_err_file_send};
@@ -505,7 +505,7 @@ communication::data::MessageError toxError(TOX_ERR_FILE_SEND code)
     return err;
 }
 
-communication::data::MessageError toxError(TOX_ERR_FILE_SEND_CHUNK code)
+pproto::data::MessageError toxError(TOX_ERR_FILE_SEND_CHUNK code)
 {
     const char* msg;
     data::MessageError err {error::tox_err_file_send_chunk};

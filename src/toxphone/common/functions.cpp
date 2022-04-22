@@ -7,7 +7,7 @@ ToxConfig& toxConfig()
     return ::safe_singleton<ToxConfig>();
 }
 
-void ToxConfig::send(const communication::Message::Ptr& message) const
+void ToxConfig::send(const pproto::Message::Ptr& message) const
 {
     if (socket)
         socket->send(message);

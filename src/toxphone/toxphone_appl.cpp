@@ -6,21 +6,23 @@
 #include "audio/audio_dev.h"
 
 #include "shared/logger/logger.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
-#include "shared/qt/version/version_number.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+#include "shared/qt/version_number.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
 
 #include <sodium.h>
 #include <string.h>
 
-#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "Application")
-#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "Application")
-#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "Application")
-#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "Application")
-#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "Application")
-#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "Application")
+#define log_error_m   alog::logger().error  (alog_line_location, "Application")
+#define log_warn_m    alog::logger().warn   (alog_line_location, "Application")
+#define log_info_m    alog::logger().info   (alog_line_location, "Application")
+#define log_verbose_m alog::logger().verbose(alog_line_location, "Application")
+#define log_debug_m   alog::logger().debug  (alog_line_location, "Application")
+#define log_debug2_m  alog::logger().debug2 (alog_line_location, "Application")
 
 volatile bool Application::_stop = false;
 std::atomic_int Application::_exitCode = {0};
@@ -35,15 +37,15 @@ Application::Application(int &argc, char **argv)
     sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
     sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
 
-    chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
-    chk_connect_q(&tcp::listener(), SIGNAL(socketConnected(communication::SocketDescriptor)),
-                  this, SLOT(socketConnected(communication::SocketDescriptor)))
-    chk_connect_q(&tcp::listener(), SIGNAL(socketDisconnected(communication::SocketDescriptor)),
-                  this, SLOT(socketDisconnected(communication::SocketDescriptor)))
+    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), SIGNAL(socketConnected(pproto::SocketDescriptor)),
+                  this, SLOT(socketConnected(pproto::SocketDescriptor)))
+    chk_connect_q(&tcp::listener(), SIGNAL(socketDisconnected(pproto::SocketDescriptor)),
+                  this, SLOT(socketDisconnected(pproto::SocketDescriptor)))
 
-    chk_connect_q(&udp::socket(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(&udp::socket(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
 
     #define FUNC_REGISTRATION(COMMAND) \
@@ -187,7 +189,7 @@ void Application::command_ToxPhoneInfo(const Message::Ptr& message)
         if (!toxPhoneInfo.info.trimmed().isEmpty())
         {
             config::state().setValue("info_string", toxPhoneInfo.info.trimmed());
-            config::state().save();
+            config::state().saveFile();
         }
         Message::Ptr m = createMessage(toxPhoneInfo);
         toxConfig().send(m);
@@ -206,7 +208,7 @@ void Application::command_ToxPhoneInfo(const Message::Ptr& message)
     QString info = "Tox Phone Info";
     config::state().getValue("info_string", info, false);
 
-    int port = 33610;
+    int port = 33601;
     config::base().getValue("config_connection.port", port);
 
     data::ToxPhoneInfo toxPhoneInfo;
@@ -346,7 +348,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
         if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::Active)
         {
             config::state().setValue("diverter.active", diverterChange.active);
-            if (!config::state().save())
+            if (!config::state().saveFile())
             {
                 error.code = failed_save_diverter_state__code;
                 error.description = tr(failed_save_diverter_state);
@@ -369,7 +371,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
                         (diverterChange.defaultMode == data::DiverterDefaultMode::Pstn)
                         ? "PSTN" : "USB";
                 config::state().setValue("diverter.default_mode", defaultMode);
-                if (!config::state().save())
+                if (!config::state().saveFile())
                 {
                     error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
@@ -380,7 +382,7 @@ void Application::command_DiverterChange(const Message::Ptr& message)
             else if (diverterChange.changeFlag == data::DiverterChange::ChangeFlag::RingTone)
             {
                 config::state().setValue("diverter.ring_tone", diverterChange.ringTone);
-                if (!config::state().save())
+                if (!config::state().saveFile())
                 {
                     error.code = failed_save_diverter_state__code;
                     error.description = tr(failed_save_diverter_state);
@@ -464,7 +466,7 @@ void Application::command_ConfigAuthorizationRequest(const Message::Ptr& message
         closeConnection.description = failed.description;
 
         Message::Ptr m = createMessage(closeConnection);
-        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        m->appendDestinationSocket(message->socketDescriptor());
         tcp::listener().send(m);
         return;
     }
@@ -492,7 +494,7 @@ void Application::command_ConfigAuthorizationRequest(const Message::Ptr& message
                                                   .arg(configAuthorizationRequest.publicKey.length());
 
         Message::Ptr m = createMessage(closeConnection);
-        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        m->appendDestinationSocket(message->socketDescriptor());
         tcp::listener().send(m);
         return;
     }
@@ -597,7 +599,7 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
         tcp::listener().send(answer);
 
         Message::Ptr m = createMessage(closeConnection);
-        m->destinationSocketDescriptors().insert(message->socketDescriptor());
+        m->appendDestinationSocket(message->socketDescriptor());
         tcp::listener().send(m);
         return;
     }
@@ -676,7 +678,7 @@ void Application::command_ConfigSavePassword(const Message::Ptr& message)
         {
             config::state().remove("config_authorization.password", false);
         }
-        config::state().save();
+        config::state().saveFile();
 
         Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(configSavePassword, answer);
@@ -1043,10 +1045,3 @@ void Application::phoneDiverterHandset(PhoneDiverter::Handset handset)
         }
     }
 }
-
-#undef log_error_m
-#undef log_warn_m
-#undef log_info_m
-#undef log_verbose_m
-#undef log_debug_m
-#undef log_debug2_m

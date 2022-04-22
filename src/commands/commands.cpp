@@ -1,7 +1,7 @@
 #include "commands.h"
-#include "shared/qt/communication/commands_pool.h"
+#include "pproto/commands/pool.h"
 
-namespace communication {
+namespace pproto {
 namespace command {
 
 #define REGISTRY_COMMAND_SINGLPROC(COMMAND, UUID) \
@@ -287,17 +287,17 @@ void DhtConnectStatus::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-int AudioDevInfo::Find::operator()(const char* devName, const AudioDevInfo* item2, void*) const
+int AudioDevInfo::Find::operator()(const char* devName, const AudioDevInfo* item2) const
 {
     return strcmp(devName, item2->name.constData());
 }
 
-int AudioDevInfo::Find::operator()(const QByteArray* devName, const AudioDevInfo* item2, void*) const
+int AudioDevInfo::Find::operator()(const QByteArray* devName, const AudioDevInfo* item2) const
 {
     return strcmp(devName->constData(), item2->name.constData());
 }
 
-int AudioDevInfo::Find::operator()(const quint32* devIndex, const AudioDevInfo* item2, void*) const
+int AudioDevInfo::Find::operator()(const quint32* devIndex, const AudioDevInfo* item2) const
 {
     return LIST_COMPARE_ITEM(*devIndex, item2->index);
 }
@@ -690,4 +690,4 @@ void DiverterHandset::fromRaw(const bserial::RawVector& vect)
 }
 
 } // namespace data
-} // namespace communication
+} // namespace pproto

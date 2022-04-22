@@ -11,20 +11,12 @@ Product {
     destinationDirectory: "./bin"
 
     Depends { name: "cpp" }
-    Depends { name: "cppstdlib" }
-    Depends { name: "lib.sodium" }
-    Depends { name: "Yaml" }
+    Depends { name: "Commands" }
+    Depends { name: "PProto" }
     Depends { name: "SharedLib" }
-    Depends { name: "Kernel" }
-    Depends { name: "Qt"; submodules: ["core", "network"] }
-    Depends {
-        condition: Qt.core.versionMajor < 5
-        name: "Qt.gui";
-    }
-    Depends {
-        condition: Qt.core.versionMajor >= 5
-        name: "Qt.widgets";
-    }
+    Depends { name: "Yaml" }
+    Depends { name: "lib.sodium" }
+    Depends { name: "Qt"; submodules: ["core", "network", "widgets"] }
 
     lib.sodium.version:   project.sodiumVersion
     lib.sodium.useSystem: project.useSystemSodium
@@ -48,7 +40,6 @@ Product {
     )
 
     cpp.rpaths: QbsUtl.concatPaths(
-        cppstdlib.path,
         "/opt/toxphone/lib"
         //"$ORIGIN/../lib"
     )

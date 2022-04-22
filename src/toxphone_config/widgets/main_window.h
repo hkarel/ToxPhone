@@ -1,9 +1,10 @@
 #pragma once
 
-#include "shared/qt/communication/message.h"
-#include "shared/qt/communication/func_invoker.h"
-#include "shared/qt/communication/transport/tcp.h"
-#include "kernel/communication/commands.h"
+#include "commands/commands.h"
+#include "commands/error.h"
+
+#include "pproto/func_invoker.h"
+#include "pproto/transport/tcp.h"
 
 #include <QLabel>
 #include <QSlider>
@@ -13,8 +14,8 @@
 #include <QMainWindow>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 namespace Ui {
 class MainWindow;
@@ -36,9 +37,9 @@ public:
     void loadSettings();
 
 private slots:
-    void message(const communication::Message::Ptr&);
-    void socketConnected(communication::SocketDescriptor);
-    void socketDisconnected(communication::SocketDescriptor);
+    void message(const pproto::Message::Ptr&);
+    void socketConnected(pproto::SocketDescriptor);
+    void socketDisconnected(pproto::SocketDescriptor);
 
     void on_btnDisconnect_clicked(bool);
     void on_btnSaveProfile_clicked(bool);

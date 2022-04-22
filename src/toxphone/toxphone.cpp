@@ -5,23 +5,26 @@
 #include "common/voice_frame.h"
 #include "common/voice_filters.h"
 #include "diverter/phone_diverter.h"
-#include "kernel/communication/commands.h"
+
+#include "commands/commands.h"
+#include "commands/error.h"
 
 #include "shared/defmac.h"
 #include "shared/utils.h"
 #include "shared/logger/logger.h"
+#include "shared/logger/format.h"
 #include "shared/logger/config.h"
-#include "shared/qt/quuidex.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_base.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
-#include "shared/qt/communication/transport/udp.h"
-#include "shared/qt/compression/qlzma.h"
-#include "shared/qt/compression/qppmd.h"
-#include "shared/qt/version/version_number.h"
+#include "shared/config/appl_conf.h"
+//#include "shared/qt/compression/qlzma.h"
+//#include "shared/qt/compression/qppmd.h"
+#include "shared/qt/logger_operators.h"
+#include "shared/qt/version_number.h"
 #include "shared/thread/thread_pool.h"
+
+#include "pproto/commands/base.h"
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
+#include "pproto/transport/udp.h"
 
 #if defined(__MINGW32__)
 #include <windows.h>
@@ -38,8 +41,8 @@
 #include <unistd.h>
 
 using namespace std;
-using namespace communication;
-using namespace communication::transport;
+using namespace pproto;
+using namespace pproto::transport;
 
 bool enable_toxcore_log = false;
 
@@ -111,7 +114,7 @@ void helpInfo(/*const char * binary*/)
     log_info << "ToxPhone client"
              << " (version: " << productVersion().toString()
              << "; binary protocol version: "
-             << BPROTOCOL_VERSION_LOW << "-" << BPROTOCOL_VERSION_HIGH
+             << PPROTO_VERSION_LOW << "-" << PPROTO_VERSION_HIGH
              << "; gitrev: " << GIT_REVISION << ")";
     log_info << "Copyright (c) 2018 Pavel Karelin <hkarel@yandex.ru>";
     log_info << "ToxPhone is used and distributed under the terms of the GNU General Public License Version 3"
@@ -314,13 +317,13 @@ int main(int argc, char *argv[])
         // Test
         //const QUuidEx cmd = CommandsPool::Registry{"917b1e18-4a5e-4432-b6d6-457a666ef2b1", "IncomingConfigConnection1", true};
 
-        if (!communication::command::pool().checkUnique())
+        if (!pproto::command::pool().checkUnique())
         {
             stopProgram();
             return 1;
         }
 
-        if (!communication::error::checkUnique())
+        if (!pproto::error::checkUnique())
         {
             stopProgram();
             return 1;
@@ -351,18 +354,19 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // Инициализация communication::listener::tcp
+        // Инициализация pproto::listener::tcp
         QHostAddress hostAddress = QHostAddress::Any;
-        QString hostAddressStr;
-        if (config::base().getValue("config_connection.address", hostAddressStr))
-        {
-            if (hostAddressStr.toLower().trimmed() == "localhost")
-                hostAddress = QHostAddress::LocalHost;
-            else if (hostAddressStr.toLower().trimmed() == "any")
-                hostAddress = QHostAddress::Any;
-            else
-                hostAddress = QHostAddress(hostAddressStr);
-        }
+        config::readHostAddress("config_connection.address", hostAddress);
+//        QString hostAddressStr;
+//        if (config::base().getValue("config_connection.address", hostAddressStr))
+//        {
+//            if (hostAddressStr.toLower().trimmed() == "localhost")
+//                hostAddress = QHostAddress::LocalHost;
+//            else if (hostAddressStr.toLower().trimmed() == "any")
+//                hostAddress = QHostAddress::Any;
+//            else
+//                hostAddress = QHostAddress(hostAddressStr);
+//        }
 
         int port = 33601;
         config::base().getValue("config_connection.port", port);
@@ -372,7 +376,7 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        if (!udp::socket().init({QHostAddress::Any, port}))
+        if (!udp::socket().init({QHostAddress::AnyIPv4, port}))
         {
             stopProgram();
             return 1;
@@ -395,34 +399,34 @@ int main(int argc, char *argv[])
 
         qRegisterMetaType<VoiceFrameInfo::Ptr>("VoiceFrameInfo::Ptr");
 
-        chk_connect_d(&toxNet(),   SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
+        chk_connect_d(&toxNet(),   SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &toxCall(),    SLOT(message(pproto::Message::Ptr)))
 
         chk_connect_q(&toxCall(),  SIGNAL(startVoice(VoiceFrameInfo::Ptr)),
                       &audioDev(),   SLOT(startVoice(VoiceFrameInfo::Ptr)))
 
-        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &audioDev(),   SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &audioDev(),   SLOT(message(pproto::Message::Ptr)))
 
-        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &appl,         SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&toxCall(),  SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &appl,         SLOT(message(pproto::Message::Ptr)))
 
-        chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxCall(),    SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&audioDev(), SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &toxCall(),    SLOT(message(pproto::Message::Ptr)))
 
-        chk_connect_q(&audioDev(), SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &appl,         SLOT(message(communication::Message::Ptr)))
+        chk_connect_q(&audioDev(), SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &appl,         SLOT(message(pproto::Message::Ptr)))
 
-        chk_connect_d(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxNet(),          SLOT(message(communication::Message::Ptr)))
-        chk_connect_d(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &toxCall(),         SLOT(message(communication::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &audioDev(),        SLOT(message(communication::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &voiceFilters(),    SLOT(message(communication::Message::Ptr)))
-        chk_connect_q(&appl,            SIGNAL(internalMessage(communication::Message::Ptr)),
-                      &appl,              SLOT(message(communication::Message::Ptr)))
+        chk_connect_d(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &toxNet(),          SLOT(message(pproto::Message::Ptr)))
+        chk_connect_d(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &toxCall(),         SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &audioDev(),        SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &voiceFilters(),    SLOT(message(pproto::Message::Ptr)))
+        chk_connect_q(&appl,            SIGNAL(internalMessage(pproto::Message::Ptr)),
+                      &appl,              SLOT(message(pproto::Message::Ptr)))
 
         chk_connect_q(&phoneDiverter(), SIGNAL(attached()),
                       &appl,              SLOT(phoneDiverterAttached()))
@@ -469,7 +473,7 @@ int main(int argc, char *argv[])
         appl.initPhoneDiverter();
         ret = appl.exec();
 
-        communication::data::ApplShutdown applShutdown;
+        pproto::data::ApplShutdown applShutdown;
         applShutdown.applId = Application::applId();
 
         network::Interface::List netInterfaces = network::getInterfaces();

@@ -1,7 +1,7 @@
 #include "tox_logger.h"
 #include "tox_func.h"
 
-#include "shared/qt/logger/logger_operators.h"
+#include "shared/qt/logger_operators.h"
 #include "toxcore/logger.h"
 #include <stdarg.h>
 

@@ -9,12 +9,13 @@ mem_size=$(free -m | sed '2!d' | sed 's/  */ /g' | cut -d' ' -f2)
 [ "$mem_size" -lt 2000 ] && jobs=3
 echo "jobs: $jobs"
 
+SUDO=
 rebuild=
 print_help=
 build_mode=release
 need_packages=
 
-build_deb_package=
+build_packages=
 
 install_toxphone=
 install_toxphoneconf=
@@ -69,7 +70,7 @@ do
             shift
             ;;
         -D)
-            build_deb_package=yes
+            build_packages=yes
             shift
             ;;
         -i)
@@ -152,9 +153,10 @@ function check_need_package()
 }
 
 need_packages=
-check_need_package 'qt4-default'
+check_need_package 'qt5-default'
 check_need_package 'libopus-dev'
 check_need_package 'libpulse-dev'
+check_need_package 'libvpx-dev'
 check_need_package 'libusb-dev'
 check_need_package 'libconfig-dev'
 
@@ -163,16 +165,16 @@ if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
     check_need_package 'hashdeep'
 fi
 
-if [ "$build_deb_package" = "yes" \
+if [ "$build_packages" = "yes" \
      -o "$install_toxphone" = "yes" \
      -o "$install_toxphoneconf" = "yes" ]
 then
-    # Required packages
+    # Необходимые пакеты
     check_need_package 'fakeroot'
-    check_need_package 'md5deep'
     check_need_package 'debconf'
     check_need_package 'debhelper'
     check_need_package 'lintian'
+    check_need_package 'hashdeep'
 fi
 
 if [ -n "$need_packages" ]; then
@@ -181,26 +183,31 @@ if [ -n "$need_packages" ]; then
     exit 1
 fi
 
-if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
+if [ ! -x /usr/bin/md5deep ]; then
     if [ ! -L /usr/local/bin/md5deep ]; then
+        echo "Need create symlink for md5deep"
         sudo ln -sf /usr/bin/hashdeep /usr/local/bin/md5deep
     fi
 fi
 
-git_branch=$(git status -b -s | head -n1 | sed 's/\./ /' | cut -d' ' -f2)
-build_subdir=${build_mode}-${git_branch}
-build_dir=./build/$build_subdir
+git_branch=$(git status -b -s | head -n1 | sed 's/\./ /' | cut -d' ' -f2 | sed 's/\//_/g')
+build_config=${build_mode}-${git_branch}
+build_subdir=${build_config}
+build_dir=$script_dir/build/$build_subdir
 
-[ "$rebuild" = "yes"  ] && rm -rf ./build/$build_subdir
+[ "$rebuild" = "yes"  ] && rm -rf $build_dir
 
 QBS=$(which qbs)
 
-res=$($QBS config --list profiles.toxphone)
-if [ -z "$res" ]; then
-    echo "Error: Qbs profile toxthone not found"
-    exit 1
-fi
+# res=$($QBS config --list profiles.toxphone)
+# if [ -z "$res" ]; then
+#     echo "Error: Qbs profile toxthone not found"
+#     exit 1
+# fi
 
+#
+# Сборка проекта
+#
 set -e
 $QBS build \
     --file toxphone_project.qbs \
@@ -210,37 +217,51 @@ $QBS build \
     --no-install \
     qbs.buildVariant:$build_mode \
     project.printPackegeBuildInfo:true \
-    config:$build_subdir \
-    profile:toxphone
+    config:$build_subdir
+    #profile:toxphone
 
+echo "Build is complete (configuration: ${build_config})"
 
-if [ "$build_deb_package" != "yes" ]; then
-    [ "$install_toxphone" != "yes" -a "$install_toxphoneconf" != "yes" ] && exit 0
+if [ "$build_packages" != "yes" ]; then
+    [ "$install_toxphone" != "yes" \
+    -a "$install_toxphoneconf" != "yes" ] && exit 0
 fi
 
 #
-# Создание DEB пакета
+# Создание deb-пакетов
 #
 package_vers=$(head -n1 VERSION)
-echo "package_vers: $package_vers"
-
-#package_date=$(date +%Y%m%d%H%M)
 package_date=$(date +%Y%m%d)
-echo "package_date: $package_date"
-
 gitrev=$(git log -1 --pretty=%h)
-echo "gitrev: $gitrev"
+package_release=${package_date}git${gitrev}
+full_package_vers=${package_vers}-${package_release}
+
+echo "---"
+echo "product_name ........ $product_name"
+echo "product_dir ......... $product_dir"
+echo "package_vers ........ $package_vers"
+echo "package_date ........ $package_date"
+echo "gitrev .............. $gitrev"
+echo "package_release ..... $package_release"
+echo "full_package_vers ... $full_package_vers"
+
+mkdir -p $script_dir/packages/last
+rm -rf   $script_dir/packages/last/*
 
 #
 # Формирование deb-пакета для toxphone
 #
-if [ "$build_deb_package" = "yes" -o "$install_toxphone" = "yes" ]; then
+if [ "$build_packages" = "yes" \
+     -o "$install_toxphone" = "yes" ]
+then
     . $script_dir/setup/deb-toxphone
 fi
 
 #
 # Формирование deb-пакета для toxphone-config
 #
-if [ "$build_deb_package" = "yes" -o "$install_toxphoneconf" = "yes" ]; then
+if [ "$build_packages" = "yes" \
+     -o "$install_toxphoneconf" = "yes" ]
+then
     . $script_dir/setup/deb-toxphone-config
 fi

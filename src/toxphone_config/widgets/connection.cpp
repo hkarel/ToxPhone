@@ -24,7 +24,7 @@ void ConnectionWidget::setInfo(const QString& info)
         ui->labelInfo->setText(info);
 }
 
-void ConnectionWidget::setHostPoint(const communication::HostPoint& val)
+void ConnectionWidget::setHostPoint(const pproto::HostPoint& val)
 {
     _hostPoint = val;
     QString s = "%1 : %2";

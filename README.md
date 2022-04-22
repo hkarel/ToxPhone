@@ -23,3 +23,4 @@ ToxPhone - это программно аппаратный клиент для 
 <img src="https://raw.githubusercontent.com/hkarel/ToxPhone/master/doc/ToxPhoneConfig_5.png"/><br>
 <img src="https://raw.githubusercontent.com/hkarel/ToxPhone/master/doc/ToxPhoneConfig_6.png"/><br>
 </p>
+.

@@ -1,5 +1,4 @@
 import qbs
-import GccUtl
 
 Product {
     type: "staticlibrary"
@@ -9,7 +8,6 @@ Product {
 
     Depends { name: "cpp" }
 
-    cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.cFlags: [
         "-Wall",
         "-Wextra",

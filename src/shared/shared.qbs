@@ -1,18 +1,16 @@
 import qbs
-import GccUtl
 import QbsUtl
 
 Product {
-    type: "staticlibrary"
-
     name: "SharedLib"
     targetName: "shared"
+
+    type: "staticlibrary"
 
     Depends { name: "cpp" }
     Depends { name: "Yaml" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
 
-    cpp.archiverName: GccUtl.ar(cpp.toolchainPathPrefix)
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags //.concat(["-Wpedantic"]);
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
@@ -27,57 +25,27 @@ Product {
     cpp.systemIncludePaths: Qt.core.cpp.includePaths
 
     files: [
+        "shared/config/appl_conf.cpp",
+        "shared/config/appl_conf.h",
+        "shared/config/logger_conf.cpp",
+        "shared/config/logger_conf.h",
         "shared/config/yaml_config.cpp",
         "shared/config/yaml_config.h",
         "shared/logger/config.cpp",
         "shared/logger/config.h",
+        "shared/logger/format.h",
         "shared/logger/logger.cpp",
         "shared/logger/logger.h",
-        "shared/qt/communication/serialize/bproto.cpp",
-        "shared/qt/communication/serialize/bproto.h",
-        "shared/qt/communication/serialize/functions.cpp",
-        "shared/qt/communication/serialize/functions.h",
-        "shared/qt/communication/serialize/sresult.cpp",
-        "shared/qt/communication/serialize/sresult.h",
-        "shared/qt/communication/transport/base.cpp",
-        "shared/qt/communication/transport/base.h",
-        //"shared/qt/communication/transport/local.cpp",
-        //"shared/qt/communication/transport/local.h",
-        "shared/qt/communication/transport/tcp.cpp",
-        "shared/qt/communication/transport/tcp.h",
-        "shared/qt/communication/transport/udp.cpp",
-        "shared/qt/communication/transport/udp.h",
-        "shared/qt/communication/bserialize_space.h",
-        "shared/qt/communication/commands_base.cpp",
-        "shared/qt/communication/commands_base.h",
-        "shared/qt/communication/commands_pool.cpp",
-        "shared/qt/communication/commands_pool.h",
-        "shared/qt/communication/func_invoker.h",
-        "shared/qt/communication/host_point.cpp",
-        "shared/qt/communication/host_point.h",
-        "shared/qt/communication/logger_operators.cpp",
-        "shared/qt/communication/logger_operators.h",
-        "shared/qt/communication/message.cpp",
-        "shared/qt/communication/message.h",
-        "shared/qt/communication/utils.cpp",
-        "shared/qt/communication/utils.h",
-        //"shared/qt/compression/qlzma.cpp",
-        //"shared/qt/compression/qlzma.h",
-        //"shared/qt/compression/qppmd.cpp",
-        //"shared/qt/compression/qppmd.h",
-        "shared/qt/config/config.cpp",
-        "shared/qt/config/config.h",
-        "shared/qt/logger/logger_operators.cpp",
-        "shared/qt/logger/logger_operators.h",
         "shared/qt/network/interfaces.cpp",
         "shared/qt/network/interfaces.h",
-        "shared/qt/thread/qthreadex.cpp",
-        "shared/qt/thread/qthreadex.h",
-        "shared/qt/version/version_number.cpp",
-        "shared/qt/version/version_number.h",
-        "shared/qt/qhashex.h",
+        "shared/qt/logger_operators.cpp",
+        "shared/qt/logger_operators.h",
+        "shared/qt/qthreadex.cpp",
+        "shared/qt/qthreadex.h",
         "shared/qt/quuidex.h",
         "shared/qt/stream_init.h",
+        "shared/qt/version_number.cpp",
+        "shared/qt/version_number.h",
         "shared/thread/thread_base.cpp",
         "shared/thread/thread_base.h",
         "shared/thread/thread_pool.cpp",

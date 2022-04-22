@@ -7,21 +7,23 @@
 #include "shared/simple_ptr.h"
 #include "shared/spin_locker.h"
 #include "shared/logger/logger.h"
-#include "shared/qt/config/config.h"
-#include "shared/qt/logger/logger_operators.h"
-#include "shared/qt/communication/commands_pool.h"
-#include "shared/qt/communication/transport/tcp.h"
+#include "shared/logger/format.h"
+#include "shared/config/appl_conf.h"
+#include "shared/qt/logger_operators.h"
+
+#include "pproto/commands/pool.h"
+#include "pproto/transport/tcp.h"
 
 #include <string>
 #include <string.h>
 #include <type_traits>
 
-#define log_error_m   alog::logger().error  (__FILE__, __func__, __LINE__, "AudioDev")
-#define log_warn_m    alog::logger().warn   (__FILE__, __func__, __LINE__, "AudioDev")
-#define log_info_m    alog::logger().info   (__FILE__, __func__, __LINE__, "AudioDev")
-#define log_verbose_m alog::logger().verbose(__FILE__, __func__, __LINE__, "AudioDev")
-#define log_debug_m   alog::logger().debug  (__FILE__, __func__, __LINE__, "AudioDev")
-#define log_debug2_m  alog::logger().debug2 (__FILE__, __func__, __LINE__, "AudioDev")
+#define log_error_m   alog::logger().error  (alog_line_location, "AudioDev")
+#define log_warn_m    alog::logger().warn   (alog_line_location, "AudioDev")
+#define log_info_m    alog::logger().info   (alog_line_location, "AudioDev")
+#define log_verbose_m alog::logger().verbose(alog_line_location, "AudioDev")
+#define log_debug_m   alog::logger().debug  (alog_line_location, "AudioDev")
+#define log_debug2_m  alog::logger().debug2 (alog_line_location, "AudioDev")
 
 struct MainloopLocker
 {
@@ -87,8 +89,8 @@ AudioDev& audioDev()
 
 AudioDev::AudioDev()
 {
-    chk_connect_q(&tcp::listener(), SIGNAL(message(communication::Message::Ptr)),
-                  this, SLOT(message(communication::Message::Ptr)))
+    chk_connect_q(&tcp::listener(), SIGNAL(message(pproto::Message::Ptr)),
+                  this, SLOT(message(pproto::Message::Ptr)))
 
     _palybackAudioStreamInfo.type = data::AudioStreamInfo::Type::Playback;
     _voiceAudioStreamInfo.type    = data::AudioStreamInfo::Type::Voice;
@@ -658,7 +660,7 @@ void AudioDev::saveAudioStreamVolume(data::AudioStreamInfo& streamInfo, const ch
         key = string("audio.streams.") + confKey;
         config::state().setValue(key, streamInfo.volume);
     }
-    config::state().save();
+    config::state().saveFile();
 }
 
 bool AudioDev::start()
@@ -686,7 +688,7 @@ bool AudioDev::stop(unsigned long /*time*/)
     return true;
 }
 
-void AudioDev::message(const communication::Message::Ptr& message)
+void AudioDev::message(const pproto::Message::Ptr& message)
 {
     if (message->processed())
         return;
@@ -857,8 +859,8 @@ void AudioDev::command_AudioDevChange(const Message::Ptr& message)
             (audioDevInfo->type == data::AudioDevType::Sink)
             ? "audio.devices.playback_default"
             : "audio.devices.record_default";
-        config::state().setValue(confName, audioDevInfo->name.constData());
-        config::state().save();
+        config::state().setValue(confName, audioDevInfo->name.toStdString() /*.constData()*/);
+        config::state().saveFile();
 
         alog::Line logLine = log_verbose_m
             << ((audioDevInfo->type == data::AudioDevType::Sink)
@@ -908,7 +910,7 @@ void AudioDev::command_AudioStreamInfo(const Message::Ptr& message)
                        saveAudioStreamVolume(_palybackAudioStreamInfo, "playback_volume");
                     */
                     config::state().setValue("audio.streams.playback_volume", _palybackAudioStreamInfo.volume);
-                    config::state().save();
+                    config::state().saveFile();
                 }
             }
             else
@@ -1197,9 +1199,9 @@ void AudioDev::updateStartVolume(const data::AudioDevInfo& audioDevInfo)
     if (!knownDevices.contains(audioDevInfo.name))
     {
         knownDevices.append(audioDevInfo.name);
-        config::state().setValue("audio.known_devices", knownDevices,
-                                 YAML::EmitterStyle::Block);
-        config::state().save();
+        config::state().setValue("audio.known_devices", knownDevices);
+        config::state().setNodeStyle("audio.known_devices", YAML::EmitterStyle::Block);
+        config::state().saveFile();
 
         data::AudioDevChange audioDevChange;
         audioDevChange.changeFlag = data::AudioDevChange::ChangeFlag::Volume;
@@ -1210,7 +1212,7 @@ void AudioDev::updateStartVolume(const data::AudioDevInfo& audioDevInfo)
 
         Message::Ptr m = createMessage(audioDevChange);
         QMetaObject::invokeMethod(this, "message", Qt::QueuedConnection,
-                                  Q_ARG(communication::Message::Ptr, m));
+                                  Q_ARG(pproto::Message::Ptr, m));
     }
 }
 
@@ -1660,7 +1662,7 @@ void AudioDev::playback_stream_create(pa_context* context, const pa_sink_input_i
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
-                              Q_ARG(communication::Message::Ptr, m));
+                              Q_ARG(pproto::Message::Ptr, m));
 }
 
 void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info* info,
@@ -1691,7 +1693,7 @@ void AudioDev::voice_stream_create(pa_context* context, const pa_sink_input_info
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
-                              Q_ARG(communication::Message::Ptr, m));
+                              Q_ARG(pproto::Message::Ptr, m));
 }
 
 void AudioDev::record_stream_create(pa_context* context, const pa_source_output_info* info,
@@ -1722,7 +1724,7 @@ void AudioDev::record_stream_create(pa_context* context, const pa_source_output_
 
     // Обновляем уровень громкости
     QMetaObject::invokeMethod(ad, "message", Qt::QueuedConnection,
-                              Q_ARG(communication::Message::Ptr, m));
+                              Q_ARG(pproto::Message::Ptr, m));
 }
 
 void AudioDev::sink_stream_info(pa_context* context, const pa_sink_input_info* info,
@@ -2233,10 +2235,3 @@ void AudioDev::record_stream_moved(pa_stream*, void* userdata)
 {
     log_debug2_m << "record_stream_moved()";
 }
-
-#undef log_error_m
-#undef log_warn_m
-#undef log_info_m
-#undef log_verbose_m
-#undef log_debug_m
-#undef log_debug2_m
