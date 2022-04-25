@@ -38,6 +38,7 @@ Product {
         "shared/logger/logger.h",
         "shared/qt/network/interfaces.cpp",
         "shared/qt/network/interfaces.h",
+        "shared/qt/expand_string.h",
         "shared/qt/logger_operators.cpp",
         "shared/qt/logger_operators.h",
         "shared/qt/qthreadex.cpp",

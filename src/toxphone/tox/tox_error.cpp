@@ -9,10 +9,10 @@ using namespace pproto;
 static const char* unknown_error  = QT_TRANSLATE_NOOP("ToxError", "Unknown error");
 static const char* return_success = QT_TRANSLATE_NOOP("ToxError", "The function returned successfully");
 
-pproto::data::MessageError toxError(TOX_ERR_NEW code)
+bool toxError(TOX_ERR_NEW code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::tox_err_new};
+    err = error::tox_err_new;
 
     switch (code)
     {
@@ -100,14 +100,16 @@ pproto::data::MessageError toxError(TOX_ERR_NEW code)
             msg = unknown_error;
     }
 
+    // В группу ошибки записываем tox-код ошибки
+    // err.group = static_cast<qint32>(code);
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOX_ERR_NEW_OK);
 }
 
-pproto::data::MessageError toxError(TOXAV_ERR_CALL code)
+bool toxError(TOXAV_ERR_CALL code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::toxav_err_call};
+    err = error::toxav_err_call;
 
     switch (code)
     {
@@ -168,13 +170,13 @@ pproto::data::MessageError toxError(TOXAV_ERR_CALL code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOXAV_ERR_CALL_OK);
 }
 
-pproto::data::MessageError toxError(TOXAV_ERR_ANSWER code)
+bool toxError(TOXAV_ERR_ANSWER code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::toxav_err_answer};
+    err = error::toxav_err_answer;
 
     switch (code)
     {
@@ -229,13 +231,13 @@ pproto::data::MessageError toxError(TOXAV_ERR_ANSWER code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOXAV_ERR_ANSWER_OK);
 }
 
-pproto::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
+bool toxError(TOXAV_ERR_CALL_CONTROL code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::toxav_err_call_control};
+    err = error::toxav_err_call_control;
 
     switch (code)
     {
@@ -285,13 +287,13 @@ pproto::data::MessageError toxError(TOXAV_ERR_CALL_CONTROL code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOXAV_ERR_CALL_CONTROL_OK);
 }
 
-pproto::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
+bool toxError(TOXAV_ERR_SEND_FRAME code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::toxav_err_send_frame};
+    err = error::toxav_err_send_frame;
 
     switch (code)
     {
@@ -363,13 +365,13 @@ pproto::data::MessageError toxError(TOXAV_ERR_SEND_FRAME code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOXAV_ERR_SEND_FRAME_OK);
 }
 
-pproto::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
+bool toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::tox_err_friend_custom_packet};
+    err = error::tox_err_friend_custom_packet;
 
     switch (code)
     {
@@ -440,13 +442,13 @@ pproto::data::MessageError toxError(TOX_ERR_FRIEND_CUSTOM_PACKET code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOX_ERR_FRIEND_CUSTOM_PACKET_OK);
 }
 
-pproto::data::MessageError toxError(TOX_ERR_FILE_SEND code)
+bool toxError(TOX_ERR_FILE_SEND code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::tox_err_file_send};
+    err = error::tox_err_file_send;
 
     switch (code)
     {
@@ -502,13 +504,13 @@ pproto::data::MessageError toxError(TOX_ERR_FILE_SEND code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOX_ERR_FILE_SEND_OK);
 }
 
-pproto::data::MessageError toxError(TOX_ERR_FILE_SEND_CHUNK code)
+bool toxError(TOX_ERR_FILE_SEND_CHUNK code, data::MessageError& err)
 {
     const char* msg;
-    data::MessageError err {error::tox_err_file_send_chunk};
+    err = error::tox_err_file_send_chunk;
 
     switch (code)
     {
@@ -589,5 +591,90 @@ pproto::data::MessageError toxError(TOX_ERR_FILE_SEND_CHUNK code)
     }
 
     err.description = QObject::tr(msg);
-    return err;
+    return (code != TOX_ERR_FILE_SEND_CHUNK_OK);
+}
+
+bool toxError(TOX_ERR_FRIEND_ADD code, pproto::data::MessageError& err)
+{
+    const char* msg;
+    err = error::tox_err_file_send_chunk;
+
+    switch (code)
+    {
+        /**
+         * The function returned successfully.
+         */
+        case TOX_ERR_FRIEND_ADD_OK:
+            msg = return_success;
+            break;
+
+        /**
+         * One of the arguments to the function was NULL when it was not expected.
+         */
+        case TOX_ERR_FRIEND_ADD_NULL:
+            msg = QT_TRANSLATE_NOOP("ToxError", "One of the arguments to the function "
+                                                "was NULL when it was not expected");
+            break;
+
+        /**
+         * The length of the friend request message exceeded
+         * TOX_MAX_FRIEND_REQUEST_LENGTH.
+         */
+        case TOX_ERR_FRIEND_ADD_TOO_LONG:
+            msg = QT_TRANSLATE_NOOP("ToxError", "The length of the friend request "
+                                                "message exceeded TOX_MAX_FRIEND_REQUEST_LENGTH");
+            break;
+
+        /**
+         * The friend request message was empty. This, and the TOO_LONG code will
+         * never be returned from tox_friend_add_norequest.
+         */
+        case TOX_ERR_FRIEND_ADD_NO_MESSAGE:
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend request message was empty");
+            break;
+
+        /**
+         * The friend address belongs to the sending client.
+         */
+        case TOX_ERR_FRIEND_ADD_OWN_KEY:
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend address belongs to the sending client");
+            break;
+
+        /**
+         * A friend request has already been sent, or the address belongs to a friend
+         * that is already on the friend list.
+         */
+        case TOX_ERR_FRIEND_ADD_ALREADY_SENT:
+            msg = QT_TRANSLATE_NOOP("ToxError", "A friend request has already been sent");
+            break;
+
+        /**
+         * The friend address checksum failed.
+         */
+        case TOX_ERR_FRIEND_ADD_BAD_CHECKSUM:
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend address checksum failed");
+            break;
+
+        /**
+         * The friend was already there, but the nospam value was different.
+         */
+        case TOX_ERR_FRIEND_ADD_SET_NEW_NOSPAM:
+            msg = QT_TRANSLATE_NOOP("ToxError", "The friend was already there, "
+                                                "but the nospam value was different");
+            break;
+
+        /**
+         * A memory allocation failed when trying to increase the friend list size.
+         */
+        case TOX_ERR_FRIEND_ADD_MALLOC:
+            msg = QT_TRANSLATE_NOOP("ToxError", "A memory allocation failed when trying "
+                                                "to increase the friend list size");
+            break;
+
+        default:
+            msg = unknown_error;
+    }
+
+    err.description = QObject::tr(msg);
+    return (code != TOX_ERR_FRIEND_ADD_OK);
 }

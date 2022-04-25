@@ -28,6 +28,7 @@ class ToxNet : public QThreadEx
 public:
     bool init();
     void deinit();
+
     Tox* tox() const {return _tox;}
 
 signals:
@@ -117,9 +118,9 @@ private:
     };
     QVector<BootstrapNode> _bootstrapNodes;
 
-    Tox* _tox = {0};
+    Tox* _tox = {nullptr};
     Tox_Options _toxOptions;
-    QByteArray _savedState;
+    QByteArray _toxSaveData;
     QString _configPath;
     QString _configFile;
     bool _dhtConnected = {false};
@@ -156,9 +157,7 @@ private:
     TransferData::List _sendAvatars;
     TransferData::List _recvAvatars;
 
-    // Параметр используется для отслеживания смены статуса подключения друзей.
-    // Не используем здесь QSet, т.к. QSet некорректно работает с типом uint32_t
-    //std::set<uint32_t> _connectionStatusSet;
+    // Параметр используется для отслеживания смены статуса подключения друзей
     QSet<uint32_t> _connectionStatusSet;
 
     FunctionInvoker _funcInvoker;

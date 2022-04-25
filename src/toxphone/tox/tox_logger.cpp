@@ -12,16 +12,16 @@ extern bool enable_toxcore_log;
 */
 struct Logger
 {
-    logger_cb *callback = {0};
-    void *context  = {0};
-    void *userdata = {0};
+    logger_cb* callback = {nullptr};
+    void* context  = {nullptr};
+    void* userdata = {nullptr};
 };
 
 // Заперт на mangling для имен функций
-Logger *logger_new(void) asm ("logger_new");
-void logger_kill(Logger *log) asm ("logger_kill");
+Logger* logger_new(void) asm ("logger_new");
+void logger_kill(Logger* log) asm ("logger_kill");
 
-void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
+void logger_callback_log(Logger* log, logger_cb* function, void* context, void* userdata)
     asm ("logger_callback_log");
 
 void logger_write(
@@ -29,7 +29,7 @@ void logger_write(
     const char* format, ...)
     asm ("logger_write");
 
-Logger *logger_new(void)
+Logger* logger_new(void)
 {
     return (Logger *)calloc(1, sizeof(Logger));
 }
@@ -39,13 +39,16 @@ void logger_kill(Logger *log)
     free(log);
 }
 
-void logger_callback_log(Logger *log, logger_cb *function, void *context, void *userdata)
+void logger_callback_log(Logger* log, logger_cb* function, void* context, void* userdata)
 {
     (void) log;
     (void) function;
     (void) context;
     (void) userdata;
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch-enum"
 
 void logger_write(
     const Logger* log, Logger_Level level, const char* file, int line, const char* func,
@@ -103,6 +106,8 @@ void logger_write(
     va_end(args);
 }
 
+#pragma GCC diagnostic pop
+
 //----------------------------- ToxFriendLog ---------------------------------
 
 namespace alog {
@@ -131,44 +136,12 @@ Line& operator<< (Line& line, const ToxFriendLog& tfl)
             if (!tox_friend_get_public_key(tfl.tox, tfl.friendNumber, (uint8_t*)friendPk.constData(), 0))
                 friendPk.clear();
 
-            line << "Friend name/number/key: " << name << "/" << tfl.friendNumber << "/" << friendPk;
+            line << log_format("Friend name/number/key: %?/%?/%?", name, tfl.friendNumber, friendPk);
         }
         else
-            line << "Friend name/number: " << name << "/" << tfl.friendNumber;
+            line << log_format("Friend name/number: %?/%?", name, tfl.friendNumber);
     }
     return line;
-}
-
-Line operator<< (Line&& line, const ToxFriendLog& tfl)
-{
-    if (line.toLogger())
-    {
-        if (tfl.friendNumber == std::numeric_limits<uint32_t>::max())
-            return std::move(line);
-
-        QByteArray name;
-        { //Block for ToxGlobalLock
-            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-            size_t size = tox_friend_get_name_size(tfl.tox, tfl.friendNumber, 0);
-            name.resize(size);
-            tox_friend_get_name(tfl.tox, tfl.friendNumber, (uint8_t*)name.constData(), 0);
-        }
-
-        if (!tfl.withoutKey)
-        {
-            QByteArray friendPk;
-            friendPk.resize(TOX_PUBLIC_KEY_SIZE);
-
-            ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-            if (!tox_friend_get_public_key(tfl.tox, tfl.friendNumber, (uint8_t*)friendPk.constData(), 0))
-                friendPk.clear();
-
-            line << "Friend name/number/key: " << name << "/" << tfl.friendNumber << "/" << friendPk;
-        }
-        else
-            line << "Friend name/number: " << name << "/" << tfl.friendNumber;
-    }
-    return std::move(line);
 }
 
 } // namespace alog

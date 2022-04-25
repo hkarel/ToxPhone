@@ -21,8 +21,7 @@ struct ToxFriendLog
 
 namespace alog {
 
-Line& operator<< (Line&  line, const ToxFriendLog&);
-Line  operator<< (Line&& line, const ToxFriendLog&);
+Line& operator<< (Line& line, const ToxFriendLog&);
 
 } // namespace alog
 

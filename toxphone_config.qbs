@@ -5,10 +5,10 @@ ToxPhoneBase {
     name: "ToxPhone Config"
 
     references: [
-        "src/yaml/yaml.qbs",
+        "src/commands/commands.qbs",
         "src/shared/shared.qbs",
         "src/pproto/pproto.qbs",
-        "src/kernel/kernel.qbs",
+        "src/yaml/yaml.qbs",
         "src/toxphone_config/toxphone_config.qbs",
     ]
 }

@@ -2,6 +2,8 @@
 #include "tox_error.h"
 #include "tox_logger.h"
 
+#include "commands/error.h"
+
 #include "shared/logger/logger.h"
 #include "shared/qt/logger_operators.h"
 
@@ -28,18 +30,12 @@ ToxGlobalLock::~ToxGlobalLock()
     mutex.unlock();
 }
 
-QString getToxFriendName(Tox* tox, const QByteArray& publicKey)
+QString getToxFriendName(Tox* tox, uint32_t friendNumber)
 {
-    if (publicKey.size() != TOX_PUBLIC_KEY_SIZE)
-        return "";
+    if (friendNumber == UINT32_MAX)
+        return {};
 
     ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
-
-    uint32_t friendNumber =
-        tox_friend_by_public_key(tox, (uint8_t*)publicKey.constData(), 0);
-
-    if (friendNumber == UINT32_MAX)
-        return "";
 
     QByteArray data;
     size_t size = tox_friend_get_name_size(tox, friendNumber, 0);
@@ -48,18 +44,17 @@ QString getToxFriendName(Tox* tox, const QByteArray& publicKey)
     return QString::fromUtf8(data);
 }
 
-QString getToxFriendName(Tox* tox, uint32_t friendNumber)
+QString getToxFriendName(Tox* tox, const QByteArray& publicKey)
 {
-    if (friendNumber == std::numeric_limits<uint32_t>::max())
-        return QString();
+    if (publicKey.size() != TOX_PUBLIC_KEY_SIZE)
+        return {};
 
     ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
 
-    QByteArray data;
-    size_t size = tox_friend_get_name_size(tox, friendNumber, 0);
-    data.resize(size);
-    tox_friend_get_name(tox, friendNumber, (uint8_t*)data.constData(), 0);
-    return QString::fromUtf8(data);
+    uint32_t friendNumber =
+        tox_friend_by_public_key(tox, (uint8_t*)publicKey.constData(), 0);
+
+    return getToxFriendName(tox, friendNumber);
 }
 
 QString getToxFriendStatusMsg(Tox* tox, uint32_t friendNumber)
@@ -90,14 +85,12 @@ QByteArray getToxFriendKey(Tox* tox, uint32_t friendNumber)
 
 uint32_t getToxFriendNum(Tox* tox, const QByteArray& publicKey)
 {
-
     if (publicKey.size() != TOX_PUBLIC_KEY_SIZE)
         return UINT32_MAX;
 
     ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
     return tox_friend_by_public_key(tox, (uint8_t*)publicKey.constData(), 0);
 }
-
 
 QByteArray getToxSelfPublicKey(Tox* tox)
 {
@@ -110,6 +103,12 @@ QByteArray getToxSelfPublicKey(Tox* tox)
     return selfPk;
 }
 
+TOX_CONNECTION getFriendConnectStatus(Tox* tox, uint32_t friendNumber)
+{
+    ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
+    return tox_friend_get_connection_status(tox, friendNumber, 0);
+}
+
 bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
                             const pproto::Message::Ptr& message)
 {
@@ -118,7 +117,9 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
         message->compress();
         if ((message->size() + sizeof(toxPhoneMessageSignature) + 1) > TOX_MAX_CUSTOM_PACKET_SIZE)
         {
-            log_error_m << toxError(TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG).description;
+            pproto::data::MessageError msgerr;
+            toxError(TOX_ERR_FRIEND_CUSTOM_PACKET_TOO_LONG, msgerr);
+            log_error_m << msgerr.description;
             return false;
         }
     }
@@ -137,11 +138,13 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
     ToxGlobalLock toxGlobalLock; (void) toxGlobalLock;
 
     TOX_ERR_FRIEND_CUSTOM_PACKET err;
+    pproto::data::MessageError msgerr;
+
     tox_friend_send_lossless_packet(tox, friendNumber, (uint8_t*)buff.constData(),
                                     buff.length(), &err);
-    if (err != TOX_ERR_FRIEND_CUSTOM_PACKET_OK)
+    if (toxError(err, msgerr))
     {
-        log_error_m << toxError(err).description;
+        log_error_m << msgerr.description;
         return false;
     }
     return true;
@@ -150,6 +153,7 @@ bool sendToxLosslessMessage(Tox* tox, uint32_t friendNumber,
 const pproto::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
                                           const uint8_t* data, size_t length)
 {
+    pproto::Message::Ptr message;
     QByteArray buff {QByteArray::fromRawData((char*)data, length)};
     QDataStream stream {&buff, QIODevice::ReadOnly | QIODevice::Unbuffered};
     STREAM_INIT(stream)
@@ -164,9 +168,20 @@ const pproto::Message::Ptr readToxMessage(Tox* tox, uint32_t friendNumber,
             log_debug2_m << "Raw message incompatible signature, discarded"
                          << ". Message from " << ToxFriendLog(tox, friendNumber);
         }
-        return pproto::Message::Ptr();
+        return message;
     }
-    pproto::Message::Ptr message {pproto::Message::fromDataStream(stream)};
+    message = pproto::Message::fromDataStream(stream);
     message->setAuxiliary(friendNumber);
-    return std::move(message);
+    return message;
+}
+
+const char* toString(TOX_CONNECTION val)
+{
+    switch (val)
+    {
+        case TOX_CONNECTION_NONE: return "NONE";
+        case TOX_CONNECTION_TCP:  return "TCP";
+        case TOX_CONNECTION_UDP:  return "UDP";
+    }
+    return "NONE";
 }

@@ -13,6 +13,7 @@ Product {
         "-Wextra",
         "-Wno-unused-parameter",
         "-Wno-sign-compare",
+        "-Wno-absolute-value",
     ]
 
     property var exportIncludePaths: [
