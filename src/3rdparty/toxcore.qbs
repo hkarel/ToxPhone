@@ -11,146 +11,113 @@ Project {
         description: "Базовая директория расположения tox-библиотеки"
     }
 
-    // LAYER 1: Crypto core
-    ToxBase {
-        id: toxcrypto
-        name: "ToxCrypto"
-        targetName: "toxcrypto"
-
-        files: [
-            toxPrefix + "toxcore/ccompat.h",
-            toxPrefix + "toxcore/crypto_core.c",
-            toxPrefix + "toxcore/crypto_core.h",
-            toxPrefix + "toxcore/crypto_core_mem.c",
-        ]
-    }
-
-    // LAYER 2: Basic networking
-    ToxBase {
-        id: toxnetwork
-        name: "ToxNetwork"
-        targetName: "toxnetwork"
-
-        files: [
-            /* В субпроекте ToxPhone выполнена подмена реализации логгера */
-            //toxPrefix + "toxcore/logger.c",
-
-            toxPrefix + "toxcore/logger.h",
-            toxPrefix + "toxcore/mono_time.c",
-            toxPrefix + "toxcore/mono_time.h",
-            toxPrefix + "toxcore/network.c",
-            toxPrefix + "toxcore/network.h",
-            toxPrefix + "toxcore/state.c",
-            toxPrefix + "toxcore/state.h",
-            toxPrefix + "toxcore/util.c",
-            toxPrefix + "toxcore/util.h",
-        ]
-    }
-
-    // LAYER 3: Distributed Hash Table
-    ToxBase {
-        id: toxdht
-        name: "ToxDHT"
-        targetName: "toxdht"
-
-        Depends { name: "ToxNetwork" }
-
-        files: [
-            toxPrefix + "toxcore/DHT.c",
-            toxPrefix + "toxcore/DHT.h",
-            toxPrefix + "toxcore/LAN_discovery.c",
-            toxPrefix + "toxcore/LAN_discovery.h",
-            toxPrefix + "toxcore/ping.c",
-            toxPrefix + "toxcore/ping.h",
-            toxPrefix + "toxcore/ping_array.c",
-            toxPrefix + "toxcore/ping_array.h",
-        ]
-    }
-
-    // LAYER 4: Onion routing, TCP connections, crypto connections
-    ToxBase {
-        id: toxnetcrypto
-        name: "ToxNetCrypto"
-        targetName: "toxnetcrypto"
-
-        Depends { name: "ToxCrypto" }
-
-        files: [
-            toxPrefix + "toxcore/TCP_client.c",
-            toxPrefix + "toxcore/TCP_client.h",
-            toxPrefix + "toxcore/TCP_connection.c",
-            toxPrefix + "toxcore/TCP_connection.h",
-            toxPrefix + "toxcore/TCP_server.c",
-            toxPrefix + "toxcore/TCP_server.h",
-            toxPrefix + "toxcore/list.c",
-            toxPrefix + "toxcore/list.h",
-            toxPrefix + "toxcore/net_crypto.c",
-            toxPrefix + "toxcore/net_crypto.h",
-            toxPrefix + "toxcore/onion.c",
-            toxPrefix + "toxcore/onion.h",
-            toxPrefix + "toxcore/onion_announce.c",
-            toxPrefix + "toxcore/onion_announce.h",
-            toxPrefix + "toxcore/onion_client.c",
-            toxPrefix + "toxcore/onion_client.h",
-        ]
-    }
-
-    // LAYER 5: Friend requests and connections
-    ToxBase {
-        id: toxfriends
-        name: "ToxFriends"
-        targetName: "toxfriends"
-        files: [
-            toxPrefix + "toxcore/friend_connection.c",
-            toxPrefix + "toxcore/friend_connection.h",
-            toxPrefix + "toxcore/friend_requests.c",
-            toxPrefix + "toxcore/friend_requests.h",
-        ]
-    }
-
-    // LAYER 6: Tox messenger
-    ToxBase {
-        id: toxmessenger
-        name: "ToxMessenger"
-        targetName: "toxmessenger"
-
-        Depends { name: "ToxNetCrypto" }
-        Depends { name: "ToxNetwork" }
-        Depends { name: "ToxFriends" }
-
-        files: [
-            toxPrefix + "toxcore/Messenger.c",
-            toxPrefix + "toxcore/Messenger.h",
-        ]
-    }
-
-    // LAYER 7: Group chats
-    ToxBase {
-        id: toxgroup
-        name: "ToxGroup"
-        targetName: "toxgroup"
-        files: [
-            toxPrefix + "toxcore/group.c",
-            toxPrefix + "toxcore/group.h",
-        ]
-    }
-
-    // LAYER 8: Public API
     ToxBase {
         id: toxcore
         name: "ToxCore"
         targetName: "toxcore"
 
-        Depends { name: "ToxCrypto" }
-        Depends { name: "ToxNetwork" }
-        Depends { name: "ToxMessenger" }
-        Depends { name: "ToxDHT" }
-        Depends { name: "ToxGroup" }
-
         files: [
-            toxPrefix + "toxcore/tox.c",
-            toxPrefix + "toxcore/tox.h",
+            toxPrefix + "third_party/cmp/cmp.c",
+            toxPrefix + "third_party/cmp/cmp.h",
+            toxPrefix + "toxcore/announce.c",
+            toxPrefix + "toxcore/announce.h",
+            toxPrefix + "toxcore/bin_pack.c",
+            toxPrefix + "toxcore/bin_pack.h",
+            toxPrefix + "toxcore/bin_unpack.c",
+            toxPrefix + "toxcore/bin_unpack.h",
+            toxPrefix + "toxcore/ccompat.c",
+            toxPrefix + "toxcore/ccompat.h",
+            toxPrefix + "toxcore/crypto_core.c",
+            toxPrefix + "toxcore/crypto_core.h",
+            toxPrefix + "toxcore/DHT.c",
+            toxPrefix + "toxcore/DHT.h",
+            toxPrefix + "toxcore/events/conference_connected.c",
+            toxPrefix + "toxcore/events/conference_invite.c",
+            toxPrefix + "toxcore/events/conference_message.c",
+            toxPrefix + "toxcore/events/conference_peer_list_changed.c",
+            toxPrefix + "toxcore/events/conference_peer_name.c",
+            toxPrefix + "toxcore/events/conference_title.c",
+            toxPrefix + "toxcore/events/events_alloc.c",
+            toxPrefix + "toxcore/events/events_alloc.h",
+            toxPrefix + "toxcore/events/file_chunk_request.c",
+            toxPrefix + "toxcore/events/file_recv.c",
+            toxPrefix + "toxcore/events/file_recv_chunk.c",
+            toxPrefix + "toxcore/events/file_recv_control.c",
+            toxPrefix + "toxcore/events/friend_connection_status.c",
+            toxPrefix + "toxcore/events/friend_lossless_packet.c",
+            toxPrefix + "toxcore/events/friend_lossy_packet.c",
+            toxPrefix + "toxcore/events/friend_message.c",
+            toxPrefix + "toxcore/events/friend_name.c",
+            toxPrefix + "toxcore/events/friend_read_receipt.c",
+            toxPrefix + "toxcore/events/friend_request.c",
+            toxPrefix + "toxcore/events/friend_status.c",
+            toxPrefix + "toxcore/events/friend_status_message.c",
+            toxPrefix + "toxcore/events/friend_typing.c",
+            toxPrefix + "toxcore/events/self_connection_status.c",
+            toxPrefix + "toxcore/forwarding.c",
+            toxPrefix + "toxcore/forwarding.h",
+            toxPrefix + "toxcore/friend_connection.c",
+            toxPrefix + "toxcore/friend_connection.h",
+            toxPrefix + "toxcore/friend_requests.c",
+            toxPrefix + "toxcore/friend_requests.h",
+            toxPrefix + "toxcore/group.c",
+            toxPrefix + "toxcore/group.h",
+            toxPrefix + "toxcore/group_announce.c",
+            toxPrefix + "toxcore/group_announce.h",
+            toxPrefix + "toxcore/group_moderation.c",
+            toxPrefix + "toxcore/group_moderation.h",
+            toxPrefix + "toxcore/LAN_discovery.c",
+            toxPrefix + "toxcore/LAN_discovery.h",
+            toxPrefix + "toxcore/list.c",
+            toxPrefix + "toxcore/list.h",
+
+            /* В субпроекте ToxPhone выполнена подмена реализации логгера */
+            //toxPrefix + "toxcore/logger.c",
+
+            toxPrefix + "toxcore/logger.h",
+            toxPrefix + "toxcore/Messenger.c",
+            toxPrefix + "toxcore/Messenger.h",
+            toxPrefix + "toxcore/mono_time.c",
+            toxPrefix + "toxcore/mono_time.h",
+            toxPrefix + "toxcore/net_crypto.c",
+            toxPrefix + "toxcore/net_crypto.h",
+            toxPrefix + "toxcore/network.c",
+            toxPrefix + "toxcore/network.h",
+            toxPrefix + "toxcore/onion_announce.c",
+            toxPrefix + "toxcore/onion_announce.h",
+            toxPrefix + "toxcore/onion.c",
+            toxPrefix + "toxcore/onion_client.c",
+            toxPrefix + "toxcore/onion_client.h",
+            toxPrefix + "toxcore/onion.h",
+            toxPrefix + "toxcore/ping_array.c",
+            toxPrefix + "toxcore/ping_array.h",
+            toxPrefix + "toxcore/ping.c",
+            toxPrefix + "toxcore/ping.h",
+            toxPrefix + "toxcore/state.c",
+            toxPrefix + "toxcore/state.h",
+            toxPrefix + "toxcore/TCP_client.c",
+            toxPrefix + "toxcore/TCP_client.h",
+            toxPrefix + "toxcore/TCP_common.c",
+            toxPrefix + "toxcore/TCP_common.h",
+            toxPrefix + "toxcore/TCP_connection.c",
+            toxPrefix + "toxcore/TCP_connection.h",
+            toxPrefix + "toxcore/TCP_server.c",
+            toxPrefix + "toxcore/TCP_server.h",
+            toxPrefix + "toxcore/timed_auth.c",
+            toxPrefix + "toxcore/timed_auth.h",
             toxPrefix + "toxcore/tox_api.c",
+            toxPrefix + "toxcore/tox.c",
+            toxPrefix + "toxcore/tox_dispatch.c",
+            toxPrefix + "toxcore/tox_dispatch.h",
+            toxPrefix + "toxcore/tox_events.c",
+            toxPrefix + "toxcore/tox_events.h",
+            toxPrefix + "toxcore/tox.h",
+            toxPrefix + "toxcore/tox_private.c",
+            toxPrefix + "toxcore/tox_private.h",
+            toxPrefix + "toxcore/tox_unpack.c",
+            toxPrefix + "toxcore/tox_unpack.h",
+            toxPrefix + "toxcore/util.c",
+            toxPrefix + "toxcore/util.h",
 
             // :: Audio/Video Library
             toxPrefix + "toxav/audio.c",
@@ -171,8 +138,7 @@ Project {
             toxPrefix + "toxav/video.c",
             toxPrefix + "toxav/video.h",
 
-            // :: ToxDNS and block encryption libraries
-            //toxPrefix + "toxdns/toxdns.c",
+            // :: Block encryption libraries
             toxPrefix + "toxencryptsave/toxencryptsave.c",
             toxPrefix + "toxencryptsave/toxencryptsave.h",
         ]
@@ -184,16 +150,12 @@ Project {
         type: "application"
         consoleApplication: true
         destinationDirectory: "./bin"
-        condition: true
+        condition: false
 
         name: "DHT_Bootstrap"
         targetName: "dht-bootstrap"
 
         Depends { name: "ToxCore" }
-        Depends { name: "ToxCrypto" }
-        Depends { name: "ToxNetwork" }
-        Depends { name: "ToxNetCrypto" }
-        Depends { name: "ToxDHT" }
 
         //cpp.defines : base.concat([
         //    "HAVE_CONFIG_H",
@@ -222,16 +184,12 @@ Project {
         type: "application"
         consoleApplication: true
         destinationDirectory: "./bin"
-        condition: true
+        condition: false
 
         name: "ToxBootstrap"
         targetName: "tox-bootstrap"
 
-        Depends { name: "ToxCrypto" }
-        Depends { name: "ToxNetwork" }
-        Depends { name: "ToxNetCrypto" }
-        Depends { name: "ToxDHT" }
-
+        Depends { name: "ToxCore" }
 
         cpp.dynamicLibraries: QbsUtl.concatPaths(
             ["pthread", "config"],

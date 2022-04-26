@@ -18,7 +18,6 @@ Product {
     Depends { name: "PProto" }
     Depends { name: "SharedLib" }
     Depends { name: "ToxCore" }
-    Depends { name: "ToxNetwork" }
     Depends { name: "FilterAudio" }
     Depends { name: "RNNoise" }
     Depends { name: "Yaml" }
