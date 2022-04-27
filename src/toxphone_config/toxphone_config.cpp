@@ -125,6 +125,11 @@ int main(int argc, char *argv[])
 
         tcp::Socket::Ptr socket {new tcp::Socket};
 
+#ifdef NDEBUG
+        socket->setEchoTimeout(5);
+#endif
+        socket->setEncryption(true);
+
         QString errMessage = QObject::tr(
             "During the initialization of the program, errors occurred.\n"
             "The execution of the program will be stopped.\n"

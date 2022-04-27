@@ -72,6 +72,7 @@ Product {
             "opus",
             "pulse",
             "usb",
+            "vpx",
         ].concat(
             lib.sodium.dynamicLibraries
         );
@@ -79,25 +80,25 @@ Product {
         //if (project.osName !== "ubuntu") {
         //    libs.push("vpx");
         //}
-        if (qbs.architecture.startsWith("arm") === true) {
-            libs.push("vpx");
-        }
-        return libs;
-    }
-
-    cpp.staticLibraries: {
-        var libs = [];
-        //if (project.osName === "ubuntu") {
-        //    // Version VPX must be not less than 1.5.0
-        //    libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
+        //if (qbs.architecture.startsWith("arm") === true) {
+        //    libs.push("vpx");
         //}
-
-        // Version VPX must be not less than 1.5.0
-        if (qbs.architecture.startsWith("x86_64") === true) {
-            libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
-        }
         return libs;
     }
+
+//    cpp.staticLibraries: {
+//        var libs = [];
+//        //if (project.osName === "ubuntu") {
+//        //    // Version VPX must be not less than 1.5.0
+//        //    libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
+//        //}
+
+//        // Version VPX must be not less than 1.5.0
+//        if (qbs.architecture.startsWith("x86_64") === true) {
+//            libs.push("/usr/lib/x86_64-linux-gnu/libvpx.a");
+//        }
+//        return libs;
+//    }
 
     files: [
         "audio/audio_dev.cpp",

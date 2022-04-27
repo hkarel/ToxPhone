@@ -94,7 +94,7 @@ void stopProgram()
 
     #undef STOP_THREAD
 
-    log_info << "ToxPhone client is stopped";
+    log_info << "ToxPhone is stopped";
     alog::stop();
 
     trd::threadPool().stop();
@@ -106,7 +106,7 @@ void helpInfo(/*const char * binary*/)
     alog::logger().addSaverStdOut(alog::Level::Info, true);
 
     log_info << log_format(
-        "ToxPhone client (version: %?; protocol version: %?-%?; gitrev: %?)",
+        "ToxPhone (version: %?; protocol version: %?-%?; gitrev: %?)",
         productVersion().toString(),
         PPROTO_VERSION_LOW, PPROTO_VERSION_HIGH, GIT_REVISION);
     log_info << "Copyright (c) 2018 Pavel Karelin <hkarel@yandex.ru>";
@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
         }
 
         log_info << log_format(
-            "ToxPhone client is running (version: %?; protocol version: %?-%?; gitrev: %?)",
+            "ToxPhone is running (version: %?; protocol version: %?-%?; gitrev: %?)",
             productVersion().toString(),
             PPROTO_VERSION_LOW, PPROTO_VERSION_HIGH, GIT_REVISION);
         alog::logger().flush();

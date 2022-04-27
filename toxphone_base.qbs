@@ -53,6 +53,7 @@ Project {
             "PPROTO_UDP_SIGNATURE=\"TPPR\"", // 'T'OX 'P'HONE 'PR'OJECT
           //"UDP_LONGSIG=1",
           //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
+            "SODIUM_ENCRYPTION",
             "LOGGER_LESS_SNPRINTF",
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",

@@ -10,7 +10,11 @@ Product {
 
     Depends { name: "cpp" }
     Depends { name: "SharedLib" }
+    Depends { name: "lib.sodium" }
     Depends { name: "Qt"; submodules: ["core", "network"] }
+
+    lib.sodium.version:   project.sodiumVersion
+    lib.sodium.useSystem: project.useSystemSodium
 
     cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags //.concat(["-fPIC"])
@@ -22,8 +26,10 @@ Product {
     ]
     cpp.includePaths: exportIncludePaths;
 
-    // Эта декларация нужна для подавления Qt warning-ов
-    cpp.systemIncludePaths: Qt.core.cpp.includePaths
+    cpp.systemIncludePaths: QbsUtl.concatPaths(
+        Qt.core.cpp.includePaths, // Декларация нужна для подавления Qt warning-ов
+        lib.sodium.includePath
+    )
 
     files: [
         "pproto/commands/base.cpp",
