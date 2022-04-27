@@ -96,7 +96,7 @@ void Application::message(const Message::Ptr& message)
 
     if (lst::FindResult fr = _funcInvoker.findCommand(message->command()))
     {
-        if (!command::pool().commandIsMultiproc(message->command()))
+        if (command::pool().commandIsSinglproc(message->command()))
             message->markAsProcessed();
         _funcInvoker.call(message, fr);
     }

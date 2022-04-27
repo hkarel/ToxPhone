@@ -170,7 +170,7 @@ void ToxCall::message(const pproto::Message::Ptr& message)
 
     if (_funcInvoker.containsCommand(message->command()))
     {
-        if (!command::pool().commandIsMultiproc(message->command()))
+        if (command::pool().commandIsSinglproc(message->command()))
             message->markAsProcessed();
 
         message->add_ref();
