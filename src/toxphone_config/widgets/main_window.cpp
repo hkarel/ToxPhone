@@ -26,13 +26,6 @@
 #include <limits>
 #include <unistd.h>
 
-// Ключи для авторизации конфигуратора
-extern uchar configPublicKey[crypto_box_PUBLICKEYBYTES];
-extern uchar configSecretKey[crypto_box_SECRETKEYBYTES];
-
-// Сессионный публичный ключ Tox-клиента
-extern uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -164,14 +157,15 @@ void MainWindow::deinit()
 void MainWindow::saveGeometry()
 {
     QPoint p = pos();
-    std::vector<int> v {p.x(), p.y(), width(), height()};
+    QVector<int> v {p.x(), p.y(), width(), height()};
     config::state().setValue("windows.main_window.geometry", v);
 }
 
 void MainWindow::loadGeometry()
 {
-    std::vector<int> v {0, 0, 800, 600};
+    QVector<int> v {0, 0, 800, 600};
     config::state().getValue("windows.main_window.geometry", v);
+
     move(v[0], v[1]);
     resize(v[2], v[3]);
 
@@ -1555,40 +1549,17 @@ void MainWindow::on_btnSaveToxInfo_clicked(bool)
 void MainWindow::on_btnAuthorizationPassword_clicked(bool)
 {
     PasswordWindow passwordWindow {this};
-    if (passwordWindow.exec() == QDialog::Rejected)
+    passwordWindow.loadGeometry();
+    int res = passwordWindow.exec();
+    passwordWindow.saveGeometry();
+    if (res == QDialog::Rejected)
         return;
 
     data::ConfigSavePassword configSavePassword;
-    QByteArray passw = passwordWindow.password().toUtf8().trimmed();
+    QString passw = passwordWindow.password().trimmed();
     if (!passw.isEmpty())
-    {
-        QByteArray passwBuff;
-        {
-            QDataStream s {&passwBuff, QIODevice::WriteOnly};
-            STREAM_INIT(s)
-            QByteArray garbage; garbage.resize(512 - passw.length() - 2 * sizeof(int));
-            randombytes((uchar*)garbage.constData(), garbage.length());
-            s << passw;
-            s << garbage;
-        }
-        QByteArray nonce; nonce.resize(crypto_box_NONCEBYTES);
-        randombytes((uchar*)nonce.constData(), crypto_box_NONCEBYTES);
+        configSavePassword.password = passw;
 
-        QByteArray ciphertext;
-        ciphertext.resize(passwBuff.length() + crypto_box_MACBYTES);
-
-        int res = crypto_box_easy((uchar*)ciphertext.constData(),
-                                  (uchar*)passwBuff.constData(), passwBuff.length(),
-                                  (uchar*)nonce.constData(), toxPublicKey, configSecretKey);
-        if (res != 0)
-        {
-            QString msg = tr("Failed encript password");
-            QMessageBox::critical(this, qApp->applicationName(), msg);
-            return;
-        }
-        configSavePassword.nonce = nonce;
-        configSavePassword.password = ciphertext;
-    }
     Message::Ptr m = createMessage(configSavePassword);
     _socket->send(m);
 }

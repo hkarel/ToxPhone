@@ -21,13 +21,6 @@
 #include <QInputDialog>
 #include <unistd.h>
 
-// Ключи для авторизации конфигуратора
-extern uchar configPublicKey[crypto_box_PUBLICKEYBYTES];
-extern uchar configSecretKey[crypto_box_SECRETKEYBYTES];
-
-// Сессионный публичный ключ Tox-клиента
-extern uchar toxPublicKey[crypto_box_PUBLICKEYBYTES];
-
 #define PHONES_LIST_TIMEUPDATE 5
 
 ConnectionWindow::ConnectionWindow(QWidget *parent) :
@@ -133,23 +126,17 @@ void ConnectionWindow::deinit()
 void ConnectionWindow::saveGeometry()
 {
     QPoint p = pos();
-    //std::vector<int> v {p.x(), p.y()};
-    std::vector<int> v {p.x(), p.y(), width(), height()};
+    QVector<int> v {p.x(), p.y(), width(), height()};
     config::state().setValue("windows.connection_window.geometry", v);
 }
 
 void ConnectionWindow::loadGeometry()
 {
-//    std::vector<int> v;
-//    if (config::state().getValue("windows.connection_window.geometry", v))
-//        move(v[0], v[1]);
+    QVector<int> v {0, 0, 280, 350};
+    config::state().getValue("windows.connection_window.geometry", v);
 
-    std::vector<int> v {0, 0, 280, 350};
-    if (config::state().getValue("windows.connection_window.geometry", v))
-    {
-        move(v[0], v[1]);
-        resize(v[2], v[3]);
-    }
+    move(v[0], v[1]);
+    resize(v[2], v[3]);
 }
 
 void ConnectionWindow::message(const pproto::Message::Ptr& message)
@@ -173,10 +160,6 @@ void ConnectionWindow::socketConnected(pproto::SocketDescriptor)
 
 void ConnectionWindow::socketDisconnected(pproto::SocketDescriptor)
 {
-    sodium_memzero(configPublicKey, crypto_box_PUBLICKEYBYTES);
-    sodium_memzero(configSecretKey, crypto_box_SECRETKEYBYTES);
-    sodium_memzero(toxPublicKey, crypto_box_PUBLICKEYBYTES);
-
     show();
     loadGeometry();
 }
@@ -240,12 +223,7 @@ void ConnectionWindow::on_btnConnect_clicked(bool /*checked*/)
 
     if (_socket->isConnected())
     {
-        crypto_box_keypair(configPublicKey, configSecretKey);
-
         data::ConfigAuthorizationRequest configAuthorizationRequest;
-        configAuthorizationRequest.publicKey =
-            QByteArray((char*)configPublicKey, crypto_box_PUBLICKEYBYTES);
-
         Message::Ptr m = createMessage(configAuthorizationRequest);
         _socket->send(m);
     }
@@ -418,50 +396,20 @@ void ConnectionWindow::command_ConfigAuthorizationRequest(const Message::Ptr& me
             data::ConfigAuthorizationRequest configAuthorizationRequest;
             readFromMessage(message, configAuthorizationRequest);
 
-            memcpy(toxPublicKey, configAuthorizationRequest.publicKey.constData(),
-                   crypto_box_PUBLICKEYBYTES);
-
             data::ConfigAuthorization configAuthorization;
             if (configAuthorizationRequest.needPassword)
             {
                 // Отправляем пароль
                 bool ok;
-                QByteArray passw = QInputDialog::getText(this, qApp->applicationName(),
-                                                         tr("Password:"), QLineEdit::Password,
-                                                         "", &ok).toUtf8().trimmed();
+                QString passw = QInputDialog::getText(this, qApp->applicationName(),
+                                                      tr("Password:"), QLineEdit::Password,
+                                                      "", &ok).toUtf8().trimmed();
                 if (!ok)
                 {
                     _socket->stop();
                     return;
                 }
-
-                QByteArray passwBuff;
-                {
-                    QDataStream s {&passwBuff, QIODevice::WriteOnly};
-                    STREAM_INIT(s)
-                    QByteArray garbage; garbage.resize(512 - passw.length() - 2 * sizeof(int));
-                    randombytes((uchar*)garbage.constData(), garbage.length());
-                    s << passw;
-                    s << garbage;
-                }
-                QByteArray nonce; nonce.resize(crypto_box_NONCEBYTES);
-                randombytes((uchar*)nonce.constData(), crypto_box_NONCEBYTES);
-
-                QByteArray ciphertext;
-                ciphertext.resize(passwBuff.length() + crypto_box_MACBYTES);
-
-                int res = crypto_box_easy((uchar*)ciphertext.constData(),
-                                          (uchar*)passwBuff.constData(), passwBuff.length(),
-                                          (uchar*)nonce.constData(), toxPublicKey, configSecretKey);
-                if (res != 0)
-                {
-                    _socket->stop();
-                    QString msg = tr("Failed encript password");
-                    QMessageBox::critical(this, qApp->applicationName(), msg);
-                    return;
-                }
-                configAuthorization.nonce = nonce;
-                configAuthorization.password = ciphertext;
+                configAuthorization.password = passw;
             }
             Message::Ptr m = createMessage(configAuthorization);
             _socket->send(m);

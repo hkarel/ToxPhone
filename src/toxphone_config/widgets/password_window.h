@@ -11,6 +11,9 @@ public:
     explicit PasswordWindow(QWidget *parent = 0);
     ~PasswordWindow();
 
+    void saveGeometry();
+    void loadGeometry();
+
     QString password() const;
 
 private slots:

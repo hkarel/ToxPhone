@@ -686,9 +686,6 @@ struct ConfigAuthorizationRequest : Data<&command::ConfigAuthorizationRequest,
                                           Message::Type::Command,
                                           Message::Type::Answer>
 {
-    // Сессионный ключ
-    QByteArray publicKey;
-
     // Требование пароля для авторизации, флаг используется в ответе
     bool needPassword = {false};
 
@@ -699,9 +696,8 @@ struct ConfigAuthorization : Data<&command::ConfigAuthorization,
                                    Message::Type::Command,
                                    Message::Type::Answer>
 {
-    QByteArray nonce;    // Разовый nonce
-    QByteArray password; // Зашифрованный пароль
-
+     QString password; // Пароль передаем в открытом виде,
+                       // так как подключение зашифровано
     DECLARE_B_SERIALIZE_FUNC
 };
 
@@ -709,8 +705,7 @@ struct ConfigSavePassword : Data<&command::ConfigSavePassword,
                                   Message::Type::Command,
                                   Message::Type::Answer>
 {
-    QByteArray nonce;    // Разовый nonce
-    QByteArray password; // Зашифрованный пароль
+    QString password;
 
     DECLARE_B_SERIALIZE_FUNC
 };

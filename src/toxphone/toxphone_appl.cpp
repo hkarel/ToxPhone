@@ -33,10 +33,6 @@ Application::Application(int &argc, char **argv)
 {
     _stopTimerId = startTimer(1000);
 
-    sodium_memzero(_toxPublicKey, crypto_box_PUBLICKEYBYTES);
-    sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
-    sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
-
     chk_connect_q(&tcp::listener(), &tcp::Listener::message,
                   this, &Application::message)
 
@@ -113,9 +109,6 @@ void Application::socketDisconnected(SocketDescriptor socketDescriptor)
         && toxConfig().socketDescriptor == socketDescriptor)
     {
         toxConfig().reset();
-        sodium_memzero(_toxPublicKey, crypto_box_PUBLICKEYBYTES);
-        sodium_memzero(_toxSecretKey, crypto_box_SECRETKEYBYTES);
-        sodium_memzero(_configPublicKey, crypto_box_PUBLICKEYBYTES);
     }
 
     data::AudioTest audioTest;
@@ -441,12 +434,13 @@ void Application::command_PhoneFriendInfo(const Message::Ptr& message)
 
 void Application::command_ConfigAuthorizationRequest(const Message::Ptr& message)
 {
+    Message::Ptr answer = message->cloneForAnswer();
+
     if (toxConfig().isActive())
     {
         data::MessageFailed failed;
         failed.description = tr("Tox a configurator is already connected to this client");
 
-        Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(failed, answer);
         tcp::listener().send(answer);
 
@@ -462,41 +456,10 @@ void Application::command_ConfigAuthorizationRequest(const Message::Ptr& message
     data::ConfigAuthorizationRequest configAuthorizationRequest;
     readFromMessage(message, configAuthorizationRequest);
 
-    if (configAuthorizationRequest.publicKey.length() != crypto_box_PUBLICKEYBYTES)
-    {
-        const char* msg = QT_TRANSLATE_NOOP("ToxPhoneApplication",
-            "Authorization request error. Invalid public key length: required %1, received %2");
-        log_error_m << QString(msg).arg(crypto_box_PUBLICKEYBYTES)
-                                   .arg(configAuthorizationRequest.publicKey.length());
-
-        data::MessageError error;
-        error.description = tr(msg).arg(crypto_box_PUBLICKEYBYTES)
-                                   .arg(configAuthorizationRequest.publicKey.length());
-
-        Message::Ptr answer = message->cloneForAnswer();
-        writeToMessage(error, answer);
-        toxConfig().send(answer);
-
-        data::CloseConnection closeConnection;
-        closeConnection.description = QString(msg).arg(crypto_box_PUBLICKEYBYTES)
-                                                  .arg(configAuthorizationRequest.publicKey.length());
-
-        Message::Ptr m = createMessage(closeConnection);
-        m->appendDestinationSocket(message->socketDescriptor());
-        tcp::listener().send(m);
-        return;
-    }
-
-    crypto_box_keypair(_toxPublicKey, _toxSecretKey);
-    memcpy(_configPublicKey, configAuthorizationRequest.publicKey.constData(), crypto_box_PUBLICKEYBYTES);
-
     QString password;
     config::state().getValue("config_authorization.password", password, false);
 
-    configAuthorizationRequest.publicKey = QByteArray((char*)_toxPublicKey, crypto_box_PUBLICKEYBYTES);
     configAuthorizationRequest.needPassword = !password.isEmpty();
-
-    Message::Ptr answer = message->cloneForAnswer();
     writeToMessage(configAuthorizationRequest, answer);
     tcp::listener().send(answer);
 }
@@ -517,41 +480,21 @@ void Application::command_ConfigAuthorization(const Message::Ptr& message)
     }
     else if (!password.isEmpty() && !configAuthorization.password.isEmpty())
     {
-        QByteArray passwBuff; passwBuff.resize(512);
-        int plen = configAuthorization.password.length();
-        int res = crypto_box_open_easy((uchar*)passwBuff.constData(),
-                                       (uchar*)configAuthorization.password.constData(), plen,
-                                       (uchar*)configAuthorization.nonce.constData(),
-                                       _configPublicKey, _toxSecretKey);
+        QByteArray passw = configAuthorization.password.toUtf8();
+        QByteArray hash; hash.resize(crypto_generichash_BYTES);
+        int res = crypto_generichash((uchar*)hash.constData(), hash.length(),
+                                     (uchar*)passw.constData(), passw.length(), 0, 0);
         if (res != 0)
         {
-            errptr = &error::decrypt_password;
+            errptr = &error::generate_password_hash;
             log_error_m << errptr->description;
         }
         else
         {
-            QByteArray passw;
+            if (password != QString::fromLatin1(hash.toHex()))
             {
-                QDataStream s {&passwBuff, QIODevice::ReadOnly};
-                STREAM_INIT(s)
-                s >> passw;
-            }
-
-            QByteArray hash; hash.resize(crypto_generichash_BYTES);
-            res = crypto_generichash((uchar*)hash.constData(), hash.length(),
-                                     (uchar*)passw.constData(), passw.length(), 0, 0);
-            if (res != 0)
-            {
-                errptr = &error::generate_password_hash;
+                errptr = &error::mismatch_passwords;
                 log_error_m << errptr->description;
-            }
-            else
-            {
-                if (password != hash.toHex())
-                {
-                    errptr = &error::mismatch_passwords;
-                    log_error_m << errptr->description;
-                }
             }
         }
     }
@@ -604,56 +547,32 @@ void Application::command_ConfigSavePassword(const Message::Ptr& message)
         data::ConfigSavePassword configSavePassword;
         readFromMessage(message, configSavePassword);
 
+        Message::Ptr answer = message->cloneForAnswer();
+
         if (!configSavePassword.password.isEmpty())
         {
-            QByteArray passwBuff; passwBuff.resize(512);
-            int plen = configSavePassword.password.length();
-            int res = crypto_box_open_easy((uchar*)passwBuff.constData(),
-                                           (uchar*)configSavePassword.password.constData(), plen,
-                                           (uchar*)configSavePassword.nonce.constData(),
-                                           _configPublicKey, _toxSecretKey);
-            if (res != 0)
-            {
-                data::MessageError error;
-                error.description = tr("Failed decrypt password");
-
-                Message::Ptr answer = message->cloneForAnswer();
-                writeToMessage(error, answer);
-                toxConfig().send(answer);
-                return;
-            }
-
-            QByteArray passw;
-            {
-                QDataStream s {&passwBuff, QIODevice::ReadOnly};
-                STREAM_INIT(s)
-                s >> passw;
-            }
-
+            QByteArray passw = configSavePassword.password.toUtf8();
             QByteArray hash; hash.resize(crypto_generichash_BYTES);
-            res = crypto_generichash((uchar*)hash.constData(), hash.length(),
-                                     (uchar*)passw.constData(), passw.length(), 0, 0);
+            int res = crypto_generichash((uchar*)hash.constData(), hash.length(),
+                                         (uchar*)passw.constData(), passw.length(), 0, 0);
             if (res != 0)
             {
-                data::MessageError error;
-                error.description = tr("Failed generate password-hash");
-
-                Message::Ptr answer = message->cloneForAnswer();
-                writeToMessage(error, answer);
+                writeToMessage(error::generate_password_hash, answer);
                 toxConfig().send(answer);
                 return;
             }
-            configSavePassword.password = hash.toHex();
+            configSavePassword.password = QString::fromLatin1(hash.toHex());
             config::state().setValue("config_authorization.password",
-                                     string(configSavePassword.password));
+                                     configSavePassword.password);
+            config::state().setNodeStyle("config_authorization",
+                                         YAML::EmitterStyle::Default);
         }
         else
         {
-            config::state().remove("config_authorization.password", false);
+            config::state().remove("config_authorization", false);
         }
         config::state().saveFile();
 
-        Message::Ptr answer = message->cloneForAnswer();
         writeToMessage(configSavePassword, answer);
         toxConfig().send(answer);
     }

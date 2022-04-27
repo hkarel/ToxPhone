@@ -88,13 +88,6 @@ private:
     //SocketDescriptorSet _closeSocketDescriptors;
     //SocketDescriptor _configSocketDescriptor = {-1};
 
-    // Сессионные ключи для авторизации Tox-конфигуратора
-    uchar _toxPublicKey[crypto_box_PUBLICKEYBYTES];
-    uchar _toxSecretKey[crypto_box_SECRETKEYBYTES];
-
-    // Сессионный публичный ключ Tox-конфигуратора
-    uchar _configPublicKey[crypto_box_PUBLICKEYBYTES];
-
     // Индикатор состояния звонка
     data::ToxCallState _callState;
 

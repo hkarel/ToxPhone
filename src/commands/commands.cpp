@@ -616,7 +616,6 @@ void PhoneFriendInfo::fromRaw(const bserial::RawVector& vect)
 bserial::RawVector ConfigAuthorizationRequest::toRaw() const
 {
     B_SERIALIZE_V1(stream)
-    stream << publicKey;
     stream << needPassword;
     B_SERIALIZE_RETURN
 }
@@ -624,7 +623,6 @@ bserial::RawVector ConfigAuthorizationRequest::toRaw() const
 void ConfigAuthorizationRequest::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
-    stream >> publicKey;
     stream >> needPassword;
     B_DESERIALIZE_END
 }
@@ -632,7 +630,6 @@ void ConfigAuthorizationRequest::fromRaw(const bserial::RawVector& vect)
 bserial::RawVector ConfigAuthorization::toRaw() const
 {
     B_SERIALIZE_V1(stream)
-    stream << nonce;
     stream << password;
     B_SERIALIZE_RETURN
 }
@@ -640,7 +637,6 @@ bserial::RawVector ConfigAuthorization::toRaw() const
 void ConfigAuthorization::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
-    stream >> nonce;
     stream >> password;
     B_DESERIALIZE_END
 }
@@ -648,7 +644,6 @@ void ConfigAuthorization::fromRaw(const bserial::RawVector& vect)
 bserial::RawVector ConfigSavePassword::toRaw() const
 {
     B_SERIALIZE_V1(stream)
-    stream << nonce;
     stream << password;
     B_SERIALIZE_RETURN
 }
@@ -656,7 +651,6 @@ bserial::RawVector ConfigSavePassword::toRaw() const
 void ConfigSavePassword::fromRaw(const bserial::RawVector& vect)
 {
     B_DESERIALIZE_V1(vect, stream)
-    stream >> nonce;
     stream >> password;
     B_DESERIALIZE_END
 }
