@@ -1,82 +1,80 @@
 #!/bin/bash
 
 #
-# Формирование deb-пакета для toxphone
+# Формирование deb-пакета toxphone
 #
-package_dir=$script_dir/build/${build_subdir}/deb/toxphone
-echo -e "\npackage_dir: $package_dir"
+product_name=${project_name}
+echo "---"
+echo "product_name ........ $product_name"
 
-package_name="toxphone-${package_vers}-${package_date}git${gitrev}-${os_id}${os_ver}-${os_arch}.deb"
-echo "package_name: $package_name"
+package_dir=$script_dir/build/${build_subdir}/deb/$product_name
+echo "package_dir ......... $package_dir"
+
+package_name="${product_name}-${full_package_vers}-${os_id}${os_ver}-${os_arch}.deb"
+echo "package_name ........ $package_name"
 
 rm -rf $package_dir
 
 mkdir -p $package_dir/DEBIAN
-mkdir -p $package_dir/etc/toxphone
+mkdir -p $package_dir/etc/$product_dir
 mkdir -p $package_dir/etc/systemd/system
-mkdir -p $package_dir/opt/toxphone/autorun
-mkdir -p $package_dir/opt/toxphone/lib
-mkdir -p $package_dir/opt/toxphone/sound
-mkdir -p $package_dir/var/opt/toxphone/avatars
-mkdir -p $package_dir/var/opt/toxphone/log
-mkdir -p $package_dir/var/opt/toxphone/state
-mkdir -p $package_dir/lib/udev/rules.d
+mkdir -p $package_dir/etc/udev/rules.d
+mkdir -p $package_dir/etc/xdg/autostart
+mkdir -p $package_dir/opt/$product_dir/autorun
+mkdir -p $package_dir/opt/$product_dir/lib
+mkdir -p $package_dir/opt/$product_dir/sound
+mkdir -p $package_dir/var/opt/$product_dir/avatars
+mkdir -p $package_dir/var/opt/$product_dir/log
+mkdir -p $package_dir/var/opt/$product_dir/state
 mkdir -p $package_dir/usr/share/doc/toxphone
 
-cp $script_dir/setup/deb/toxphone/DEBIAN/*      $package_dir/DEBIAN
-cp $script_dir/config/bootstrap.nodes           $package_dir/etc/toxphone
-cp $script_dir/config/toxphone.conf             $package_dir/etc/toxphone
-cp $script_dir/config/toxphone.logger.conf      $package_dir/etc/toxphone
-cp $script_dir/COPYRIGHT                        $package_dir/usr/share/doc/toxphone/copyright
+cp $script_dir/setup/deb/$product_name/DEBIAN/*  $package_dir/DEBIAN
+cp $script_dir/config/bootstrap.nodes            $package_dir/etc/$product_dir
+cp $script_dir/config/toxphone.conf              $package_dir/etc/$product_dir
+cp $script_dir/config/toxphone.logger.conf       $package_dir/etc/$product_dir
+cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
+cp $script_dir/udev/99-toxphone-b2k-b3g.rules    $package_dir/etc/udev/rules.d
+cp $script_dir/setup/toxphone-autorun.desktop    $package_dir/etc/xdg/autostart
+cp $script_dir/COPYRIGHT                         $package_dir/usr/share/doc/toxphone/copyright
 
-cp $build_dir/bin/toxphone                      $package_dir/opt/toxphone
-cp $script_dir/setup/toxphone-autorun           $package_dir/opt/toxphone/autorun
-cp $script_dir/setup/toxphone-watchdog          $package_dir/opt/toxphone/autorun
-cp $script_dir/setup/toxphone-autorun.desktop   $package_dir/opt/toxphone/autorun
-cp $script_dir/sound/*.wav                      $package_dir/opt/toxphone/sound
-cp $script_dir/udev/99-toxphone-b2k-b3g.rules   $package_dir/lib/udev/rules.d
+cp $build_dir/bin/toxphone                       $package_dir/opt/$product_dir
+cp $script_dir/setup/toxphone-autorun            $package_dir/opt/$product_dir/autorun
+cp $script_dir/setup/toxphone-watchdog           $package_dir/opt/$product_dir/autorun
+cp $script_dir/sound/*.wav                       $package_dir/opt/$product_dir/sound
 
-if [ "$os_id" = "ubuntu" -a "$os_ver" = "14.04" ]; then
-    mkdir -p $package_dir/etc/init
-    cp $script_dir/systemd/toxphone.conf             $package_dir/etc/init
-    cp $script_dir/systemd/toxphone.service-ubuntu14 $package_dir/etc/systemd/system/toxphone.service
-else
-    cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
-
-    if [ "${os_arch:0:3}" = "arm" ]; then
-        cp $script_dir/setup/toxphone-cpufreq            $package_dir/opt/toxphone
-        cp $script_dir/systemd/toxphone-cpufreq.service  $package_dir/etc/systemd/system
-    fi
+if [ "${os_arch:0:3}" = "arm" ]; then
+    cp $script_dir/systemd/toxphone-cpufreq.service  $package_dir/etc/systemd/system
+    cp $script_dir/setup/toxphone-cpufreq            $package_dir/opt/$product_dir
 fi
 
-GLOBIGNORE="*-gdb.py"
 for f in $(cat ${build_dir}/package_build_info); do
-    [ -n "$f" ] && cp -P $f $package_dir/opt/toxphone/lib
+    [ -n "$f" ] && cp -P $f $package_dir/opt/$product_dir/lib
 done
-unset GLOBIGNORE
+rm -f $package_dir/opt/$product_dir/lib/*-gdb.py
 
 chmod -R go-w        $package_dir
 chmod    u=rwx,go=rx $package_dir/DEBIAN/post*
 chmod    u=rwx,go=rx $package_dir/DEBIAN/pre*
 chmod    u=rw,go=r   $package_dir/DEBIAN/conffiles
-chmod    u=rwX,go=rX $package_dir/etc/toxphone
-chmod -R u=rwX,go=rX $package_dir/opt/toxphone
-chmod    u=rwx,go=rx $package_dir/opt/toxphone/toxphone
-chmod    u=rw,go=r   $package_dir/opt/toxphone/lib/*
-chmod    u=rw,go=r   $package_dir/opt/toxphone/autorun/*
-chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-autorun
-chmod    u=rwx,go=rx $package_dir/opt/toxphone/autorun/toxphone-watchdog
-chmod    u=rw,go=r   $package_dir/opt/toxphone/sound/*
-chmod -R u=rwX,go=rX $package_dir/lib/udev/rules.d
-chmod -R u=rwX,go=rX $package_dir/usr/share/doc/toxphone
+chmod    u=rwX,go=rX $package_dir/etc/$product_dir
+chmod -R u=rwX,go=rX $package_dir/opt/$product_dir
+chmod    u=rwx,go=rx $package_dir/opt/$product_dir/toxphone
+chmod    u=rw,go=r   $package_dir/opt/$product_dir/lib/*
+chmod    u=rw,go=r   $package_dir/opt/$product_dir/autorun/*
+chmod    u=rwx,go=rx $package_dir/opt/$product_dir/autorun/toxphone-autorun
+chmod    u=rwx,go=rx $package_dir/opt/$product_dir/autorun/toxphone-watchdog
+chmod    u=rw,go=r   $package_dir/opt/$product_dir/sound/*
+#chmod -R u=rwX,go=rX $package_dir/etc/udev/rules.d
+#chmod -R u=rwX,go=rX $package_dir/usr/share/doc/toxphone
+
+# ?? Права на директорию /var/opt/toxphone назначаются в скрипте postinst
 
 if [ "$build_mode" = "release" ]; then
     set +e
-    echo "Removing debug info ... "
-    for f in $(find $package_dir/opt/toxphone/lib -type f); do
-        strip --strip-debug --strip-unneeded $f
-    done
-    strip --strip-debug --strip-unneeded $package_dir/opt/toxphone/toxphone
+    echo -e "\nRemoving debug info ... "
+   #for f in $(find $package_dir/opt/$product_dir/bin -type f); do strip_debug_info $f; done
+    for f in $(find $package_dir/opt/$product_dir/lib -type f); do strip_debug_info $f; done
+    strip --strip-debug --strip-unneeded $package_dir/opt/$product_dir/toxphone
     set -e
 fi
 
@@ -84,16 +82,13 @@ fi
 installed_size=$(du -s $package_dir | sed -r 's/([0-9]+).*/\1/')
 echo "installed_size: $installed_size"
 
-packet_depends=$(cat << EOS
+package_depends=$(cat << EOS
     libc6, adduser, systemd, pulseaudio,\
-    libopus0, libpulse0, libusb-0.1-4, libqtcore4, libqt4-network
+    libopus0, libpulse0, libvpx6, libusb-0.1-4, libqt5core5a, libqt5network5
 EOS
 )
-#if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
-#    packet_depends="${packet_depends}, libvpx3"
-#fi
 if [ "${os_arch:0:3}" = "arm" ]; then
-    packet_depends="${packet_depends}, cpufrequtils, libvpx3"
+    package_depends="${package_depends}, cpufrequtils"
 fi
 
 os_arch_control=$os_arch
@@ -101,14 +96,13 @@ os_arch_control=$os_arch
 sed -e "s/%VERSION%/${package_vers}-${package_date}git${gitrev}/" \
     -e "s/%ARCHITECTURE%/${os_arch_control}/" \
     -e "s/%INSTALLED_SIZE%/${installed_size}/" \
-    -e "s/%DEPENDS%/${packet_depends}/" \
+    -e "s/%DEPENDS%/${package_depends}/" \
     -i $package_dir/DEBIAN/control
 
 # Контрольные суммы файлов пакета
 cd $package_dir
 md5deep -rl -o f etc >> DEBIAN/md5sums
 md5deep -rl -o f opt >> DEBIAN/md5sums
-md5deep -rl -o f lib >> DEBIAN/md5sums
 md5deep -rl -o f usr >> DEBIAN/md5sums
 chmod  0644 DEBIAN/md5sums
 cd $script_dir
@@ -136,13 +130,13 @@ set -e
 if [ "$build_packages" = "yes" ]; then
     cd $script_dir
     mkdir -p packages
-    echo "Copying the file $package_name to directory ./packages"
+    echo "Copying file $package_name to directory ./packages"
     cp -f ${build_dir}/$package_name ./packages
     cp -f ${build_dir}/$package_name ./packages/last
 fi
 
 if [ "$install_toxphone" = "yes" ]; then
-    echo "Install ToxPhone..."
+    echo "Install ${product_name}..."
     sudo dpkg -i ${build_dir}/$package_name
-    echo "ToxPhone installation is complete"
+    echo "${product_name} installation is complete"
 fi

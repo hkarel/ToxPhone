@@ -1,27 +1,72 @@
 #!/bin/bash
 
 set +e
+
+product_group=toxphone
+product_dir=toxphone
+
+udevadm control --reload-rules
+
 need_reboot=
 
-res=$(cat /etc/group | grep 'toxphone')
+#
+# Создание пользовательских групп
+#
+#--- Group 'toxphone' ---
+res=$(cat /etc/group | grep "$product_group")
 if [ -z "$res" ]; then
-    addgroup toxphone
+    groupadd -f $product_group
+    echo "The group $product_group is created"
 fi
 
-res=$(groups $SUDO_USER | grep 'toxphone')
+res=$(groups $SUDO_USER | grep "$product_group")
 if [ -z "$res" ]; then
-    adduser $SUDO_USER toxphone
+    usermod -aG $product_group $SUDO_USER
     need_reboot=yes
 fi
 
+# #--- Group 'usbrelay' ---
+# res=$(cat /etc/group | grep 'usbrelay')
+# if [ -z "$res" ]; then
+#     groupadd -f usbrelay
+#     echo "The group usbrelay is created"
+# fi
+#
+# res=$(groups $SUDO_USER | grep 'usbrelay')
+# if [ -z "$res" ]; then
+#     usermod -aG usbrelay $SUDO_USER
+#     need_reboot=yes
+# fi
+
 if [ "$need_reboot" = "yes" ]; then
-    echo "The user $SUDO_USER added to the toxphone group. Need reboot computer"
+    echo "============================================== "
+    echo "! The user '$SUDO_USER' added to group '$product_group'."
+   #echo "! The user '$SUDO_USER' added to group: 'usbrelay'. "
+    echo "! Need relogin user and repeat installation.   "
+    echo "============================================== "
+    exit 1
 fi
 
-chown -R root:toxphone /etc/toxphone
-chown -R root:toxphone /var/opt/toxphone
-chmod -R ug=rwX,o=rX   /var/opt/toxphone
+#
+# Назначение прав на рабочие директории
+#
+chown -R root:$product_group  /etc/$product_dir
+chmod -R ug=rwX,o=rX          /etc/$product_dir
 
+chown -R root:$product_group  /var/opt/$product_dir
+chmod -R ug=rwX,o=rX          /var/opt/$product_dir
+
+#
+# Регистрация systemd-сервиса
+#
+sed -e "s/%TARGET_USER%/$SUDO_USER/" \
+    -i /etc/systemd/system/toxphone.service
+
+systemctl daemon-reload
+
+#
+# Режим работы приложения
+#
 response=2
 # cat << EOF
 # Select launch mode for ToxPhone client:
@@ -41,24 +86,13 @@ res=$(ps aux | grep '/usr/lib/xorg/Xorg' | grep -v 'grep')
 if [ "$response" -eq 2 ]; then
     echo "ToxPhone will be launched as service"
 
-    sed -e "s/%TARGET_USER%/$SUDO_USER/" \
-        -i /etc/systemd/system/toxphone.service
-
-    systemctl daemon-reload
-
     systemctl unmask toxphone.service
     systemctl enable toxphone.service
     systemctl start  toxphone.service
 
-    if [ -e /etc/init/toxphone.conf ]; then
-        initctl reload-configuration
-    fi
-
 # 1 - As application in user space
 else
     echo "ToxPhone will be launched in user space"
-
-    systemctl daemon-reload
 
     if [ -e /etc/systemd/system/toxphone.service ]; then
         systemctl stop    toxphone.service
@@ -66,12 +100,12 @@ else
         rm -f /etc/systemd/system/toxphone.service
     fi
 
-    if [ ! -d /home/$SUDO_USER/.config/autostart ]; then
-        mkdir -p /home/$SUDO_USER/.config/autostart
-        chown ${SUDO_USER}:${SUDO_USER} /home/$SUDO_USER/.config/autostart
-    fi
+#     if [ ! -d /home/$SUDO_USER/.config/autostart ]; then
+#        mkdir -p /home/$SUDO_USER/.config/autostart
+#        chown ${SUDO_USER}:${SUDO_USER} /home/$SUDO_USER/.config/autostart
+#     fi
 
-    ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
+    #ln -sf /opt/toxphone/autorun/toxphone-autorun.desktop  /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
     su -c "XDG_RUNTIME_DIR=/run/user/$SUDO_UID /opt/toxphone/autorun/toxphone-autorun" $SUDO_USER
 fi
 

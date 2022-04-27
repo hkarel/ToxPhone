@@ -19,11 +19,6 @@ if [ -n "$res" ]; then
     systemctl disable toxphone-cpufreq.service
 fi
 
-rm -f /home/$SUDO_USER/.config/autostart/toxphone-autorun.desktop
-
-if [ -e /etc/init/toxphone.conf ]; then
-    rm -f /etc/init/toxphone.conf
-    initctl reload-configuration
-fi
+#rm -f /etc/xdg/autostart/toxphone-autorun.desktop
 
 exit 0

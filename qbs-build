@@ -2,12 +2,8 @@
 
 set -u
 
-jobs=4
-
-# Для сборки на ARM системах с ограниченным объемом памяти
-mem_size=$(free -m | sed '2!d' | sed 's/  */ /g' | cut -d' ' -f2)
-[ "$mem_size" -lt 2000 ] && jobs=3
-echo "jobs: $jobs"
+project_name=toxphone
+product_dir=toxphone
 
 SUDO=
 rebuild=
@@ -20,20 +16,39 @@ build_packages=
 install_toxphone=
 install_toxphoneconf=
 
-remove_install_toxphone=
-remove_install_toxphoneconf=
+remove_toxphone=
+remove_toxphoneconf=
 
 # Директория этого скрипта
 script_dir=$(dirname $(readlink -f $0))
 echo "script_dir: $script_dir"
 
 # Определение параметров host-системы
-if [ ! -e $script_dir/setup/os_detect ]; then
+if [ ! -e $script_dir/setup/scripts/os_detect ]; then
     echo "Error: os_detect script not found"
     exit 1
 fi
-. $script_dir/setup/os_detect
+. $script_dir/setup/scripts/os_detect
 
+# Функция удаления отладочной информации
+if [ ! -e $script_dir/setup/scripts/strip_debug_info ]; then
+    echo "Error: strip_debug_info script not found"
+    exit 1
+fi
+. $script_dir/setup/scripts/strip_debug_info
+# ---
+
+jobs=$(nproc)
+[ "$jobs" -gt 24 ] && jobs=$(($jobs - 6))
+
+# Для сборки на ARM системах с ограниченным объемом памяти
+mem_size=$(free -m | sed '2!d' | sed 's/  */ /g' | cut -d' ' -f2)
+[ "$mem_size" -lt 2000 ] && jobs=3
+echo "jobs: $jobs"
+
+if [ "$os_id" = "neon" ]; then
+    os_id="ubuntu"
+fi
 
 function display_help()
 {
@@ -87,16 +102,16 @@ do
             shift
             ;;
         -R)
-            remove_install_toxphone=yes
-            remove_install_toxphoneconf=yes
+            remove_toxphone=yes
+            remove_toxphoneconf=yes
             shift
             ;;
         -Rt)
-            remove_install_toxphone=yes
+            remove_toxphone=yes
             shift
             ;;
         -Rc)
-            remove_install_toxphoneconf=yes
+            remove_toxphoneconf=yes
             shift
             ;;
         -*)
@@ -116,7 +131,7 @@ if [ "$print_help" = "yes" ]; then
     exit 0
 fi
 
-if [ "$remove_install_toxphone" = "yes" ]; then
+if [ "$remove_toxphone" = "yes" ]; then
     echo -e "\nRemove ToxPhone..."
 
     set +e
@@ -128,10 +143,10 @@ if [ "$remove_install_toxphone" = "yes" ]; then
         sudo dpkg -r toxphone
         echo "ToxPhone was removed"
     fi
-    [ "$remove_install_toxphoneconf" != "yes" ] && exit 0
+    [ "$remove_toxphoneconf" != "yes" ] && exit 0
 fi
 
-if [ "$remove_install_toxphoneconf" = "yes" ]; then
+if [ "$remove_toxphoneconf" = "yes" ]; then
     echo -e "\nRemove ToxPhone config..."
 
     set +e
@@ -237,7 +252,7 @@ package_release=${package_date}git${gitrev}
 full_package_vers=${package_vers}-${package_release}
 
 echo "---"
-echo "product_name ........ $product_name"
+echo "project_name ........ $project_name"
 echo "product_dir ......... $product_dir"
 echo "package_vers ........ $package_vers"
 echo "package_date ........ $package_date"

@@ -19,3 +19,6 @@
 [submodule "src/pproto/pproto"]
 	path = src/pproto/pproto
 	url = https://github.com/hkarel/PProtoCpp.git
+[submodule "setup/scripts"]
+	path = setup/scripts
+	url = https://github.com/hkarel/InstallScripts.git

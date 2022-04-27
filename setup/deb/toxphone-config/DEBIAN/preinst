@@ -1,4 +1,5 @@
 #!/bin/bash
 
-killall toxphone-config 2> /dev/null
+killall toxphone-config 2> /dev/null &
+
 exit 0
