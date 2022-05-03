@@ -16,10 +16,10 @@ Product {
         "-Wno-absolute-value",
     ]
 
-    property var exportIncludePaths: [
+    property var includePaths: [
         "./filter_audio",
     ]
-    cpp.systemIncludePaths: exportIncludePaths;
+    cpp.systemIncludePaths: includePaths;
 
     files: [
         "filter_audio/aec/*.c",
@@ -47,6 +47,6 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.systemIncludePaths: product.exportIncludePaths
+        cpp.systemIncludePaths: exportingProduct.includePaths
     }
 }

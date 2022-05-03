@@ -20,11 +20,11 @@ Product {
     cpp.cxxFlags: project.cxxFlags //.concat(["-fPIC"])
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
-    property var exportIncludePaths: [
+    property var includePaths: [
         "./",
         "./pproto",
     ]
-    cpp.includePaths: exportIncludePaths;
+    cpp.includePaths: includePaths;
 
     cpp.systemIncludePaths: QbsUtl.concatPaths(
         Qt.core.cpp.includePaths, // Декларация нужна для подавления Qt warning-ов
@@ -72,6 +72,6 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.includePaths: product.exportIncludePaths
+        cpp.includePaths: exportingProduct.includePaths
     }
 }

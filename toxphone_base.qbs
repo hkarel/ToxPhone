@@ -33,8 +33,8 @@ Project {
         configure: {
             projectVersion = QbsUtl.getVersions(projectSourceDirectory + "/VERSION");
             projectGitRevision = QbsUtl.gitRevision(projectSourceDirectory);
-            if (File.exists(projectBuildDirectory + "/package_build_info"))
-                File.remove(projectBuildDirectory + "/package_build_info")
+            //if (File.exists(projectBuildDirectory + "/package_build_info"))
+            //    File.remove(projectBuildDirectory + "/package_build_info")
         }
     }
 

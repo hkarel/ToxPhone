@@ -92,7 +92,7 @@ Product {
         //"-Wno-unused-parameter",
     ].concat(warnFlags)
 
-    property var exportIncludePaths: [
+    property var includePaths: [
         "./toxcore",
     ]
     cpp.systemIncludePaths: QbsUtl.concatPaths(
@@ -112,6 +112,6 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.includePaths: product.exportIncludePaths
+        cpp.includePaths: exportingProduct.includePaths
     }
 }

@@ -22,10 +22,10 @@ Product {
         "-Wno-sign-compare",
     ]
 
-    property var exportIncludePaths: [
+    property var includePaths: [
         "./rnnoise/include",
     ]
-    cpp.includePaths: exportIncludePaths;
+    cpp.includePaths: includePaths;
 
     files: [
         "rnnoise/include/rnnoise.h",
@@ -51,6 +51,6 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.systemIncludePaths: product.exportIncludePaths
+        cpp.systemIncludePaths: exportingProduct.includePaths
     }
 }
