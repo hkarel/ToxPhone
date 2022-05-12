@@ -59,10 +59,20 @@ chmod -R ug=rwX,o=rX          /var/opt/$product_dir
 #
 # Регистрация systemd-сервиса
 #
-sed -e "s/%TARGET_USER%/$SUDO_USER/" \
-    -i /etc/systemd/system/toxphone.service
+#sed -e "s/%TARGET_USER%/$SUDO_USER/" \
+#    -i /usr/lib/systemd/user/toxphone.service
 
 systemctl daemon-reload
+
+#
+# Регистрация пользователя для запуска pulseaudio в user-пространстве
+#
+loginctl enable-linger $SUDO_USER
+
+#
+# Запуск pulseaudio в user-пространстве
+#
+su -l $SUDO_USER -c "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$SUDO_UID/bus systemctl --user enable pulseaudio.service"
 
 #
 # Режим работы приложения
@@ -82,22 +92,28 @@ res=$(ps aux | grep '/usr/bin/X' | grep -v 'grep')
 res=$(ps aux | grep '/usr/lib/xorg/Xorg' | grep -v 'grep')
 [ -n "$res" ] && response=1;
 
+function execSuCommand()
+{
+    su -l $SUDO_USER -c "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$SUDO_UID/bus $1"
+}
+
 # 2 - As system service
 if [ "$response" -eq 2 ]; then
     echo "ToxPhone will be launched as service"
 
-    systemctl unmask toxphone.service
-    systemctl enable toxphone.service
-    systemctl start  toxphone.service
+    execSuCommand "systemctl --user daemon-reload"
+    execSuCommand "systemctl --user enable toxphone.service"
+    execSuCommand "systemctl --user start  toxphone.service"
 
 # 1 - As application in user space
 else
     echo "ToxPhone will be launched in user space"
 
-    if [ -e /etc/systemd/system/toxphone.service ]; then
-        systemctl stop    toxphone.service
-        systemctl disable toxphone.service
-        rm -f /etc/systemd/system/toxphone.service
+    if [ -e /usr/lib/systemd/user/toxphone.service ]; then
+        execSuCommand "systemctl --user stop    toxphone.service"
+        execSuCommand "systemctl --user disable toxphone.service"
+
+        rm -f /usr/lib/systemd/user/toxphone.service
     fi
 
 #     if [ ! -d /home/$SUDO_USER/.config/autostart ]; then

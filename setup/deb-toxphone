@@ -17,7 +17,7 @@ rm -rf $package_dir
 
 mkdir -p $package_dir/DEBIAN
 mkdir -p $package_dir/etc/$product_dir
-mkdir -p $package_dir/etc/systemd/system
+#mkdir -p $package_dir/etc/systemd/system
 mkdir -p $package_dir/etc/udev/rules.d
 mkdir -p $package_dir/etc/xdg/autostart
 mkdir -p $package_dir/opt/$product_dir/autorun
@@ -26,15 +26,17 @@ mkdir -p $package_dir/opt/$product_dir/sound
 mkdir -p $package_dir/var/opt/$product_dir/avatars
 mkdir -p $package_dir/var/opt/$product_dir/log
 mkdir -p $package_dir/var/opt/$product_dir/state
+mkdir -p $package_dir/usr/lib/systemd/user
 mkdir -p $package_dir/usr/share/doc/toxphone
 
 cp $script_dir/setup/deb/$product_name/DEBIAN/*  $package_dir/DEBIAN
 cp $script_dir/config/bootstrap.nodes            $package_dir/etc/$product_dir
 cp $script_dir/config/toxphone.conf              $package_dir/etc/$product_dir
 cp $script_dir/config/toxphone.logger.conf       $package_dir/etc/$product_dir
-cp $script_dir/systemd/toxphone.service          $package_dir/etc/systemd/system
 cp $script_dir/udev/99-toxphone-b2k-b3g.rules    $package_dir/etc/udev/rules.d
 cp $script_dir/setup/toxphone-autorun.desktop    $package_dir/etc/xdg/autostart
+#cp $script_dir/systemd/toxphone.service         $package_dir/etc/systemd/system
+cp $script_dir/systemd/toxphone.service          $package_dir/usr/lib/systemd/user
 cp $script_dir/COPYRIGHT                         $package_dir/usr/share/doc/toxphone/copyright
 
 cp $build_dir/bin/toxphone                       $package_dir/opt/$product_dir

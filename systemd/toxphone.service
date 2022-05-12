@@ -1,11 +1,11 @@
 [Unit]
 Description=ToxPhone service
-After=network.target multi-user.target
+After=network.target multi-user.target pulseaudio.service
 
 [Service]
 Type=simple
-User=%TARGET_USER%
-Group=toxphone
+#User=%TARGET_USER%
+#Group=toxphone
 ExecStart=/opt/toxphone/toxphone
 TimeoutSec=300
 KillMode=mixed
@@ -13,4 +13,4 @@ Restart=on-failure
 LimitCORE=infinity
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target pulseaudio.service

@@ -1,16 +1,23 @@
 #!/bin/bash
 
-if [ ! -e /etc/systemd/system/toxphone.service ]; then
+set +e
+
+if [ ! -e /usr/lib/systemd/user/toxphone.service ]; then
     killall toxphone-watchdog 2> /dev/null
     sleep 1
     killall toxphone 2> /dev/null
     sleep 3
 fi
 
-res=$(systemctl list-unit-files | grep 'toxphone.service')
+function execSuCommand()
+{
+    su -l $SUDO_USER -c "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$SUDO_UID/bus $1"
+}
+
+res=$(execSuCommand "systemctl --user list-unit-files | grep 'toxphone.service'")
 if [ -n "$res" ]; then
-    systemctl stop    toxphone.service
-    systemctl disable toxphone.service
+    execSuCommand "systemctl --user stop    toxphone.service"
+    execSuCommand "systemctl --user disable toxphone.service"
 fi
 
 res=$(systemctl list-unit-files | grep 'toxphone-cpufreq.service')
