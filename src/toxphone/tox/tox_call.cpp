@@ -1,8 +1,11 @@
 #include "tox_call.h"
 #include "tox_net.h"
 #include "tox_func.h"
-#include "tox_error.h"
-#include "tox_logger.h"
+
+#include "toxfunc/tox_func.h"
+#include "toxfunc/tox_logger.h"
+#include "toxfunc/tox_error.h"
+
 #include "common/defines.h"
 #include "common/functions.h"
 #include "common/voice_filters.h"

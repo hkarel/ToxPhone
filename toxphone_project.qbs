@@ -9,6 +9,7 @@ ToxPhoneBase {
         "src/commands/commands.qbs",
         "src/shared/shared.qbs",
         "src/pproto/pproto.qbs",
+        "src/toxfunc/toxfunc.qbs",
         "src/toxphone/toxphone.qbs",
         "src/toxphone_config/toxphone_config.qbs",
         "src/yaml/yaml.qbs",

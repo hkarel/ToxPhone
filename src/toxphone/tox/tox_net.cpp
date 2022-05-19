@@ -1,7 +1,10 @@
 #include "tox/tox_net.h"
 #include "tox/tox_func.h"
-#include "tox/tox_logger.h"
-#include "tox/tox_error.h"
+
+#include "toxfunc/tox_func.h"
+#include "toxfunc/tox_logger.h"
+#include "toxfunc/tox_error.h"
+#include "toxfunc/pproto_error.h"
 
 #include "common/defines.h"
 #include "common/functions.h"

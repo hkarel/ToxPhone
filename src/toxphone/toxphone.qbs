@@ -18,6 +18,7 @@ Product {
     Depends { name: "PProto" }
     Depends { name: "SharedLib" }
     Depends { name: "ToxCore" }
+    Depends { name: "ToxFunc" }
     Depends { name: "FilterAudio" }
     Depends { name: "RNNoise" }
     Depends { name: "Yaml" }
@@ -120,12 +121,8 @@ Product {
         "diverter/yealink_protocol.h",
         "tox/tox_call.cpp",
         "tox/tox_call.h",
-        "tox/tox_error.cpp",
-        "tox/tox_error.h",
         "tox/tox_func.cpp",
         "tox/tox_func.h",
-        "tox/tox_logger.cpp",
-        "tox/tox_logger.h",
         "tox/tox_net.cpp",
         "tox/tox_net.h",
         "toxphone.cpp",

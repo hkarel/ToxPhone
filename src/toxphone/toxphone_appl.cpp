@@ -1,7 +1,9 @@
 #include "toxphone_appl.h"
+
+#include "toxfunc/tox_func.h"
+#include "toxfunc/tox_logger.h"
 #include "tox/tox_net.h"
-#include "tox/tox_func.h"
-#include "tox/tox_logger.h"
+
 #include "common/functions.h"
 #include "audio/audio_dev.h"
 
