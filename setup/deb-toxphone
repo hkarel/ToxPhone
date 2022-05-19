@@ -17,7 +17,7 @@ rm -rf $package_dir
 
 mkdir -p $package_dir/DEBIAN
 mkdir -p $package_dir/etc/$product_dir
-#mkdir -p $package_dir/etc/systemd/system
+mkdir -p $package_dir/etc/systemd/system
 mkdir -p $package_dir/etc/udev/rules.d
 mkdir -p $package_dir/etc/xdg/autostart
 mkdir -p $package_dir/opt/$product_dir/autorun
