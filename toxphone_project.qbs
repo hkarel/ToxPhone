@@ -13,7 +13,7 @@ ToxPhoneBase {
         "src/toxphone/toxphone.qbs",
         "src/toxphone_config/toxphone_config.qbs",
         "src/yaml/yaml.qbs",
-        "setup/packege_build.qbs",
+        "setup/package_build.qbs",
         //"src/examples/example2.qbs",
         //"src/examples/example3.qbs",
 

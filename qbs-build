@@ -175,11 +175,6 @@ check_need_package 'libvpx-dev'
 check_need_package 'libusb-dev'
 check_need_package 'libconfig-dev'
 
-if [ "$os_id" = "ubuntu" -a "$os_ver" = "16.04" ]; then
-    check_need_package 'libvpx-dev'
-    check_need_package 'hashdeep'
-fi
-
 if [ "$build_packages" = "yes" \
      -o "$install_toxphone" = "yes" \
      -o "$install_toxphoneconf" = "yes" ]

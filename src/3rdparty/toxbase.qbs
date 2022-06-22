@@ -88,9 +88,11 @@ Product {
     ].concat(warnFlags)
 
     cpp.cxxFlags: [
-        "-std=c++17",
+        //"-std=c++17",
         //"-Wno-unused-parameter",
     ].concat(warnFlags)
+
+    cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
     property var includePaths: [
         "./toxcore",
