@@ -54,7 +54,6 @@ Project {
           //"UDP_LONGSIG=1",
           //"UDP_SIGNATURE=\"TOXPHONE\"", // Long signature
             "SODIUM_ENCRYPTION",
-            "LOGGER_LESS_SNPRINTF",
             "TOX_MESSAGE_SIGNATURE=\"TOXPHONE\"",
             "TOX_PHONE=\"ToxPhone\"",
             "CONFIG_DIR=\"/etc/toxphone\"",
