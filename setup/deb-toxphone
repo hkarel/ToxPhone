@@ -126,7 +126,8 @@ systemd-service-file-outside-lib,\
 maintainer-script-calls-systemctl,\
 file-in-etc-not-marked-as-conffile,\
 maintainer-script-ignores-errors,\
-maintainer-script-empty \
+maintainer-script-empty, \
+maintainer-script-should-not-use-recursive-chown-or-chmod \
 ${build_dir}/$package_name
 set -e
 
