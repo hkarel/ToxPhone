@@ -28,12 +28,12 @@
 #define USB_MSG_OUT USB_TYPE_CLASS | 0x01
 #define TIME_OUT    1600
 
-#define log_error_m   alog::logger().error_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
-#define log_warn_m    alog::logger().warn_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
-#define log_info_m    alog::logger().info_f   (__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
-#define log_verbose_m alog::logger().verbose_f(__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
-#define log_debug_m   alog::logger().debug_f  (__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
-#define log_debug2_m  alog::logger().debug2_f (__FILE__, LOGGER_FUNC_NAME, __LINE__, "YealinkProto")
+#define log_error_m   alog::logger().error_f  (alog_line_location, "YealinkProto")
+#define log_warn_m    alog::logger().warn_f   (alog_line_location, "YealinkProto")
+#define log_info_m    alog::logger().info_f   (alog_line_location, "YealinkProto")
+#define log_verbose_m alog::logger().verbose_f(alog_line_location, "YealinkProto")
+#define log_debug_m   alog::logger().debug_f  (alog_line_location, "YealinkProto")
+#define log_debug2_m  alog::logger().debug2_f (alog_line_location, "YealinkProto")
 
 std::atomic_int usbContinuousBusErrorCounter {0};
 std::atomic_bool pstn_and_usb_joined {false}; // b3g only

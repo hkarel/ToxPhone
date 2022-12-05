@@ -1146,8 +1146,10 @@ void AudioDev::updateAudioDevInfo(const InfoType* info, data::AudioDevInfo::List
             audioDevInfo.isCurrent = true;
             audioDevInfo.isDefault = bool(devDefault);
 
+            constexpr const char* file_name = alog::detail::file_name(__FILE__);
+
             alog::Line logLine =
-                alog::logger().verbose(__FILE__, __func__, line, "AudioDev")
+                alog::logger().verbose(file_name, __func__, line, "AudioDev")
                 << ((audioDevInfo.type == data::AudioDevType::Sink)
                     ? "Sound sink"
                     : "Sound source");
