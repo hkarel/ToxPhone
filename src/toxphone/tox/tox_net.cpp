@@ -1067,7 +1067,7 @@ void ToxNet::updateFriendRequests()
         if (!friend_requests.IsMap())
             return false;
 
-        for(auto  it = friend_requests.begin(); it != friend_requests.end(); ++it)
+        for (auto it = friend_requests.begin(); it != friend_requests.end(); ++it)
         {
             QString publicKey = QString::fromStdString(it->first.as<string>(""));
             if (publicKey.isEmpty())

@@ -704,7 +704,7 @@ void Application::phoneDiverterAttached()
 {
     YamlConfig::Func loadFunc = [this](YamlConfig* conf, YAML::Node& phones, bool)
     {
-        for(auto  it = phones.begin(); it != phones.end(); ++it)
+        for (auto it = phones.begin(); it != phones.end(); ++it)
         {
             QByteArray publicKey = it->first.as<string>("").c_str();
             if (publicKey.isEmpty())
