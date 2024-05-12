@@ -9,6 +9,7 @@ SUDO=
 rebuild=
 print_help=
 build_mode=release
+command_echo_mode=summary
 need_packages=
 
 build_packages=
@@ -58,6 +59,7 @@ Usage: ${0##*/}
   -r   full rebuild of project
   -d   build in 'debug' mode
   -D   build deb package
+  -E   Show QBS command echo
   -i   install (toxphone and toxphone-config)
   -it  install deb package toxphone
   -ic  install deb package toxphone-config
@@ -86,6 +88,10 @@ do
             ;;
         -D)
             build_packages=yes
+            shift
+            ;;
+        -E)
+            command_echo_mode="command-line"
             shift
             ;;
         -i)
@@ -222,7 +228,7 @@ set -e
 $QBS build \
     --file toxphone_project.qbs \
     --build-directory ./build \
-    --command-echo-mode command-line \
+    --command-echo-mode $command_echo_mode \
     --jobs $jobs \
     --no-install \
     qbs.buildVariant:$build_mode \
