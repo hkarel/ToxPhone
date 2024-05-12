@@ -97,7 +97,7 @@ private:
     steady_timer _sendCallStateTimer;
     bool _sendCallStateByTimer = {false};
 
-    template<typename T, int> friend T& ::safe_singleton();
+    template<typename T, int> friend T& safe::singleton();
 };
 
 ToxCall& toxCall();

@@ -41,7 +41,7 @@ static const char* tox_videocall_responce_message =
 
 ToxCall& toxCall()
 {
-    return ::safe_singleton<ToxCall>();
+    return safe::singleton<ToxCall>();
 }
 
 ToxCall::ToxCall() : QThreadEx(0)
@@ -788,7 +788,7 @@ void ToxCall::toxav_audio_receive_frame(ToxAV* av, uint32_t friend_number,
         VoiceFrameInfo voiceFrameInfo {latency, channels, sampleSize,
                                        quint32(sample_count), sampling_rate, bufferSize};
 
-        emit tc->startVoice(VoiceFrameInfo::Ptr::create_ptr(voiceFrameInfo));
+        emit tc->startVoice(VoiceFrameInfo::Ptr::create(voiceFrameInfo));
         return;
     }
 

@@ -27,19 +27,19 @@ VoiceFrameInfo::Ptr getRecordFrameInfo(const VoiceFrameInfo* vfi, bool reset)
     if (reset)
         voiceFrameInfo = VoiceFrameInfo::Ptr();
     else if (vfi)
-        voiceFrameInfo = VoiceFrameInfo::Ptr::create_ptr(*vfi);
+        voiceFrameInfo = VoiceFrameInfo::Ptr::create(*vfi);
 
     return voiceFrameInfo;
 }
 
 RingBuffer& recordRBuff_1()
 {
-    return ::safe_singleton<RingBuffer, 0>();
+    return safe::singleton<RingBuffer, 0>();
 }
 
 RingBuffer& recordRBuff_2()
 {
-    return ::safe_singleton<RingBuffer, 1>();
+    return safe::singleton<RingBuffer, 1>();
 }
 
 VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
@@ -51,12 +51,12 @@ VoiceFrameInfo::Ptr getVoiceFrameInfo(const VoiceFrameInfo* vfi, bool reset)
     if (reset)
         voiceFrameInfo = VoiceFrameInfo::Ptr();
     else if (vfi)
-        voiceFrameInfo = VoiceFrameInfo::Ptr::create_ptr(*vfi);
+        voiceFrameInfo = VoiceFrameInfo::Ptr::create(*vfi);
 
     return voiceFrameInfo;
 }
 
 RingBuffer& voiceRBuff()
 {
-    return ::safe_singleton<RingBuffer, 3>();
+    return safe::singleton<RingBuffer, 3>();
 }

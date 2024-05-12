@@ -49,6 +49,6 @@ private:
     volatile bool _filterChanged;
     FunctionInvoker _funcInvoker;
 
-    template<typename T, int> friend T& ::safe_singleton();
+    template<typename T, int> friend T& safe::singleton();
 };
 VoiceFilters& voiceFilters();

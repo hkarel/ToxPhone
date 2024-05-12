@@ -4,7 +4,7 @@
 
 ToxConfig& toxConfig()
 {
-    return ::safe_singleton<ToxConfig>();
+    return safe::singleton<ToxConfig>();
 }
 
 void ToxConfig::send(const pproto::Message::Ptr& message) const

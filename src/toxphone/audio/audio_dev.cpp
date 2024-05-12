@@ -84,7 +84,7 @@ typedef simple_ptr<pa_operation, pa_operation_deleter> pa_operation_ptr;
 
 AudioDev& audioDev()
 {
-    return ::safe_singleton<AudioDev>();
+    return safe::singleton<AudioDev>();
 }
 
 AudioDev::AudioDev()

@@ -111,7 +111,7 @@ private:
                                             bool* keypress,
                                             int*  pstn_ring);
 
-    template<typename T, int> friend T& ::safe_singleton();
+    template<typename T, int> friend T& safe::singleton();
 };
 
 PhoneDiverter& phoneDiverter();

@@ -1509,5 +1509,5 @@ void ToxNet::tox_friend_lossless_packet(Tox* tox, uint32_t friend_number,
 
 ToxNet& toxNet()
 {
-    return ::safe_singleton<ToxNet>();
+    return safe::singleton<ToxNet>();
 }

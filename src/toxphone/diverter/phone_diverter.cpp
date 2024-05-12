@@ -56,7 +56,7 @@ extern std::recursive_mutex usb_talk_lock;
 
 PhoneDiverter& phoneDiverter()
 {
-    return ::safe_singleton<PhoneDiverter>();
+    return safe::singleton<PhoneDiverter>();
 }
 
 PhoneDiverter::PhoneDiverter() : QThreadEx(0)

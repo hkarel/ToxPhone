@@ -31,7 +31,7 @@ extern "C" {
 
 VoiceFilters& voiceFilters()
 {
-    return ::safe_singleton<VoiceFilters, 0>();
+    return safe::singleton<VoiceFilters, 0>();
 }
 
 VoiceFilters::VoiceFilters()
