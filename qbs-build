@@ -174,7 +174,10 @@ function check_need_package()
 }
 
 need_packages=
-check_need_package 'qt5-default'
+check_need_package 'qtbase5-dev'
+check_need_package 'qtbase5-dev-tools'
+check_need_package 'qt5-qmake'
+check_need_package 'qtchooser'
 check_need_package 'libopus-dev'
 check_need_package 'libpulse-dev'
 check_need_package 'libvpx-dev'
