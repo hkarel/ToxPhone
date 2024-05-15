@@ -92,7 +92,7 @@ bool ConnectionWindow::init(const tcp::Socket::Ptr& socket)
     int port_counter = 1;
     while (port_counter <= 5)
     {
-        if (!udp::socket().init({QHostAddress::Any, port + port_counter}))
+        if (!udp::socket().init({QHostAddress::AnyIPv4, port + port_counter}))
             return false;
 
         udp::socket().start();
