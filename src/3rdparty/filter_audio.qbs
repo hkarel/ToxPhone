@@ -1,4 +1,5 @@
 import qbs
+import qbs.FileInfo
 
 Product {
     type: "staticlibrary"
@@ -16,10 +17,7 @@ Product {
         "-Wno-absolute-value",
     ]
 
-    property var includePaths: [
-        "./filter_audio",
-    ]
-    cpp.systemIncludePaths: includePaths;
+    cpp.systemIncludePaths: ["filter_audio"]
 
     files: [
         "filter_audio/aec/*.c",
@@ -47,6 +45,8 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.systemIncludePaths: exportingProduct.includePaths
+        cpp.systemIncludePaths: [
+            FileInfo.joinPaths(exportingProduct.sourceDirectory, "filter_audio"),
+        ]
     }
 }

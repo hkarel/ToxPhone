@@ -149,7 +149,7 @@ Project {
         id: dht_bootstrap
         type: "application"
         consoleApplication: true
-        destinationDirectory: "./bin"
+        destinationDirectory: "bin"
         condition: false
 
         name: "DHT_Bootstrap"
@@ -183,7 +183,7 @@ Project {
         id: tox_bootstrap
         type: "application"
         consoleApplication: true
-        destinationDirectory: "./bin"
+        destinationDirectory: "bin"
         condition: false
 
         name: "ToxBootstrap"

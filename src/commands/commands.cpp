@@ -49,33 +49,33 @@ REGISTRY_COMMAND_SINGLPROC(DiverterHandset,            "6650b9f5-a7e1-4255-8d6d-
 
 namespace data {
 
-bserial::RawVector ToxPhoneInfo::toRaw() const
+void ToxPhoneInfo::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << info;
     stream << applId;
     stream << isPointToPoint;
     stream << configConnectCount;
-    B_SERIALIZE_V2(stream)
+    B_SERIALIZE_V2
     stream << hostPoint;
     B_SERIALIZE_RETURN
 }
 
 void ToxPhoneInfo::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> info;
     stream >> applId;
     stream >> isPointToPoint;
     stream >> configConnectCount;
-    B_DESERIALIZE_V2(vect, stream)
+    B_DESERIALIZE_V2(vect)
     stream >> hostPoint;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ToxPhoneAbout::toRaw() const
+void ToxPhoneAbout::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << version;
     stream << toxcore;
     stream << gitrev;
@@ -86,7 +86,7 @@ bserial::RawVector ToxPhoneAbout::toRaw() const
 
 void ToxPhoneAbout::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> version;
     stream >> toxcore;
     stream >> gitrev;
@@ -95,45 +95,45 @@ void ToxPhoneAbout::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ApplShutdown::toRaw() const
+void ApplShutdown::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << applId;
     B_SERIALIZE_RETURN
 }
 
 void ApplShutdown::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> applId;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ToxProfile::toRaw() const
+void ToxProfile::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << toxId;
     stream << name;
     stream << status;
-    B_SERIALIZE_V2(stream)
+    B_SERIALIZE_V2
     stream << avatar;
     B_SERIALIZE_RETURN
 }
 
 void ToxProfile::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> toxId;
     stream >> name;
     stream >> status;
-    B_DESERIALIZE_V2(vect, stream)
+    B_DESERIALIZE_V2(vect)
     stream >> avatar;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector RequestFriendship::toRaw() const
+void RequestFriendship::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << toxId;
     stream << message;
     B_SERIALIZE_RETURN
@@ -141,15 +141,15 @@ bserial::RawVector RequestFriendship::toRaw() const
 
 void RequestFriendship::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> toxId;
     stream >> message;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendRequest::toRaw() const
+void FriendRequest::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << publicKey;
     stream << message;
     stream << dateTime;
@@ -159,7 +159,7 @@ bserial::RawVector FriendRequest::toRaw() const
 
 void FriendRequest::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> publicKey;
     stream >> message;
     stream >> dateTime;
@@ -167,23 +167,23 @@ void FriendRequest::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendRequests::toRaw() const
+void FriendRequests::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << list;
     B_SERIALIZE_RETURN
 }
 
 void FriendRequests::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> list;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendItem::toRaw() const
+void FriendItem::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << changeFlag;
     stream << publicKey;
     stream << number;
@@ -194,17 +194,17 @@ bserial::RawVector FriendItem::toRaw() const
     stream << nameAlias;
     stream << phoneNumber;
     /** Персональные аудио-установки **/
-    B_SERIALIZE_V2(stream)
+    B_SERIALIZE_V2
     stream << personalVolumes;
     stream << echoCancel;
-    B_SERIALIZE_V3(stream)
+    B_SERIALIZE_V3
     stream << avatar;
     B_SERIALIZE_RETURN
 }
 
 void FriendItem::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> changeFlag;
     stream >> publicKey;
     stream >> number;
@@ -215,17 +215,17 @@ void FriendItem::fromRaw(const bserial::RawVector& vect)
     stream >> nameAlias;
     stream >> phoneNumber;
     /** Персональные аудио-установки **/
-    B_DESERIALIZE_V2(vect, stream)
+    B_DESERIALIZE_V2(vect)
     stream >> personalVolumes;
     stream >> echoCancel;
-    B_DESERIALIZE_V3(vect, stream)
+    B_DESERIALIZE_V3(vect)
     stream >> avatar;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendAudioChange::toRaw() const
+void FriendAudioChange::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << changeFlag;
     stream << publicKey;
     stream << number;
@@ -235,7 +235,7 @@ bserial::RawVector FriendAudioChange::toRaw() const
 
 void FriendAudioChange::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> changeFlag;
     stream >> publicKey;
     stream >> number;
@@ -243,23 +243,23 @@ void FriendAudioChange::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendList::toRaw() const
+void FriendList::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << list;
     B_SERIALIZE_RETURN
 }
 
 void FriendList::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> list;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector RemoveFriend::toRaw() const
+void RemoveFriend::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << publicKey;
     stream << name;
     B_SERIALIZE_RETURN
@@ -267,22 +267,22 @@ bserial::RawVector RemoveFriend::toRaw() const
 
 void RemoveFriend::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> publicKey;
     stream >> name;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector DhtConnectStatus::toRaw() const
+void DhtConnectStatus::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << active;
     B_SERIALIZE_RETURN
 }
 
 void DhtConnectStatus::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> active;
     B_DESERIALIZE_END
 }
@@ -302,9 +302,9 @@ int AudioDevInfo::Find::operator()(const quint32* devIndex, const AudioDevInfo* 
     return LIST_COMPARE_ITEM(*devIndex, item2->index);
 }
 
-bserial::RawVector AudioDevInfo::toRaw() const
+void AudioDevInfo::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << cardIndex;
     stream << type;
     stream << index;
@@ -322,7 +322,7 @@ bserial::RawVector AudioDevInfo::toRaw() const
 
 void AudioDevInfo::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> cardIndex;
     stream >> type;
     stream >> index;
@@ -345,9 +345,9 @@ AudioDevChange::AudioDevChange(const AudioDevInfo& audioDevInfo)
     index     = audioDevInfo.index;
 }
 
-bserial::RawVector AudioDevChange::toRaw() const
+void AudioDevChange::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << changeFlag;
     stream << cardIndex;
     stream << type;
@@ -359,7 +359,7 @@ bserial::RawVector AudioDevChange::toRaw() const
 
 void AudioDevChange::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> changeFlag;
     stream >> cardIndex;
     stream >> type;
@@ -369,9 +369,9 @@ void AudioDevChange::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector AudioStreamInfo::toRaw() const
+void AudioStreamInfo::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << type;
     stream << state;
     stream << devIndex;
@@ -387,7 +387,7 @@ bserial::RawVector AudioStreamInfo::toRaw() const
 
 void AudioStreamInfo::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> type;
     stream >> state;
     stream >> devIndex;
@@ -401,9 +401,9 @@ void AudioStreamInfo::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector AudioNoise::toRaw() const
+void AudioNoise::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << filterType;
     stream << publicKey;
     stream << number;
@@ -412,16 +412,16 @@ bserial::RawVector AudioNoise::toRaw() const
 
 void AudioNoise::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> filterType;
     stream >> publicKey;
     stream >> number;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector AudioTest::toRaw() const
+void AudioTest::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << begin;
     stream << playback;
     stream << record;
@@ -430,16 +430,16 @@ bserial::RawVector AudioTest::toRaw() const
 
 void AudioTest::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> begin;
     stream >> playback;
     stream >> record;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector AudioRecordLevel::toRaw() const
+void AudioRecordLevel::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << max;
     stream << time;
     B_SERIALIZE_RETURN
@@ -447,15 +447,15 @@ bserial::RawVector AudioRecordLevel::toRaw() const
 
 void AudioRecordLevel::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> max;
     stream >> time;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ToxCallAction::toRaw() const
+void ToxCallAction::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << action;
     stream << friendNumber;
     B_SERIALIZE_RETURN
@@ -463,53 +463,53 @@ bserial::RawVector ToxCallAction::toRaw() const
 
 void ToxCallAction::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> action;
     stream >> friendNumber;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ToxCallState::toRaw() const
+void ToxCallState::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << direction;
     stream << callState;
     stream << callEnd;
     stream << friendNumber;
-    B_SERIALIZE_V2(stream)
+    B_SERIALIZE_V2
     stream << friendPublicKey;
     B_SERIALIZE_RETURN
 }
 
 void ToxCallState::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> direction;
     stream >> callState;
     stream >> callEnd;
     stream >> friendNumber;
-    B_DESERIALIZE_V2(vect, stream)
+    B_DESERIALIZE_V2(vect)
     stream >> friendPublicKey;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector FriendCallEndCause::toRaw() const
+void FriendCallEndCause::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << callEnd;
     B_SERIALIZE_RETURN
 }
 
 void FriendCallEndCause::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> callEnd;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ToxMessage::toRaw() const
+void ToxMessage::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << friendNumber;
     stream << text;
     B_SERIALIZE_RETURN
@@ -517,15 +517,15 @@ bserial::RawVector ToxMessage::toRaw() const
 
 void ToxMessage::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> friendNumber;
     stream >> text;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector DiverterInfo::toRaw() const
+void DiverterInfo::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << active;
     stream << attached;
     stream << defaultMode;
@@ -534,14 +534,14 @@ bserial::RawVector DiverterInfo::toRaw() const
     stream << deviceName;
     stream << deviceVersion;
     stream << deviceSerial;
-    B_SERIALIZE_V2(stream)
+    B_SERIALIZE_V2
     stream << currentMode;
     B_SERIALIZE_RETURN
 }
 
 void DiverterInfo::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> active;
     stream >> attached;
     stream >> defaultMode;
@@ -550,14 +550,14 @@ void DiverterInfo::fromRaw(const bserial::RawVector& vect)
     stream >> deviceName;
     stream >> deviceVersion;
     stream >> deviceSerial;
-    B_DESERIALIZE_V2(vect, stream)
+    B_DESERIALIZE_V2(vect)
     stream >> currentMode;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector DiverterChange::toRaw() const
+void DiverterChange::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << changeFlag;
     stream << active;
     stream << defaultMode;
@@ -567,7 +567,7 @@ bserial::RawVector DiverterChange::toRaw() const
 
 void DiverterChange::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> changeFlag;
     stream >> active;
     stream >> defaultMode;
@@ -575,9 +575,9 @@ void DiverterChange::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector DiverterTest::toRaw() const
+void DiverterTest::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << begin;
     stream << ringTone;
     B_SERIALIZE_RETURN
@@ -585,15 +585,15 @@ bserial::RawVector DiverterTest::toRaw() const
 
 void DiverterTest::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> begin;
     stream >> ringTone;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector PhoneFriendInfo::toRaw() const
+void PhoneFriendInfo::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << publicKey;
     stream << number;
     stream << name;
@@ -604,7 +604,7 @@ bserial::RawVector PhoneFriendInfo::toRaw() const
 
 void PhoneFriendInfo::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> publicKey;
     stream >> number;
     stream >> name;
@@ -613,72 +613,72 @@ void PhoneFriendInfo::fromRaw(const bserial::RawVector& vect)
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ConfigAuthorizationRequest::toRaw() const
+void ConfigAuthorizationRequest::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << needPassword;
     B_SERIALIZE_RETURN
 }
 
 void ConfigAuthorizationRequest::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> needPassword;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ConfigAuthorization::toRaw() const
+void ConfigAuthorization::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << password;
     B_SERIALIZE_RETURN
 }
 
 void ConfigAuthorization::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> password;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector ConfigSavePassword::toRaw() const
+void ConfigSavePassword::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << password;
     B_SERIALIZE_RETURN
 }
 
 void ConfigSavePassword::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> password;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector PlaybackFinish::toRaw() const
+void PlaybackFinish::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << code;
     B_SERIALIZE_RETURN
 }
 
 void PlaybackFinish::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> code;
     B_DESERIALIZE_END
 }
 
-bserial::RawVector DiverterHandset::toRaw() const
+void DiverterHandset::toRaw(bserial::DataStream& stream) const
 {
-    B_SERIALIZE_V1(stream)
+    B_SERIALIZE_V1
     stream << on;
     B_SERIALIZE_RETURN
 }
 
 void DiverterHandset::fromRaw(const bserial::RawVector& vect)
 {
-    B_DESERIALIZE_V1(vect, stream)
+    B_DESERIALIZE_V1(vect)
     stream >> on;
     B_DESERIALIZE_END
 }

@@ -106,7 +106,7 @@ private:
 
     PhoneRing _phoneRing;
 
-    int (*_check_handset_keypress_pstnring)(usb_dev_handle *dev_h,
+    int (*_check_handset_keypress_pstnring)(usb_dev_handle* dev_h,
                                             bool* handset,
                                             bool* keypress,
                                             int*  pstn_ring);

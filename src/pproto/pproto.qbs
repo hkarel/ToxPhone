@@ -1,12 +1,11 @@
 import qbs
-import QbsUtl
+import qbs.FileInfo
 
 Product {
     name: "PProto"
     targetName: "pproto"
 
     type: "staticlibrary"
-    //destinationDirectory: "./lib"
 
     Depends { name: "cpp" }
     Depends { name: "SharedLib" }
@@ -20,16 +19,11 @@ Product {
     cpp.cxxFlags: project.cxxFlags //.concat(["-fPIC"])
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
-    property var includePaths: [
-        "./",
-        "./pproto",
-    ]
-    cpp.includePaths: includePaths;
+    cpp.includePaths: [".", "pproto"]
 
-    cpp.systemIncludePaths: QbsUtl.concatPaths(
-        Qt.core.cpp.includePaths, // Декларация нужна для подавления Qt warning-ов
+    cpp.systemIncludePaths: [
         lib.sodium.includePath
-    )
+    ]
 
     files: [
         "pproto/commands/base.cpp",
@@ -40,6 +34,8 @@ Product {
         "pproto/commands/pool.h",
         "pproto/commands/time_range.cpp",
         "pproto/commands/time_range.h",
+        "pproto/commands/time_spec.cpp",
+        "pproto/commands/time_spec.h",
         "pproto/serialize/byte_array.cpp",
         "pproto/serialize/byte_array.h",
         "pproto/serialize/functions.cpp",
@@ -51,8 +47,8 @@ Product {
         "pproto/serialize/result.h",
         "pproto/transport/base.cpp",
         "pproto/transport/base.h",
-        "pproto/transport/local.cpp",
-        "pproto/transport/local.h",
+      //"pproto/transport/local.cpp",
+      //"pproto/transport/local.h",
         "pproto/transport/tcp.cpp",
         "pproto/transport/tcp.h",
         "pproto/transport/udp.cpp",
@@ -72,6 +68,9 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.includePaths: exportingProduct.includePaths
+        cpp.includePaths: [
+            FileInfo.joinPaths(exportingProduct.sourceDirectory, "."),
+            FileInfo.joinPaths(exportingProduct.sourceDirectory, "pproto"),
+        ]
     }
 }

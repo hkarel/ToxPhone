@@ -1,4 +1,5 @@
 import qbs
+import qbs.FileInfo
 
 Product {
     type: "staticlibrary"
@@ -22,10 +23,7 @@ Product {
         "-Wno-sign-compare",
     ]
 
-    property var includePaths: [
-        "./rnnoise/include",
-    ]
-    cpp.includePaths: includePaths;
+    cpp.includePaths: ["rnnoise/include"]
 
     files: [
         "rnnoise/include/rnnoise.h",
@@ -51,6 +49,8 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.systemIncludePaths: exportingProduct.includePaths
+        cpp.includePaths: [
+            FileInfo.joinPaths(exportingProduct.sourceDirectory, "rnnoise/include"),
+        ]
     }
 }

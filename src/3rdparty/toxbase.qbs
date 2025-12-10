@@ -1,6 +1,6 @@
 import qbs
+import qbs.FileInfo
 import QbsUtl
-import ProbExt
 
 Product {
     type: "staticlibrary"
@@ -11,11 +11,6 @@ Product {
 
     lib.sodium.version:   project.sodiumVersion
     lib.sodium.useSystem: project.useSystemSodium
-
-    ProbExt.LibValidationProbe {
-        id: libValidation
-        checkingLibs: [lib.sodium]
-    }
 
     cpp.defines: [
         "USE_IPV6=1",
@@ -94,9 +89,6 @@ Product {
 
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
-    property var includePaths: [
-        "./toxcore",
-    ]
     cpp.systemIncludePaths: QbsUtl.concatPaths(
         ["/usr/include/opus"]
        ,lib.sodium.includePath
@@ -114,6 +106,9 @@ Product {
 
     Export {
         Depends { name: "cpp" }
-        cpp.includePaths: exportingProduct.includePaths
+        cpp.includePaths: [
+            //FileInfo.joinPaths(exportingProduct.sourceDirectory, "."),
+            FileInfo.joinPaths(exportingProduct.sourceDirectory, "toxcore"),
+        ]
     }
 }

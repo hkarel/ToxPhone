@@ -284,8 +284,8 @@ void MainWindow::command_ToxPhoneAbout(const Message::Ptr& message)
     ui->labelToxPhoneVers->setText(VersionNumber(toxPhoneAbout.version).toString());
     ui->labelToxcoreVers->setText(VersionNumber(toxPhoneAbout.toxcore).toString());
     ui->labelGitrev->setText(toxPhoneAbout.gitrev);
-    ui->labelBprotoVers->setText(QString("%1-%2").arg(message->protocolVersionLow())
-                                                 .arg(message->protocolVersionHigh()));
+    ui->labelBprotoVers->setText(QString("%1-%2").arg(message->protocolVersion().low)
+                                                 .arg(message->protocolVersion().high));
     ui->labelQtVersion->setText(toxPhoneAbout.qtvers);
     ui->labelSodiumVers->setText(toxPhoneAbout.sodium);
 }

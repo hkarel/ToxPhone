@@ -8,7 +8,7 @@ Product {
 
     type: "application"
     consoleApplication: false
-    destinationDirectory: "./bin"
+    destinationDirectory: "bin"
 
     Depends { name: "cpp" }
     Depends { name: "Commands" }
@@ -30,12 +30,9 @@ Product {
     cpp.cxxFlags: project.cxxFlags
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
-    cpp.includePaths: [
-        "./",
-        "../",
-    ]
+    cpp.includePaths: [".", ".."]
+
     cpp.systemIncludePaths: QbsUtl.concatPaths(
-        Qt.core.cpp.includePaths,
         lib.sodium.includePath
     )
 

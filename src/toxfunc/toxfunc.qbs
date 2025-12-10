@@ -1,4 +1,5 @@
 import qbs
+import qbs.FileInfo
 
 Product {
     name: "ToxFunc"
@@ -16,14 +17,7 @@ Product {
     cpp.cxxFlags: project.cxxFlags
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
-     property var includePaths: [
-         "./",
-         "./toxfunc",
-     ]
-     cpp.includePaths: includePaths;
-
-     // Декларация нужна для подавления Qt warning-ов
-     cpp.systemIncludePaths: Qt.core.cpp.includePaths
+     cpp.includePaths: [".", "toxfunc"]
 
      files: [
          "toxfunc/pproto_error.h",
@@ -37,6 +31,9 @@ Product {
 
      Export {
          Depends { name: "cpp" }
-         cpp.includePaths: exportingProduct.includePaths
+         cpp.includePaths: [
+             FileInfo.joinPaths(exportingProduct.sourceDirectory, "."),
+             FileInfo.joinPaths(exportingProduct.sourceDirectory, "toxfunc"),
+         ]
      }
 }

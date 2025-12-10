@@ -1,6 +1,6 @@
 import qbs
-import qbs.File
-import qbs.TextFile
+//import qbs.File
+//import qbs.TextFile
 import QbsUtl
 import ProbExt
 
@@ -10,7 +10,7 @@ Product {
     condition: !qbs.toolchain.contains("mingw")
 
     type: "application"
-    destinationDirectory: "./bin"
+    destinationDirectory: "bin"
 
     Depends { name: "cpp" }
   //Depends { name: "Celt" }
@@ -33,11 +33,7 @@ Product {
         checkingLibs: [lib.sodium]
     }
 
-    cpp.defines: {
-        var def = project.cppDefines;
-        return def;
-    }
-
+    cpp.defines: project.cppDefines
     cpp.cxxFlags: project.cxxFlags
     cpp.cxxLanguageVersion: project.cxxLanguageVersion
 
@@ -48,12 +44,9 @@ Product {
         "-Wl,-z,relro",
     ]
 
-    cpp.includePaths: [
-        "./",
-        "../",
-    ]
+    cpp.includePaths: [".", ".."]
+
     cpp.systemIncludePaths: QbsUtl.concatPaths(
-        Qt.core.cpp.includePaths,
         lib.sodium.includePath
     )
 

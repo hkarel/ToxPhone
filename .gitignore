@@ -1,5 +1,4 @@
-build/*
-build_config/*
+**/build*
 packages/*
 
 *.qbs.user

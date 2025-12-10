@@ -2,6 +2,7 @@
 #include "shared/logger/logger.h"
 #include "shared/logger/format.h"
 #include "shared/config/appl_conf.h"
+#include "shared/config/logger_conf.h"
 #include "shared/qt/logger_operators.h"
 #include "shared/qt/version_number.h"
 
@@ -82,10 +83,10 @@ int main(int argc, char *argv[])
                 config::state().setValue("logger.continue", false);
 
             alog::Level logLevel = alog::levelFromString(logLevelStr);
-            alog::SaverPtr saver {new alog::SaverFile("default",
-                                                      logFile.toStdString(),
-                                                      logLevel,
-                                                      logContinue)};
+            alog::Saver::Ptr saver {new alog::SaverFile("default",
+                                                        logFile.toStdString(),
+                                                        logLevel,
+                                                        logContinue)};
             alog::logger().addSaver(saver);
         }
         log_info << "ToxPhoneConfig is running"
